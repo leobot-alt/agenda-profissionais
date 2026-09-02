@@ -55,7 +55,8 @@
 .aa-tabs { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px; gap: 2px; flex-wrap: wrap; }
 .aa-tab { border: none; background: transparent; padding: 9px 16px; border-radius: 999px; font-weight: 700; font-size: 13px; color: var(--ink-soft); transition: all .15s ease; white-space: nowrap; }
 .aa-tab.active { background: var(--grad); color: #fff; }
-.aa-tab:not(.active):hover { color: var(--primary-dark); }
+  .aa-tab:not(.active):hover { color: var(--primary-dark); }
+  .aa-rda-card{background:linear-gradient(135deg,#fff 0%,#F7FAFF 100%);border:1px solid #D8E2F0;border-radius:18px;padding:24px;box-shadow:0 10px 28px rgba(38,58,92,.08)}.aa-rda-card h2{margin:0;color:#173B68}.aa-rda-form{display:grid;gap:14px;margin-top:18px}.aa-rda-line{display:grid;gap:14px}.aa-rda-line-two{grid-template-columns:repeat(2,minmax(0,1fr))}.aa-rda-line-three{grid-template-columns:repeat(3,minmax(0,1fr))}.aa-rda-line-one{grid-template-columns:1fr}.aa-rda-form .aa-field-wide{grid-column:span 2}.aa-rda-form .aa-field-full{grid-column:1 / -1}.aa-rda-form textarea{min-height:96px;resize:vertical}.aa-rda-realizado-field{width:100%;min-width:0}.aa-rda-realizado-field textarea{display:block;min-height:420px;width:100%;max-width:none;box-sizing:border-box;resize:vertical}.aa-rda-readonly{background:#EEF4FA!important;color:#52647A;font-weight:800}.aa-rda-toolbar{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:14px;border:1px solid #D8E2F0;border-radius:12px;background:#fff}.aa-rda-toolbar .aa-field{min-width:190px}.aa-rda-list{display:grid;gap:12px}.aa-rda-entry{border:1px solid #D8E2F0;border-radius:13px;background:#fff;padding:15px;box-shadow:0 4px 14px rgba(38,58,92,.05)}.aa-rda-entry-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}.aa-rda-entry-title{color:#173B68;font-weight:900;font-size:15px}.aa-rda-entry-meta{color:#64748B;font-size:12px;margin-top:4px}.aa-rda-entry-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:12px}.aa-rda-entry-item{padding:9px 10px;border-radius:9px;background:#F7FAFD;border:1px solid #E2EAF2}.aa-rda-entry-item small{display:block;color:#718096;text-transform:uppercase;font-size:10px;font-weight:800}.aa-rda-entry-item b{display:block;margin-top:3px;color:#334A68;font-size:12.5px;white-space:pre-wrap;word-break:break-word}.aa-rda-entry-wide{grid-column:span 2}.aa-rda-status{display:inline-flex;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:900}.aa-rda-status.open{background:#FFF4D9;color:#956B00}.aa-rda-status.closed{background:#E5F6ED;color:#157456}.aa-rda-status.notdone{background:#FBE7EB;color:#A8324A}@media(max-width:760px){.aa-rda-line-two,.aa-rda-line-three{grid-template-columns:1fr}.aa-rda-form .aa-field-wide,.aa-rda-form .aa-field-full{grid-column:auto}.aa-rda-entry-grid{grid-template-columns:1fr 1fr}.aa-rda-entry-wide{grid-column:1 / -1}.aa-rda-toolbar .aa-field{width:100%}}@media(max-width:480px){.aa-rda-entry-grid{grid-template-columns:1fr}}
 
 .aa-panel { display: none; }
 .aa-panel.active { display: block; }
@@ -450,8 +451,17 @@
           <button class="aa-tab active" data-rhtab="dashboard" onclick="aaSwitchRHTab('dashboard')">Dashboard</button>
           <button class="aa-tab" data-rhtab="agendas" onclick="aaSwitchRHTab('agendas')">Agendas Ativas</button>
           <button class="aa-tab" data-rhtab="banco" onclick="aaSwitchRHTab('banco')">Banco de Dados</button>
+          <button class="aa-tab" data-rhtab="rda" onclick="aaSwitchRHTab('rda')">RDA</button>
           <button class="aa-tab" data-rhtab="ajustes" onclick="aaSwitchRHTab('ajustes')">Solicitação de Ajuste</button>
           <button class="aa-tab" data-rhtab="controler" onclick="aaSwitchRHTab('controler')">Controler</button>
+        </div>
+
+        <div class="aa-rh-subpanel" id="aa-rhtab-rda" style="display:none;">
+          <div class="aa-rda-card">
+            <div class="aa-ficha-header"><div><h2>RDA — Relatório Diário de Atividades</h2></div><span id="aa-rda-lock-status" class="aa-rda-status open">Registro do dia aberto</span></div>
+            <div id="aa-rda-admin-filter-wrap"></div><div id="aa-rda-form-wrap"></div>
+            <div id="aa-rda-list-wrap" class="aa-rda-list" style="margin-top:20px;"></div>
+          </div>
         </div>
 
         <div class="aa-rh-subpanel" id="aa-rhtab-ajustes" style="display:none;">
@@ -823,6 +833,9 @@ const ADMIN_PASS = '';
     {key:'ajustes_indicadores', label:'Solicitação de Ajuste — visualizar indicadores e métricas', group:'Solicitação de Ajuste', kind:'Visualizar', description:'Permite visualizar contadores, médias de atendimento e situação dos prazos.'},
     {key:'ajustes_filtros_avancados', label:'Solicitação de Ajuste — usar filtros avançados', group:'Solicitação de Ajuste', kind:'Visualizar', description:'Permite filtrar chamados por status, operação, responsável e período.'},
     {key:'ajustes_exportar', label:'Solicitação de Ajuste — exportar relatório', group:'Solicitação de Ajuste', kind:'Exportar', description:'Permite exportar os chamados filtrados em CSV compatível com Excel.'},
+    {key:'rda_ver', label:'RDA — visualizar relatórios diários', group:'RDA', kind:'Visualizar', description:'Permite abrir a página de Relatório Diário de Atividades.'},
+    {key:'rda_registrar', label:'RDA — registrar e editar o relatório do dia', group:'RDA', kind:'Criar', description:'Permite preencher o próprio RDA do dia até o encerramento automático.'},
+    {key:'rda_todos', label:'RDA — visualizar relatórios de todos os colaboradores', group:'RDA', kind:'Administrar', description:'Permite ao perfil Administração consultar os RDAs de todos os colaboradores.'},
     {key:'ajustes_sla_gerenciar', label:'Solicitação de Ajuste — configurar prazos SLA', group:'Solicitação de Ajuste', kind:'Administrar', description:'Permite definir os prazos de análise e aprovação e identificar chamados atrasados.'},
     {key:'ajustes_backup', label:'Solicitação de Ajuste — baixar e restaurar backup', group:'Solicitação de Ajuste', kind:'Administrar', description:'Permite baixar uma cópia JSON e restaurar chamados preservando o histórico.'},
     {key:'ajustes_ver_finalizados', label:'Solicitação de Ajuste — consultar ajustes finalizados', group:'Solicitação de Ajuste', kind:'Visualizar', description:'Permite consultar chamados aprovados e encerrados como Ajuste feito.'},
@@ -843,7 +856,7 @@ const ADMIN_PASS = '';
   let OPERACOES = ['A','B','C','D','E'];
   const allOperacoes = {A:{key:'A',nome:'Operação A',blocos:['A','B','C','D','E'].map(k=>({key:k,nome:'Bloco '+k}))},B:{key:'B',nome:'Operação B',blocos:['A','B','C','D','E'].map(k=>({key:k,nome:'Bloco '+k}))},C:{key:'C',nome:'Operação C',blocos:['A','B','C','D','E'].map(k=>({key:k,nome:'Bloco '+k}))},D:{key:'D',nome:'Operação D',blocos:['A','B','C','D','E'].map(k=>({key:k,nome:'Bloco '+k}))},E:{key:'E',nome:'Operação E',blocos:['A','B','C','D','E'].map(k=>({key:k,nome:'Bloco '+k}))}};
   const PERFIL_DEFINICOES_PADRAO = {
-    colaborador: {nome:'Colaborador', descricao:'Acesso operacional limitado à operação atribuída, com abertura, comentários e acompanhamento dos próprios chamados de ajuste.', permissions:['dashboard_ver','agendas_ativas_ver','banco_ver','ajustes_solicitar','ajustes_ver_abertos','ajustes_editar_aberto','ajustes_ver_aprovados','ajustes_ver_recusados','ajustes_ver_cancelados','ajustes_ver_finalizados','ajustes_ver_historico','ajustes_comentar','ajustes_indicadores']},
+    colaborador: {nome:'Colaborador', descricao:'Acesso operacional limitado à operação atribuída, com abertura, comentários, acompanhamento dos próprios chamados de ajuste e registro diário de atividades.', permissions:['rda_ver','rda_registrar','dashboard_ver','agendas_ativas_ver','banco_ver','ajustes_solicitar','ajustes_ver_abertos','ajustes_editar_aberto','ajustes_ver_aprovados','ajustes_ver_recusados','ajustes_ver_cancelados','ajustes_ver_finalizados','ajustes_ver_historico','ajustes_comentar','ajustes_indicadores']},
     administrador: {nome:'Administrador', descricao:'Acesso amplo de gestão, sem remoção definitiva de usuários nem administração de perfis e operações.', permissions:PERMISSOES.map(p=>p.key).filter(k=>!['usuarios_remover','perfis_gerenciar','perfis_criar','perfis_editar','perfis_status','perfis_excluir','operacoes_gerenciar'].includes(k))},
     administrador_geral: {nome:'Administrador geral', descricao:'Acesso total às operações, perfis, usuários e configurações.', permissions:PERMISSOES.map(p=>p.key)}
   };
@@ -889,7 +902,7 @@ const LEGACY_PERMISSION_MAP = {
 };
 const RH_TAB_PERMISSION = {
   dashboard:'dashboard_ver', agendas:'agendas_ativas_ver', agendas2:'agendas_desativadas_ver',
-  banco:'banco_ver', historico:'historico_ver', config:'config_ver', ajustes:'ajustes_solicitar', permissoes:'usuarios_ver', operacoes:'perfis_gerenciar', perfis:'usuarios_ver'
+  banco:'banco_ver', rda:'rda_ver', historico:'historico_ver', config:'config_ver', ajustes:'ajustes_solicitar', permissoes:'usuarios_ver', operacoes:'perfis_gerenciar', perfis:'usuarios_ver'
 };
 function normalizePermissionKeys(keys){
   const out=[];
@@ -919,11 +932,13 @@ let allSubmissions = [];
 let allProfissionais = [];
 let allRHUsers = [];
 let allHistorico = [];
+let allRDA = [];
+let rdaFiltroColaborador = '';
 let allLixeira = [];
 let historicoPagina=1;
 const HISTORICO_PAGE_SIZE=20;
 let historicoFiltrosAtuais={user:'',action:''};
-const dataLoadState={submissions:false,profissionais:false,rhusers:false,historico:false,lixeira:false,feriados:false,domingos:false,metas:false,ajustes:false};
+const dataLoadState={submissions:false,profissionais:false,rhusers:false,historico:false,rda:false,lixeira:false,feriados:false,domingos:false,metas:false,ajustes:false};
 const TRASH_RETENTION_DAYS = 60;
 let selectedProtocolos = new Set();
 let adminDeactivatedPage = 1;
@@ -1779,7 +1794,7 @@ function aaApplyRHPermissionsUI(){
   });
 }
 function aaFirstAllowedRHTab(){
-  return ['dashboard','agendas','agendas2','banco','historico','config','permissoes'].find(tab=>aaCan(RH_TAB_PERMISSION[tab])) || null;
+  return ['dashboard','agendas','agendas2','banco','rda','historico','config','permissoes'].find(tab=>aaCan(RH_TAB_PERMISSION[tab])) || null;
 }
 window.aaRHLogout = async function(){
   await supabase.auth.signOut();
@@ -1965,6 +1980,7 @@ window.aaSwitchRHTab = function(tab){
   document.getElementById('aa-rhtab-agendas').style.display = tab==='agendas' ? 'block' : 'none';
   document.getElementById('aa-rhtab-agendas2').style.display = tab==='agendas2' ? 'block' : 'none';
   document.getElementById('aa-rhtab-banco').style.display = tab==='banco' ? 'block' : 'none';
+  document.getElementById('aa-rhtab-rda').style.display = tab==='rda' ? 'block' : 'none';
   document.getElementById('aa-rhtab-historico').style.display = tab==='historico' ? 'block' : 'none';
   document.getElementById('aa-rhtab-config').style.display = tab==='config' ? 'block' : 'none';
   document.getElementById('aa-rhtab-permissoes').style.display = tab==='permissoes' ? 'block' : 'none';
@@ -1974,6 +1990,7 @@ window.aaSwitchRHTab = function(tab){
   if(tab==='agendas') window.aaLoadAdminData();
   if(tab==='agendas2') window.aaLoadAdminData().then(()=>aaRenderAdminList2()).catch(function(e){ const el=document.getElementById('aa-admin-list-wrap-2'); if(el) el.innerHTML='<div class="aa-error-msg">Não foi possível carregar Agendas Desativadas agora.</div>'; console.error(e); });
   if(tab==='banco'){ Promise.all([loadProfissionais(),loadAllSubmissions()]).then(()=>{ window.aaRenderProfissionaisList(); }).catch(function(e){ const el=document.getElementById('aa-profissionais-list-wrap'); if(el) el.innerHTML='<div class="aa-error-msg">Não foi possível carregar o Banco de Dados agora.</div>'; console.error(e); }); }
+  if(tab==='rda'){ window.aaRenderRDA().catch(function(e){ const el=document.getElementById('aa-rda-list-wrap'); if(el) el.innerHTML='<div class="aa-error-msg">Não foi possível carregar os RDAs agora.</div>'; console.error(e); }); }
   if(tab==='historico'){ loadHistorico().then(function(){ populateHistoricoFilters(); window.aaRenderHistorico(); }).catch(function(e){ const el=document.getElementById('aa-historico-list-wrap'); if(el) el.innerHTML='<div class="aa-error-msg">Não foi possível carregar o histórico agora.</div>'; console.error(e); }); }
   if(tab==='permissoes'){ Promise.all([loadRHUsers(),loadPerfis(),loadOperacoes()]).then(()=>aaRenderPermissoes()).catch(function(e){ const el=document.getElementById('aa-permissoes-list-wrap'); if(el) el.innerHTML='<div class="aa-error-msg">Não foi possível carregar os usuários agora.</div>'; console.error(e); }); }
   if(tab==='operacoes'){ Promise.all([loadOperacoes(),loadRHUsers(),loadProfissionais(),loadAllSubmissions()]).then(()=>aaRenderOperacoes()).catch(function(e){ const el=document.getElementById('aa-operacoes-list-wrap'); if(el) el.innerHTML='<div class="aa-error-msg">Não foi possível carregar as operações agora.</div>'; console.error(e); }); }
@@ -3425,7 +3442,7 @@ window.aaSwitchControlerTab=function(tab){
   if(tab==='agendas2')window.aaLoadAdminData().then(()=>aaRenderAdminList2()).catch(function(e){const el=document.getElementById('aa-admin-list-wrap-2');if(el)el.innerHTML='<div class="aa-error-msg">Não foi possível carregar as agendas desativadas agora.</div>';console.error(e);});
   if(tab==='cadastro')Promise.all([loadRHUsers(),loadPerfis(),loadOperacoes()]).then(()=>aaRenderControlerCadastro());
 };
-const aaOriginalFirstAllowedRHTab=aaFirstAllowedRHTab;aaFirstAllowedRHTab=function(){const existing=['dashboard','agendas','banco'].find(tab=>aaCan(RH_TAB_PERMISSION[tab]));return existing|| (aaControlerAllowed()?'controler':null);};
+const aaOriginalFirstAllowedRHTab=aaFirstAllowedRHTab;  aaFirstAllowedRHTab=function(){const existing=['dashboard','agendas','banco','rda'].find(tab=>aaCan(RH_TAB_PERMISSION[tab]));return existing|| (aaControlerAllowed()?'controler':null);};
 const aaOriginalApplyRHPermissionsUI=aaApplyRHPermissionsUI;
 aaApplyRHPermissionsUI=function(){ aaOriginalApplyRHPermissionsUI(); const btn=document.querySelector('[data-rhtab="controler"]'); if(btn)btn.style.display=aaControlerAllowed()?'':'none'; };
 const aaOriginalSwitchRHTab=window.aaSwitchRHTab;
@@ -3433,7 +3450,7 @@ window.aaSwitchRHTab=function(tab){
   if(tab==='controler'){
     if(!aaControlerAllowed())return;
     document.querySelectorAll('[data-rhtab]').forEach(t=>t.classList.toggle('active',t.dataset.rhtab==='controler'));
-    ['dashboard','agendas','agendas2','banco','historico','config'].forEach(key=>{const el=document.getElementById('aa-rhtab-'+key);if(el)el.style.display='none';});
+    ['dashboard','agendas','agendas2','banco','rda','historico','config'].forEach(key=>{const el=document.getElementById('aa-rhtab-'+key);if(el)el.style.display='none';});
     const panel=document.getElementById('aa-rhtab-controler');if(panel)panel.style.display='block';
     aaEnsureControlerSources();aaSwitchControlerTab('permissoes');return;
   }
@@ -3737,6 +3754,24 @@ const aaOriginalRenderDashboard=window.aaRenderDashboard;window.aaRenderDashboar
     const exportButton=scope.querySelector('[onclick="aaExportarAjustesCSV()"]');if(exportButton)exportButton.style.display=aaCan('ajustes_exportar')?'':'none';
     ['aa-ajustes-pesquisa-operacao','aa-ajustes-pesquisa-responsavel','aa-ajustes-pesquisa-de','aa-ajustes-pesquisa-ate'].forEach(id=>{const field=document.getElementById(id)?.closest('.aa-field');if(field)field.style.display=aaCan('ajustes_filtros_avancados')?'':'none';});
   }
+  function rdaHoje(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  function rdaDataBR(value){if(!value)return '-';const parts=String(value).split('-');return parts.length===3?parts[2]+'/'+parts[1]+'/'+parts[0]:String(value);}
+  function rdaDataAdd(value,days){const parts=String(value).split('-'),d=new Date(Number(parts[0]),Number(parts[1])-1,Number(parts[2]));d.setDate(d.getDate()+days);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  function rdaPrimeiroDiaMes(){const hoje=rdaHoje(),p=hoje.split('-');return p[0]+'-'+p[1]+'-01';}
+  function rdaUsuariosAlvo(){const admin=rdaEhAdmin(),email=String(rhCurrentUser||'').trim().toLowerCase();if(!admin)return email?[{username:email}]:[];return (allRHUsers||[]).filter(u=>!u.removido&&u.ativo!==false&&u.username&&!isAdminProfile(u)).map(u=>({username:String(u.username).trim().toLowerCase()})).filter((u,i,a)=>u.username&&a.findIndex(x=>x.username===u.username)===i);}
+  async function rdaSincronizarAusentes(){const ontem=rdaDataAdd(rdaHoje(),-1),inicio=rdaPrimeiroDiaMes(),alvos=rdaUsuariosAlvo(),novos=[];alvos.forEach(user=>{for(let data=inicio;data<=ontem;data=rdaDataAdd(data,1)){if(!allRDA.some(item=>rdaOwnerEmail(item)===user.username&&String(item.data)===data)){novos.push({id:'RDA-AUTO-'+data+'-'+user.username.replace(/[^a-z0-9]/gi,'-'),data,usuarioEmail:user.username,entrada:'',pausa:'',saida:'',tarefa:'',realizou:'Não',realizado:'Não realizado — não houve lançamento de RDA para este dia.',status:'nao_realizado',automatico:true,bloqueado:true,criadoEm:new Date().toISOString(),atualizadoEm:new Date().toISOString()});}}});if(novos.length){allRDA=[...novos,...allRDA];await saveRDA();}}
+  function rdaOwnerEmail(item){return String(item&& (item.usuarioEmail||item.colaboradorEmail||item.criadoPor)||'').trim().toLowerCase();}
+  function rdaUsuarioIdentificador(user){return String(user&& (user.email||user.username||user.user||user.login)||'').trim().toLowerCase();}
+  function rdaEhAdmin(){return isAdminProfile(rhCurrentProfile)||isGeneralProfile(rhCurrentProfile);}
+  function rdaVisiveis(){const admin=rdaEhAdmin(),email=String(rhCurrentUser||'').trim().toLowerCase();return (allRDA||[]).filter(item=>String(item.data||'')<=rdaHoje()).filter(item=>admin||rdaOwnerEmail(item)===email).filter(item=>!admin||!rdaFiltroColaborador||rdaOwnerEmail(item)===rdaFiltroColaborador).sort((a,b)=>String(b.data||'').localeCompare(String(a.data||''))||String(b.atualizadoEm||b.criadoEm||'').localeCompare(String(a.atualizadoEm||a.criadoEm||'')));}
+  async function loadRDA(){if(dataLoadState.rda)return;const res=await cloudGet('db:rda',true),parsed=res&&res.value?JSON.parse(res.value):[];if(!Array.isArray(parsed))throw new Error('Dados de RDA inválidos.');allRDA=parsed;dataLoadState.rda=true;}
+  async function saveRDA(){if(!dataLoadState.rda)throw new Error('Os RDAs ainda não foram carregados.');await storageSetRetry('db:rda',JSON.stringify(allRDA),true);}
+  function rdaEsc(value){return aaHtmlSafe(value==null?'':String(value));}
+  function rdaEntradaHTML(item){const hoje=rdaHoje(),existing=item||{},locked=!!existing.id&&String(existing.data)!==hoje,canWrite=aaCan('rda_registrar')&&!locked;return '<form class="aa-rda-form" onsubmit="aaSalvarRDA(event)"><div class="aa-rda-line aa-rda-line-two"><div class="aa-field"><label>Data</label><input class="aa-rda-readonly" type="date" id="aa-rda-data" value="'+rdaEsc(existing.data||hoje)+'" readonly></div><div class="aa-field"><label>Usuário</label><input class="aa-rda-readonly" type="text" id="aa-rda-usuario" value="'+rdaEsc(String(rhCurrentUser||existing.usuarioEmail||'').trim())+'" readonly></div></div><div class="aa-rda-line aa-rda-line-three"><div class="aa-field"><label>Entrada</label><input type="time" id="aa-rda-entrada" value="'+rdaEsc(existing.entrada||'')+'" '+(canWrite?'':'disabled')+' required></div><div class="aa-field"><label>Pausa</label><input type="time" id="aa-rda-pausa" value="'+rdaEsc(existing.pausa||'')+'" '+(canWrite?'':'disabled')+'></div><div class="aa-field"><label>Saída</label><input type="time" id="aa-rda-saida" value="'+rdaEsc(existing.saida||'')+'" '+(canWrite?'':'disabled')+' required></div></div><div class="aa-rda-line aa-rda-line-two"><div class="aa-field"><label>Tarefa atribuída</label><input type="text" id="aa-rda-tarefa" value="'+rdaEsc(existing.tarefa||'')+'" '+(canWrite?'':'disabled')+' required></div><div class="aa-field"><label>Conseguiu realizar?</label><select id="aa-rda-realizou" '+(canWrite?'':'disabled')+'><option value="">Selecione</option><option value="Sim" '+(existing.realizou==='Sim'?'selected':'')+'>Sim</option><option value="Não" '+(existing.realizou==='Não'?'selected':'')+'>Não</option></select></div></div><div class="aa-rda-line aa-rda-line-one"><div class="aa-field"><label>Conte brevemente o que foi realizado</label><textarea id="aa-rda-realizado" '+(canWrite?'':'disabled')+' required>'+rdaEsc(existing.realizado||'')+'</textarea></div></div><div class="aa-modal-actions" style="justify-content:flex-end;margin-top:2px;">'+(canWrite?'<button class="aa-btn aa-btn-primary" type="submit">Salvar RDA</button>': '<span class="aa-rda-entry-meta">Este registro está encerrado e não pode mais ser editado.</span>')+'</div></form>';}
+  function rdaListaHTML(){const list=rdaVisiveis(),admin=rdaEhAdmin(),hoje=rdaHoje();if(!list.length)return '<div class="aa-empty-state">Nenhum relatório diário encontrado.</div>';return list.map(item=>{const closed=String(item.data)!==hoje,notdone=item.status==='nao_realizado'||item.automatico;return '<article class="aa-rda-entry"><div class="aa-rda-entry-head"><div><div class="aa-rda-entry-title">RDA — '+rdaDataBR(item.data)+'</div><div class="aa-rda-entry-meta">'+(admin?rdaEsc(item.usuarioEmail||'-'):'Meu relatório')+' · criado em '+rdaEsc(item.criadoEm||'-')+'</div></div><span class="aa-rda-status '+(notdone?'notdone':(closed?'closed':'open'))+'">'+(notdone?'Não realizado':(closed?'Encerrado':'Aberto hoje'))+'</span></div><div class="aa-rda-entry-grid"><div class="aa-rda-entry-item"><small>Entrada</small><b>'+rdaEsc(item.entrada||'-')+'</b></div><div class="aa-rda-entry-item"><small>Pausa</small><b>'+rdaEsc(item.pausa||'-')+'</b></div><div class="aa-rda-entry-item"><small>Saída</small><b>'+rdaEsc(item.saida||'-')+'</b></div><div class="aa-rda-entry-item"><small>Realizou?</small><b>'+rdaEsc(item.realizou||'-')+'</b></div><div class="aa-rda-entry-item aa-rda-entry-wide"><small>Tarefa atribuída</small><b>'+rdaEsc(item.tarefa||'-')+'</b></div><div class="aa-rda-entry-item aa-rda-entry-wide"><small>O que foi realizado</small><b>'+rdaEsc(item.realizado||'-')+'</b></div></div></article>';}).join('');}
+  function rdaAdminFiltroHTML(){const wrap=document.getElementById('aa-rda-admin-filter-wrap');if(!wrap)return;if(!rdaEhAdmin()){wrap.innerHTML='';rdaFiltroColaborador='';return;}const map=new Map();(allRHUsers||[]).forEach(u=>{if(!u.removido){const key=rdaUsuarioIdentificador(u);if(key)map.set(key,u);}});(allRDA||[]).forEach(item=>{const key=rdaOwnerEmail(item);if(key&&!map.has(key))map.set(key,{username:key,nome:key});});const users=Array.from(map.values()).sort((a,b)=>String(a.nome||rdaUsuarioIdentificador(a)).localeCompare(String(b.nome||rdaUsuarioIdentificador(b))));const options=users.map(u=>{const key=rdaUsuarioIdentificador(u);return '<option value="'+rdaEsc(key)+'" '+(rdaFiltroColaborador===key?'selected':'')+'>'+rdaEsc(u.nome||key)+' — '+rdaEsc(key)+'</option>';}).join('');wrap.innerHTML='<div class="aa-rda-toolbar"><div class="aa-field"><label>Pesquisar por colaborador</label><select id="aa-rda-filtro-colaborador"><option value="">Todos os colaboradores</option>'+options+'</select></div></div>';const select=document.getElementById('aa-rda-filtro-colaborador');if(select)select.addEventListener('change',function(){rdaFiltroColaborador=String(select.value||'').toLowerCase();aaRenderRDA();});}
+  window.aaRenderRDA=async function(){const form=document.getElementById('aa-rda-form-wrap'),list=document.getElementById('aa-rda-list-wrap');if(!form||!list)return;try{await loadRDA();if(rdaEhAdmin())await loadRHUsers();await rdaSincronizarAusentes();rdaAdminFiltroHTML();const hoje=rdaHoje(),email=String(rhCurrentUser||'').trim().toLowerCase(),mine=allRDA.find(item=>rdaOwnerEmail(item)===email&&String(item.data)===hoje);form.innerHTML=rdaEntradaHTML(mine);list.innerHTML=rdaListaHTML();const lock=document.getElementById('aa-rda-lock-status');if(lock)lock.textContent=mine?'Registro de hoje disponível para edição':'Preencha o RDA de hoje';}catch(error){form.innerHTML='<div class="aa-error-msg">Não foi possível carregar o RDA agora.</div>';list.innerHTML='';console.error(error);}};
+  window.aaSalvarRDA=async function(event){if(event)event.preventDefault();if(!aaCan('rda_registrar')){alert('Este perfil não pode registrar RDA nesta tela.');return;}const data=rdaHoje(),email=String(rhCurrentUser||'').trim().toLowerCase(),existing=allRDA.find(item=>rdaOwnerEmail(item)===email&&String(item.data)===data);if(existing&&String(existing.data)!==data){alert('Registros anteriores não podem ser editados.');return;}const realizado=document.getElementById('aa-rda-realizado')?.value.trim()||'',realizou=document.getElementById('aa-rda-realizou')?.value||'';if(!realizou||!realizado){alert('Preencha se conseguiu realizar e conte brevemente o que foi realizado.');return;}const now=new Date().toISOString(),payload={...(existing||{}),id:existing?.id||'RDA-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),data,usuarioEmail:email,entrada:document.getElementById('aa-rda-entrada')?.value||'',pausa:document.getElementById('aa-rda-pausa')?.value||'',saida:document.getElementById('aa-rda-saida')?.value||'',tarefa:document.getElementById('aa-rda-tarefa')?.value.trim()||'',realizou,realizado,atualizadoEm:now,criadoEm:existing?.criadoEm||now};if(existing)Object.assign(existing,payload);else allRDA.unshift(payload);try{await saveRDA();await aaLogChange(existing?'RDA do dia editado':'RDA do dia criado',payload.id,'Data '+rdaDataBR(data));aaToast('RDA salvo com sucesso.','success');await aaRenderRDA();}catch(error){if(!existing)allRDA=allRDA.filter(item=>item.id!==payload.id);alert('Não foi possível salvar o RDA agora.');console.error(error);}};
   window.aaSwitchAjusteTab=function(tab){
     if(!ajusteCanTab(tab))return;
     ajusteTabAtual=tab;
@@ -3795,7 +3830,7 @@ const aaOriginalRenderDashboard=window.aaRenderDashboard;window.aaRenderDashboar
   };
   const aaOriginalFirstAllowedAjustesTab=aaFirstAllowedRHTab;
   aaFirstAllowedRHTab=function(){
-    const existing=['dashboard','agendas','agendas2','banco','historico','config'].find(tab=>aaCan(RH_TAB_PERMISSION[tab]));
+    const existing=['dashboard','agendas','agendas2','banco','rda','historico','config'].find(tab=>aaCan(RH_TAB_PERMISSION[tab]));
     return existing||(ajusteCanAccess()?'ajustes':null)||(aaControlerAllowed()?'controler':null);
   };
   const aaOriginalSwitchRHAjustes=window.aaSwitchRHTab;
@@ -3803,7 +3838,7 @@ const aaOriginalRenderDashboard=window.aaRenderDashboard;window.aaRenderDashboar
     if(tab==='ajustes'){
       if(!ajusteCanAccess())return;
       document.querySelectorAll('[data-rhtab]').forEach(t=>t.classList.toggle('active',t.dataset.rhtab==='ajustes'));
-      ['dashboard','agendas','agendas2','banco','historico','config','controler'].forEach(key=>{const el=document.getElementById('aa-rhtab-'+key);if(el)el.style.display='none';});
+      ['dashboard','agendas','agendas2','banco','rda','historico','config','controler'].forEach(key=>{const el=document.getElementById('aa-rhtab-'+key);if(el)el.style.display='none';});
       const panel=document.getElementById('aa-rhtab-ajustes');if(panel)panel.style.display='block';
       aaRenderAjustes();return;
     }
