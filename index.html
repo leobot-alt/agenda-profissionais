@@ -53,6 +53,10 @@
 .aa-header .aa-sub { color: var(--ink-soft); font-size: 13px; margin-top: 2px; }
 
 .aa-tabs { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px; gap: 2px; flex-wrap: wrap; }
+.aa-dashboard-filters-primary{grid-template-columns:120px repeat(2,minmax(0,1fr));}
+.aa-dashboard-filters-secondary{grid-template-columns:repeat(4,minmax(0,1fr)) auto;}
+@media(max-width:900px){.aa-dashboard-filters-primary{grid-template-columns:repeat(3,minmax(0,1fr));}.aa-dashboard-filters-secondary{grid-template-columns:repeat(2,minmax(0,1fr)) auto;}}
+@media(max-width:640px){.aa-dashboard-filters-primary,.aa-dashboard-filters-secondary{grid-template-columns:1fr;}}
 .aa-tab { border: none; background: transparent; padding: 9px 16px; border-radius: 999px; font-weight: 700; font-size: 13px; color: var(--ink-soft); transition: all .15s ease; white-space: nowrap; }
 .aa-tab.active { background: var(--grad); color: #fff; }
   .aa-tab:not(.active):hover { color: var(--primary-dark); }
@@ -513,10 +517,12 @@
           <div class="aa-card">
             <h2>Visão geral</h2>
             
-            <div class="aa-field-row" style="grid-template-columns:120px repeat(6,minmax(130px,1fr)) auto; align-items:end; margin-bottom:18px;">
+            <div class="aa-field-row aa-dashboard-filters-primary" style="align-items:end; margin-bottom:12px;">
               <div class="aa-field"><label>Ano</label><input type="number" id="aa-dash-ano" min="2025" max="2035" onchange="aaUpdateDashboardMonths();aaRenderDashboard()"></div>
               <div class="aa-field"><label>Trimestre de referência</label><select id="aa-dash-trimestre" onchange="aaUpdateDashboardMonths();aaRenderDashboard()"></select></div>
               <div class="aa-field"><label>Mês analisado</label><select id="aa-dash-mes" onchange="aaRenderDashboard()"></select></div>
+            </div>
+            <div class="aa-field-row aa-dashboard-filters-secondary" style="align-items:end; margin-bottom:18px;">
               <div class="aa-field"><label>Operação</label><select id="aa-dash-operacao" onchange="aaUpdateDashboardBlocks();aaFilterDashboardProfessionals();aaRenderDashboard()"></select></div>
               <div class="aa-field"><label>Bloco</label><select id="aa-dash-bloco" onchange="aaFilterDashboardProfessionals();aaRenderDashboard()"></select></div>
               <div class="aa-field"><label>Especialidade</label><select id="aa-dash-especialidade" onchange="aaFilterDashboardProfessionals();aaRenderDashboard()"><option value="">Todas</option><option value="psicologo">Psicólogos</option><option value="psiquiatra">Psiquiatras</option></select></div>
