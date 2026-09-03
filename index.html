@@ -1776,30 +1776,6 @@ setInterval(function(){ if(rhAuthenticated) aaCheckCurrentUserAccess(); },60000)
 function aaIsAdministrator(){
   return rhAuthenticated && isAdminProfile(rhCurrentProfile);
 }
-window.aaAbrirModalResetSenha=function(id){
-  if(!aaIsAdministrator()){alert('Somente administradores podem alterar senhas.');return;}
-  const user=(allRHUsers||[]).find(u=>String(u.id)===String(id)),email=String(user&&user.username||'').trim().toLowerCase();if(!email){alert('Este usuário não possui e-mail cadastrado.');return;}
-  const m=document.getElementById('aa-modal-content');if(!m)return;m.classList.remove('aa-agenda-page');m.innerHTML='<h2>Alterar senha</h2><p class="aa-hint">Defina uma senha temporária para <b>'+aaHtmlSafe(email)+'</b>. O perfil, a operação e as permissões não serão alterados.</p><div class="aa-field-row"><div class="aa-field"><label>Nova senha temporária</label><input type="password" id="aa-manual-password" minlength="4" autocomplete="new-password"></div><div class="aa-field"><label>Confirmar senha</label><input type="password" id="aa-manual-password-confirm" minlength="4" autocomplete="new-password"></div></div><div class="aa-error-msg" id="aa-manual-password-error"></div><div class="aa-modal-actions"><button type="button" class="aa-btn aa-btn-ghost" onclick="aaCloseModal()">Cancelar</button><button type="button" class="aa-btn aa-btn-primary" onclick="aaConfirmarResetSenha(\''+aaHtmlSafe(id)+'\')">Salvar nova senha</button></div>';document.getElementById('aa-modal-backdrop').classList.add('open');
-};
-window.aaEnviarResetSenha=window.aaAbrirModalResetSenha;
-window.aaConfirmarResetSenha=async function(id){
-  if(!aaIsAdministrator())return;const err=document.getElementById('aa-manual-password-error'),password=document.getElementById('aa-manual-password')?.value||'',confirmPassword=document.getElementById('aa-manual-password-confirm')?.value||'',user=(allRHUsers||[]).find(u=>String(u.id)===String(id)),email=String(user&&user.username||'').trim().toLowerCase();
-  if(password.length<4){if(err)err.textContent='A nova senha deve ter pelo menos 4 caracteres.';return;}if(password!==confirmPassword){if(err)err.textContent='As senhas não conferem.';return;}if(!email){if(err)err.textContent='Este usuário não possui e-mail cadastrado.';return;}
-  const button=document.querySelector('#aa-modal-content button.aa-btn-primary');if(button){button.disabled=true;button.textContent='Salvando...';}
-  try{const sessionResult=await supabase.auth.getSession(),token=sessionResult.data?.session?.access_token;if(!token)throw new Error('Sessão administrativa expirada. Faça login novamente.');const response=await fetch(SUPABASE_URL+'/functions/v1/admin-reset-password',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':SUPABASE_PUBLISHABLE_KEY},body:JSON.stringify({userEmail:email,newPassword:password})});let payload={};try{payload=await response.json();}catch(_e){}if(!response.ok)throw new Error(payload.error||'A Edge Function não conseguiu atualizar a senha.');aaCloseModal();aaToast('Senha atualizada com sucesso.','success');  }catch(error){const detail=String(error&&error.message||'');if(err)err.textContent=/Failed to fetch|Load failed|NetworkError/i.test(detail)?'Não foi possível conectar à função de alteração de senha. Publique a Edge Function “admin-reset-password” no seu projeto Supabase e tente novamente.':(detail||'Não foi possível atualizar a senha agora.');console.error('Falha ao alterar senha manualmente:',error);}finally{if(button){button.disabled=false;button.textContent='Salvar nova senha';}}
-};
-window.aaAbrirModalNovaSenha=function(){
-  const m=document.getElementById('aa-modal-content');if(!m)return;
-  m.classList.remove('aa-agenda-page');m.innerHTML='<h2>Definir nova senha</h2><p class="aa-hint">Digite uma nova senha para concluir a redefinição do acesso.</p><div class="aa-field-row"><div class="aa-field"><label>Nova senha</label><input type="password" id="aa-recovery-password" minlength="4" autocomplete="new-password"></div><div class="aa-field"><label>Confirmar nova senha</label><input type="password" id="aa-recovery-password-confirm" minlength="4" autocomplete="new-password"></div></div><div class="aa-error-msg" id="aa-recovery-password-error"></div><div class="aa-modal-actions"><button type="button" class="aa-btn aa-btn-primary" onclick="aaSalvarNovaSenha()">Salvar nova senha</button></div>';
-  document.getElementById('aa-modal-backdrop').classList.add('open');
-};
-window.aaSalvarNovaSenha=async function(){
-  const password=document.getElementById('aa-recovery-password')?.value||'',confirmPassword=document.getElementById('aa-recovery-password-confirm')?.value||'',err=document.getElementById('aa-recovery-password-error');
-  if(password.length<4){if(err)err.textContent='A nova senha deve ter pelo menos 4 caracteres.';return;}
-  if(password!==confirmPassword){if(err)err.textContent='As senhas não conferem.';return;}
-  try{const {error}=await supabase.auth.updateUser({password});if(error)throw error;aaCloseModal();alert('Senha atualizada com sucesso. Faça login novamente com a nova senha.');await supabase.auth.signOut();window.location.reload();}catch(error){if(err)err.textContent='Não foi possível atualizar a senha agora.';console.error(error);}
-};
-if(supabase&&supabase.auth&&typeof supabase.auth.onAuthStateChange==='function'){supabase.auth.onAuthStateChange(function(event){if(event==='PASSWORD_RECOVERY')setTimeout(function(){window.aaAbrirModalNovaSenha();},0);});}
 function aaApplyRHPermissionsUI(){
   document.querySelectorAll('[data-rhtab]').forEach(btn=>{
     const tab = btn.dataset.rhtab;
@@ -1972,7 +1948,7 @@ window.aaRenderPermissoes=function(){
     const operationOptions='<option value="">Sem operação</option>'+Object.entries(allOperacoes).map(([key,op])=>'<option value="'+aaHtmlSafe(key)+'" '+(normalizeOperacao(u.operacao)===key?'selected':'')+'>'+aaHtmlSafe(op.nome)+'</option>').join('');
     const statusDisabled=principal||!canStatus;
     const status='<label class="aa-toggle-wrap" style="min-width:145px;height:40px;"><span class="aa-atende-label"><b>'+((u.ativo===false)?'Bloqueado':'Ativo')+'</b><small style="display:block;color:var(--ink-soft);font-weight:400;">Acesso ao painel</small></span><span class="aa-toggle"><input type="checkbox" '+(u.ativo===false?'':'checked')+' '+(statusDisabled?'disabled':'')+' onchange="aaToggleAtivoRHUser(\''+aaHtmlSafe(u.id)+'\',this.checked)"><span class="aa-toggle-slider"></span></span></label>';
-    const save=(disabled?'':'<button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaSaveUserAccess(\''+aaHtmlSafe(u.id)+'\')">Salvar alterações</button>')+(aaIsAdministrator()&&!principal?'<button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" onclick="aaAbrirModalResetSenha(\''+aaHtmlSafe(u.id)+'\')">Resetar senha</button>':'');
+    const save=(disabled?'':'<button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaSaveUserAccess(\''+aaHtmlSafe(u.id)+'\')">Salvar alterações</button>');
     return '<div class="aa-card aa-user-card"><div class="aa-user-card-head"><div><b>'+aaHtmlSafe(u.username||'-')+'</b><div class="aa-hint" style="margin:3px 0 0;">'+aaHtmlSafe(perfilLabel(u.perfil))+(principal?' · principal':'')+' · <span class="aa-operation-badge">'+aaHtmlSafe(operacaoLabel(u.operacao))+'</span></div></div><div class="aa-user-card-actions">'+status+'<label class="aa-field" style="min-width:150px;"><span>Perfil</span><select data-user-profile="'+aaHtmlSafe(u.id)+'" '+(!canAssignProfile||principal?'disabled':'')+'>'+profileOptions+'</select></label><label class="aa-field" style="min-width:150px;"><span>Operação</span><select data-user-operation="'+aaHtmlSafe(u.id)+'" '+(!canAssignOperation||principal?'disabled':'')+'>'+operationOptions+'</select></label>'+save+'</div></div></div>';
   }).join('');
 };
