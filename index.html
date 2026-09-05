@@ -1053,7 +1053,12 @@ window.aaSetHistoricoPage=function(page){ historicoPagina=Math.max(1,Number(page
 async function loadOperacoes(){
   try{
     const res=await cloudGet('db:operacoes',true); const parsed=res&&res.value?JSON.parse(res.value):null;
-    if(parsed&&typeof parsed==='object'){ Object.entries(parsed).forEach(([key,op])=>{ if(op&&typeof op==='object'&&Array.isArray(op.blocos)){ const normalizedBlocks=op.blocos.map((b,i)=>typeof b==='string'?{key:normalizeBlocoKey(b),nome:b}:{key:normalizeBlocoKey(b.key||('BLOCO-'+i)),nome:String(b.nome||b.key||('Bloco '+(i+1))).trim()}).filter(b=>b.key&&b.nome); if(normalizedBlocks.length>=0) allOperacoes[key]={key,nome:String(op.nome||key).trim()||key,blocos:normalizedBlocks}; } }); }
+    if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed)){
+      const loaded={};
+      Object.entries(parsed).forEach(([key,op])=>{ if(op&&typeof op==='object'&&Array.isArray(op.blocos)){ const normalizedBlocks=op.blocos.map((b,i)=>typeof b==='string'?{key:normalizeBlocoKey(b),nome:b}:{key:normalizeBlocoKey(b.key||('BLOCO-'+i)),nome:String(b.nome||b.key||('Bloco '+(i+1))).trim()}).filter(b=>b.key&&b.nome); loaded[key]={key,nome:String(op.nome||key).trim()||key,blocos:normalizedBlocks}; } });
+      Object.keys(allOperacoes).forEach(key=>delete allOperacoes[key]);
+      Object.assign(allOperacoes,loaded);
+    }
     OPERACOES=Object.keys(allOperacoes);
   }catch(e){ console.warn('Operações personalizadas não puderam ser carregadas; usando as operações padrão.',e); OPERACOES=Object.keys(allOperacoes); }
 }
@@ -3524,14 +3529,6 @@ window.aaOpenAgendaWindow=function(protocolo){
   m.innerHTML=header+renderAdminDetail(s,true)+'<div class="aa-modal-actions"><button type="button" class="aa-btn aa-btn-ajuste" onclick="aaCloseModal()">Fechar agenda</button></div>';document.getElementById('aa-modal-backdrop').classList.add('open');
 };
 const aaOriginalCloseModal=window.aaCloseModal;window.aaCloseModal=function(){const m=document.getElementById('aa-modal-content');if(m)m.classList.remove('aa-agenda-page');aaOriginalCloseModal();};
-
-window.aaRenderProfissionaisList=function(){
-  const wrap=document.getElementById('aa-profissionais-list-wrap');if(!wrap)return;const filtered=filterByCurrentOperation(getFilteredProfissionais()).sort((a,b)=>String(a.nomeCompleto||'').localeCompare(String(b.nomeCompleto||''),'pt-BR',{sensitivity:'base'}));
-  if(!filtered.length){wrap.innerHTML='<div class="aa-empty-state"><div class="aa-empty-icon">&#128100;</div>Nenhum profissional cadastrado ainda.</div>';return;}
-  const canStatus=aaCan('banco_profissionais_status');let html='<div class="aa-table-scroll"><table class="aa-compact-table"><tr><th>Nome</th><th>Usuário</th><th>Bloco</th><th>Operação</th><th>Ações</th></tr>';
-  filtered.forEach(p=>{const subs=filterByCurrentOperation(allSubmissions).filter(s=>agendaVisivelParaProfissional(s)&&(s.profissionalId===p.id||normText(s.usuario)===normText(p.usuarioMedicina))).sort((a,b)=>String(b.submittedAt||'').localeCompare(String(a.submittedAt||'')));const agendas=subs.length?subs.map(s=>'<button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" style="padding:5px 9px;margin:2px 0;" onclick="aaOpenAgendaWindow(\''+aaHtmlSafe(s.protocolo)+'\')">Ver agenda · '+aaHtmlSafe(periodLabel(s))+' de '+aaHtmlSafe(s.ano)+'</button>').join(''):'<span style="color:var(--ink-faint);font-size:12px;">Sem agenda</span>';html+='<tr><td><button type="button" class="aa-name-link" onclick="aaOpenProfessionalFicha(\''+aaHtmlSafe(p.id)+'\')">'+aaHtmlSafe(p.nomeCompleto||'-')+'</button></td><td class="aa-subs-user">'+aaHtmlSafe(p.usuarioMedicina||'-')+'</td><td>'+aaHtmlSafe(blocoLabel(p.blocoAgenda,p.operacao))+'</td><td><span class="aa-operation-badge">'+aaHtmlSafe(operacaoLabel(p.operacao))+'</span></td><td>'+agendas+'</td></tr>';});
-  wrap.innerHTML=html+'</table></div>';
-};
 
 function aaAgendaActionsHTML(s,includeDeactivated){
   const p=aaFindProfessionalForSubmission(s);let html='';if(aaCan(includeDeactivated?'agendas_desativadas_exportar':'agendas_ativas_exportar'))html+='<button class="aa-btn aa-btn-ghost aa-btn-sm" style="padding:5px 10px;" onclick="aaExportSingle(\''+aaHtmlSafe(s.protocolo)+'\')">Exportar</button>';if(!includeDeactivated&&aaCan('agendas_ativas_duplicar'))html+='<button class="aa-btn aa-btn-secondary aa-btn-sm" style="padding:5px 10px;" onclick="aaDuplicateAgenda(\''+aaHtmlSafe(s.protocolo)+'\')">Duplicar agenda</button>';if(includeDeactivated&&aaIsAdministrator()&&aaCan('agendas_desativadas_excluir'))html+='<button class="aa-btn aa-btn-ghost aa-btn-sm" style="padding:5px 10px;color:var(--accent);border-color:#EFC3CC;" onclick="aaDeletePermanentAgenda(\''+aaHtmlSafe(s.protocolo)+'\')">Excluir definitivamente</button>';html+='<button class="aa-btn aa-btn-primary aa-btn-sm" style="padding:5px 10px;" onclick="aaOpenAgendaWindow(\''+aaHtmlSafe(s.protocolo)+'\')">Ver detalhes</button>';if(p)html+='<button class="aa-btn aa-btn-ghost aa-btn-sm" style="padding:5px 10px;" onclick="aaOpenProfessionalFicha(\''+aaHtmlSafe(p.id)+'\')">Ficha cadastral</button>';return html;
