@@ -2989,10 +2989,13 @@ window.aaRenderDashboard = async function(){
   const recusadas=periodSubs.filter(s=>s.status==='recusado'||s.status==='recusada').length;
   const agendasFora=periodSubs.filter(s=>{const m=s.computedByMonth&&s.computedByMonth[ym];if(!m||submissionEspecialidade(s)!=='psicologo')return false;const h=Number(m.total)||0;return h<MIN_MONTH_HOURS||h>MAX_MONTH_HOURS;}).length;
   const ativosSemAgenda=filteredDashboardProfs.filter(p=>p.ativo!==false&&!periodSubs.some(s=>String(s.profissionalId||'')===String(p.id)||normText(s.usuario)===normText(p.usuarioMedicina))).length;
+  const cadastrosIncompletos=filteredDashboardProfs.filter(p=>p.ativo!==false&&(!String(p.nomeCompleto||'').trim()||!String(p.usuarioMedicina||'').trim()||!String(p.especialidade||'').trim()||!String(p.operacao||'').trim())).length;
+  const resumoAtualizadoEm=new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
   const resumoAlertas=[];
   if(emAnalise) resumoAlertas.push(emAnalise+' agenda(s) aguardando análise');
   if(agendasFora) resumoAlertas.push(agendasFora+' agenda(s) fora da meta');
   if(ativosSemAgenda) resumoAlertas.push(ativosSemAgenda+' profissional(is) ativo(s) sem agenda');
+  if(cadastrosIncompletos) resumoAlertas.push(cadastrosIncompletos+' cadastro(s) com dados incompletos');
   const resumoMesId='aa-dashboard-resumo-mes-'+ym.replace(/[^0-9A-Za-z_-]/g,'');
   let html='<div class="aa-dashboard-section"><div class="aa-dashboard-section-head"><div><h3>Resumo do mês</h3><div class="aa-hint">Visão geral de '+monthLabel(ym)+'</div></div><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm aa-collapse-btn" onclick="aaToggleDashboardSection(\''+resumoMesId+'\',this)">Mostrar</button></div><div id="'+resumoMesId+'" style="display:none"><div class="aa-dashboard-grid">';
   html+='<div class="aa-summary-stat"><div class="aa-stat-label">Horas totais do mês</div><div class="aa-stat-value">'+formatHours(total)+'</div></div>';
@@ -3002,8 +3005,9 @@ window.aaRenderDashboard = async function(){
   html+='<div class="aa-summary-stat"><div class="aa-stat-label">Aguardando análise</div><div class="aa-stat-value">'+emAnalise+'</div></div>';
   html+='<div class="aa-summary-stat"><div class="aa-stat-label">Agendas aprovadas</div><div class="aa-stat-value">'+aprovadas+'</div></div>';
   html+='<div class="aa-summary-stat"><div class="aa-stat-label">Agendas recusadas</div><div class="aa-stat-value">'+recusadas+'</div></div>';
-  html+='<div class="aa-summary-stat"><div class="aa-stat-label">Agendas fora da meta</div><div class="aa-stat-value">'+agendasFora+'</div></div></div>';
-  html+='<div class="aa-dashboard-summary-alerts" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:#FAF9FD;border:1px solid var(--line);"><b>Alertas do mês</b><div class="aa-hint" style="margin-top:5px;">'+(resumoAlertas.length?resumoAlertas.map(x=>'<div>• '+aaHtmlSafe(x)+'</div>').join(''):'Nenhuma pendência relevante identificada.')+'</div></div></div></div></div>';
+  html+='<div class="aa-summary-stat"><div class="aa-stat-label">Agendas fora da meta</div><div class="aa-stat-value">'+agendasFora+'</div></div>';
+  html+='<div class="aa-summary-stat"><div class="aa-stat-label">Cadastros incompletos</div><div class="aa-stat-value">'+cadastrosIncompletos+'</div></div></div>';
+  html+='<div class="aa-dashboard-summary-alerts" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:#FAF9FD;border:1px solid var(--line);"><b>Alertas do mês</b><div class="aa-hint" style="margin-top:5px;">'+(resumoAlertas.length?resumoAlertas.map(x=>'<div>• '+aaHtmlSafe(x)+'</div>').join(''):'Nenhuma pendência relevante identificada.')+'</div><small style="display:block;margin-top:8px;color:var(--ink-soft);">Atualizado em '+aaHtmlSafe(resumoAtualizadoEm)+'</small></div></div></div></div>';
   html+='<div class="aa-dashboard-section"><h3>Progresso da meta mensal</h3><div class="aa-dashboard-grid" style="grid-template-columns:1fr 1fr; margin-bottom:0;">'+dashboardMetaCard('Meta de Psicólogos','psicologo',data.psicologo.total,dashboardMetas.psicologo,data.psicologo.agendas)+dashboardMetaCard('Meta de Psiquiatras','psiquiatra',data.psiquiatra.total,dashboardMetas.psiquiatra,data.psiquiatra.agendas)+'</div></div>';
   html+=dashboardOutOfRangeSection(periodSubs,ym);
   html+='<div class="aa-dashboard-section"><h3>Principais tipos de ajuste em '+monthLabel(ym)+'</h3><div class="aa-dashboard-grid" style="grid-template-columns:1fr 1fr; margin-bottom:0;"><div><div class="aa-meta-card-head"><b>Psicólogos</b><span class="aa-specialty-badge aa-specialty-psicologo">'+data.psicologo.agendas+' agendas</span></div>'+dashboardAdjustmentTable(data.psicologo)+'</div><div><div class="aa-meta-card-head"><b>Psiquiatras</b><span class="aa-specialty-badge aa-specialty-psiquiatra">'+data.psiquiatra.agendas+' agendas</span></div>'+dashboardAdjustmentTable(data.psiquiatra)+'</div></div></div>';
