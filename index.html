@@ -1658,7 +1658,7 @@ window.aaImportSpreadsheet = function(event){
       const doxyIdx = findHeader(['doxy','link doxy']);
       const cell = (row, idx) => idx >= 0 ? String(row[idx] ?? '').trim() : '';
       const parseAtivo = value => !['não','nao','n','false','0','inativo','inativa'].includes(normText(value));
-      let created=0, updated=0, skipped=0, issues=[];
+      let created=0, updated=0, skipped=0, issues=[], seenUsers=new Set();
       for(let i=1;i<rows.length;i++){
         const row = rows[i];
         if(!row || !row[0]){ continue; }
@@ -1676,6 +1676,9 @@ window.aaImportSpreadsheet = function(event){
         const tipoChavePix = cell(row, tipoChaveIdx), chavePix = cell(row, chavePixIdx), nomeAgenda = cell(row, nomeAgendaIdx), doxy = cell(row, doxyIdx);
         const ativo = ativoIdx >= 0 ? parseAtivo(cell(row, ativoIdx)) : true;
         if(!nomeCompleto || !usuarioMedicina){ skipped++; issues.push('Linha '+(i+1)+': nome ou usuário Medicina ausente.'); continue; }
+        const userKey=normText(usuarioMedicina);
+        if(seenUsers.has(userKey)){ skipped++; issues.push('Linha '+(i+1)+': usuário Medicina repetido na própria planilha.'); continue; }
+        seenUsers.add(userKey);
         if(row[whatsIdx] && normWhatsDigits(row[whatsIdx]).length>0 && ![10,11].includes(normWhatsDigits(row[whatsIdx]).length)){ skipped++; issues.push('Linha '+(i+1)+': WhatsApp inválido.'); continue; }
         if(especialidadeIdx>=0 && row[especialidadeIdx] && !['psicologo','psiquiatra'].includes(especialidade)){ skipped++; issues.push('Linha '+(i+1)+': especialidade deve ser Psicólogo ou Psiquiatra.'); continue; }
         let existing = allProfissionais.find(p=>normText(p.usuarioMedicina)===normText(usuarioMedicina));
@@ -1689,6 +1692,9 @@ window.aaImportSpreadsheet = function(event){
         if(existing){ Object.assign(existing, record); updated++; }
         else { allProfissionais.push(record); created++; }
       }
+      const previewIssues=issues.length?'\n\nPrincipais avisos:\n'+issues.slice(0,8).join('\n')+(issues.length>8?'\n...':''):'';
+      const preview='Prévia da importação\n\nNovos cadastros: '+created+'\nCadastros atualizados: '+updated+'\nLinhas ignoradas: '+skipped+previewIssues+'\n\nDeseja confirmar a gravação?';
+      if(!window.confirm(preview)){ event.target.value=''; return; }
       event.target.value = '';
       await saveAllProfissionais();
       await aaLogChange('Importação de planilha de profissionais', '', created+' novo(s), '+updated+' atualizado(s), '+skipped+' ignorada(s)');
@@ -2979,13 +2985,25 @@ window.aaRenderDashboard = async function(){
   const professionalRows=dashboardProfessionalRows(periodSubs,ym);
   const total=data.psicologo.total+data.psiquiatra.total;
   const emAnalise=periodSubs.filter(s=>s.status==='em_analise').length;
+  const aprovadas=periodSubs.filter(s=>s.status==='aprovado').length;
+  const recusadas=periodSubs.filter(s=>s.status==='recusado'||s.status==='recusada').length;
+  const agendasFora=periodSubs.filter(s=>{const m=s.computedByMonth&&s.computedByMonth[ym];if(!m||submissionEspecialidade(s)!=='psicologo')return false;const h=Number(m.total)||0;return h<MIN_MONTH_HOURS||h>MAX_MONTH_HOURS;}).length;
+  const ativosSemAgenda=filteredDashboardProfs.filter(p=>p.ativo!==false&&!periodSubs.some(s=>String(s.profissionalId||'')===String(p.id)||normText(s.usuario)===normText(p.usuarioMedicina))).length;
+  const resumoAlertas=[];
+  if(emAnalise) resumoAlertas.push(emAnalise+' agenda(s) aguardando análise');
+  if(agendasFora) resumoAlertas.push(agendasFora+' agenda(s) fora da meta');
+  if(ativosSemAgenda) resumoAlertas.push(ativosSemAgenda+' profissional(is) ativo(s) sem agenda');
   const resumoMesId='aa-dashboard-resumo-mes-'+ym.replace(/[^0-9A-Za-z_-]/g,'');
   let html='<div class="aa-dashboard-section"><div class="aa-dashboard-section-head"><div><h3>Resumo do mês</h3><div class="aa-hint">Visão geral de '+monthLabel(ym)+'</div></div><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm aa-collapse-btn" onclick="aaToggleDashboardSection(\''+resumoMesId+'\',this)">Mostrar</button></div><div id="'+resumoMesId+'" style="display:none"><div class="aa-dashboard-grid">';
   html+='<div class="aa-summary-stat"><div class="aa-stat-label">Horas totais do mês</div><div class="aa-stat-value">'+formatHours(total)+'</div></div>';
   html+='<div class="aa-summary-stat"><div class="aa-stat-label">Psicólogos ativos</div><div class="aa-stat-value">'+psAtivos+' <small style="font-size:12px;color:var(--ink-soft)">('+psInativos+' inativos)</small></div></div>';
   html+='<div class="aa-summary-stat"><div class="aa-stat-label">Psiquiatras ativos</div><div class="aa-stat-value">'+pqAtivos+' <small style="font-size:12px;color:var(--ink-soft)">('+pqInativos+' inativos)</small></div></div>';
   html+='<div class="aa-summary-stat"><div class="aa-stat-label">Agendas no mês</div><div class="aa-stat-value">'+periodSubs.length+'</div></div>';
-  html+='<div class="aa-summary-stat"><div class="aa-stat-label">Aguardando análise</div><div class="aa-stat-value">'+emAnalise+'</div></div></div></div></div>';
+  html+='<div class="aa-summary-stat"><div class="aa-stat-label">Aguardando análise</div><div class="aa-stat-value">'+emAnalise+'</div></div>';
+  html+='<div class="aa-summary-stat"><div class="aa-stat-label">Agendas aprovadas</div><div class="aa-stat-value">'+aprovadas+'</div></div>';
+  html+='<div class="aa-summary-stat"><div class="aa-stat-label">Agendas recusadas</div><div class="aa-stat-value">'+recusadas+'</div></div>';
+  html+='<div class="aa-summary-stat"><div class="aa-stat-label">Agendas fora da meta</div><div class="aa-stat-value">'+agendasFora+'</div></div></div>';
+  html+='<div class="aa-dashboard-summary-alerts" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:#FAF9FD;border:1px solid var(--line);"><b>Alertas do mês</b><div class="aa-hint" style="margin-top:5px;">'+(resumoAlertas.length?resumoAlertas.map(x=>'<div>• '+aaHtmlSafe(x)+'</div>').join(''):'Nenhuma pendência relevante identificada.')+'</div></div></div></div></div>';
   html+='<div class="aa-dashboard-section"><h3>Progresso da meta mensal</h3><div class="aa-dashboard-grid" style="grid-template-columns:1fr 1fr; margin-bottom:0;">'+dashboardMetaCard('Meta de Psicólogos','psicologo',data.psicologo.total,dashboardMetas.psicologo,data.psicologo.agendas)+dashboardMetaCard('Meta de Psiquiatras','psiquiatra',data.psiquiatra.total,dashboardMetas.psiquiatra,data.psiquiatra.agendas)+'</div></div>';
   html+=dashboardOutOfRangeSection(periodSubs,ym);
   html+='<div class="aa-dashboard-section"><h3>Principais tipos de ajuste em '+monthLabel(ym)+'</h3><div class="aa-dashboard-grid" style="grid-template-columns:1fr 1fr; margin-bottom:0;"><div><div class="aa-meta-card-head"><b>Psicólogos</b><span class="aa-specialty-badge aa-specialty-psicologo">'+data.psicologo.agendas+' agendas</span></div>'+dashboardAdjustmentTable(data.psicologo)+'</div><div><div class="aa-meta-card-head"><b>Psiquiatras</b><span class="aa-specialty-badge aa-specialty-psiquiatra">'+data.psiquiatra.agendas+' agendas</span></div>'+dashboardAdjustmentTable(data.psiquiatra)+'</div></div></div>';
