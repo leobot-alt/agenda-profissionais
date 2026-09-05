@@ -2987,13 +2987,13 @@ window.aaRenderDashboard = async function(){
   const psInativos=filteredDashboardProfs.filter(p=>!p.ativo && normalizeEspecialidade(p.especialidade)==='psicologo').length;
   const pqInativos=filteredDashboardProfs.filter(p=>!p.ativo && normalizeEspecialidade(p.especialidade)==='psiquiatra').length;
   const data=dashboardMonthData(periodSubs,ym);
+  const total=data.psicologo.total+data.psiquiatra.total;
   const previousYm=(()=>{const d=new Date(ym+'-01T00:00:00');d.setMonth(d.getMonth()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');})();
   const previousPeriodSubs=filterByCurrentOperation(allSubmissions).filter(s=>agendaVisivelParaProfissional(s)&&Array.isArray(s.periodoMeses)&&s.periodoMeses.includes(previousYm));
   const previousTotal=dashboardMonthData(previousPeriodSubs,previousYm).psicologo.total+dashboardMonthData(previousPeriodSubs,previousYm).psiquiatra.total;
   const hoursDelta=total-previousTotal;
   const hoursDeltaLabel=previousTotal>0?((hoursDelta>=0?'+':'')+Math.round((hoursDelta/previousTotal)*100)+'% vs. mês anterior'):'Sem base do mês anterior';
   const professionalRows=dashboardProfessionalRows(periodSubs,ym);
-  const total=data.psicologo.total+data.psiquiatra.total;
   const emAnalise=periodSubs.filter(s=>s.status==='em_analise').length;
   const aprovadas=periodSubs.filter(s=>s.status==='aprovado').length;
   const recusadas=periodSubs.filter(s=>s.status==='recusado'||s.status==='recusada').length;
