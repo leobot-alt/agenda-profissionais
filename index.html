@@ -664,6 +664,9 @@
               <div class="aa-admin-filters">
                 <select id="aa-hist-filter-user" onchange="aaRenderHistorico()"><option value="">Todos os usuários</option></select>
                 <select id="aa-hist-filter-action" onchange="aaRenderHistorico()"><option value="">Todas as ações</option></select>
+                <input type="date" id="aa-hist-filter-from" onchange="aaRenderHistorico()" title="Data inicial">
+                <input type="date" id="aa-hist-filter-to" onchange="aaRenderHistorico()" title="Data final">
+                <button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" onclick="document.getElementById('aa-hist-filter-from').value='';document.getElementById('aa-hist-filter-to').value='';aaRenderHistorico()">Limpar datas</button>
               </div>
             </div>
             <div id="aa-historico-list-wrap"><div class="aa-loading">Carregando histórico...</div></div>
@@ -1032,8 +1035,10 @@ window.aaRenderHistorico = function(){
   if(!wrap) return;
   const userFilter = document.getElementById('aa-hist-filter-user')?.value||'';
   const actionFilter = document.getElementById('aa-hist-filter-action')?.value||'';
-  if(historicoFiltrosAtuais.user!==userFilter || historicoFiltrosAtuais.action!==actionFilter){ historicoPagina=1; historicoFiltrosAtuais={user:userFilter,action:actionFilter}; }
-  const filtered = allHistorico.filter(h=> (!userFilter || h.actor===userFilter) && (!actionFilter || h.action===actionFilter));
+  const fromFilter = document.getElementById('aa-hist-filter-from')?.value||'';
+  const toFilter = document.getElementById('aa-hist-filter-to')?.value||'';
+  if(historicoFiltrosAtuais.user!==userFilter || historicoFiltrosAtuais.action!==actionFilter || historicoFiltrosAtuais.from!==fromFilter || historicoFiltrosAtuais.to!==toFilter){ historicoPagina=1; historicoFiltrosAtuais={user:userFilter,action:actionFilter,from:fromFilter,to:toFilter}; }
+  const filtered = allHistorico.filter(h=>{const day=String(h.timestamp||'').slice(0,10);return (!userFilter || h.actor===userFilter) && (!actionFilter || h.action===actionFilter) && (!fromFilter || day>=fromFilter) && (!toFilter || day<=toFilter);});
   if(filtered.length===0){ historicoPagina=1; wrap.innerHTML = '<div class="aa-empty-state"><div class="aa-empty-icon">&#128220;</div>Nenhuma movimentação registrada ainda.</div>'; return; }
   const totalPages=Math.max(1,Math.ceil(filtered.length/HISTORICO_PAGE_SIZE)); historicoPagina=Math.min(Math.max(1,Number(historicoPagina)||1),totalPages);
   const start=(historicoPagina-1)*HISTORICO_PAGE_SIZE, pageItems=filtered.slice(start,start+HISTORICO_PAGE_SIZE), end=start+pageItems.length;
@@ -2982,6 +2987,11 @@ window.aaRenderDashboard = async function(){
   const psInativos=filteredDashboardProfs.filter(p=>!p.ativo && normalizeEspecialidade(p.especialidade)==='psicologo').length;
   const pqInativos=filteredDashboardProfs.filter(p=>!p.ativo && normalizeEspecialidade(p.especialidade)==='psiquiatra').length;
   const data=dashboardMonthData(periodSubs,ym);
+  const previousYm=(()=>{const d=new Date(ym+'-01T00:00:00');d.setMonth(d.getMonth()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');})();
+  const previousPeriodSubs=filterByCurrentOperation(allSubmissions).filter(s=>agendaVisivelParaProfissional(s)&&Array.isArray(s.periodoMeses)&&s.periodoMeses.includes(previousYm));
+  const previousTotal=dashboardMonthData(previousPeriodSubs,previousYm).psicologo.total+dashboardMonthData(previousPeriodSubs,previousYm).psiquiatra.total;
+  const hoursDelta=total-previousTotal;
+  const hoursDeltaLabel=previousTotal>0?((hoursDelta>=0?'+':'')+Math.round((hoursDelta/previousTotal)*100)+'% vs. mês anterior'):'Sem base do mês anterior';
   const professionalRows=dashboardProfessionalRows(periodSubs,ym);
   const total=data.psicologo.total+data.psiquiatra.total;
   const emAnalise=periodSubs.filter(s=>s.status==='em_analise').length;
@@ -2998,7 +3008,7 @@ window.aaRenderDashboard = async function(){
   if(cadastrosIncompletos) resumoAlertas.push(cadastrosIncompletos+' cadastro(s) com dados incompletos');
   const resumoMesId='aa-dashboard-resumo-mes-'+ym.replace(/[^0-9A-Za-z_-]/g,'');
   let html='<div class="aa-dashboard-section"><div class="aa-dashboard-section-head"><div><h3>Resumo do mês</h3><div class="aa-hint">Visão geral de '+monthLabel(ym)+'</div></div><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm aa-collapse-btn" onclick="aaToggleDashboardSection(\''+resumoMesId+'\',this)">Mostrar</button></div><div id="'+resumoMesId+'" style="display:none"><div class="aa-dashboard-grid">';
-  html+='<div class="aa-summary-stat"><div class="aa-stat-label">Horas totais do mês</div><div class="aa-stat-value">'+formatHours(total)+'</div></div>';
+  html+='<div class="aa-summary-stat"><div class="aa-stat-label">Horas totais do mês</div><div class="aa-stat-value">'+formatHours(total)+'</div><small style="display:block;color:var(--ink-soft);margin-top:3px;">'+aaHtmlSafe(hoursDeltaLabel)+'</small></div>';
   html+='<div class="aa-summary-stat"><div class="aa-stat-label">Psicólogos ativos</div><div class="aa-stat-value">'+psAtivos+' <small style="font-size:12px;color:var(--ink-soft)">('+psInativos+' inativos)</small></div></div>';
   html+='<div class="aa-summary-stat"><div class="aa-stat-label">Psiquiatras ativos</div><div class="aa-stat-value">'+pqAtivos+' <small style="font-size:12px;color:var(--ink-soft)">('+pqInativos+' inativos)</small></div></div>';
   html+='<div class="aa-summary-stat"><div class="aa-stat-label">Agendas no mês</div><div class="aa-stat-value">'+periodSubs.length+'</div></div>';
