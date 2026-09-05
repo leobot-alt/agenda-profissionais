@@ -2986,11 +2986,11 @@ window.aaRenderDashboard = async function(){
   html+='<div class="aa-summary-stat"><div class="aa-stat-label">Psiquiatras ativos</div><div class="aa-stat-value">'+pqAtivos+' <small style="font-size:12px;color:var(--ink-soft)">('+pqInativos+' inativos)</small></div></div>';
   html+='<div class="aa-summary-stat"><div class="aa-stat-label">Agendas no mês</div><div class="aa-stat-value">'+periodSubs.length+'</div></div>';
   html+='<div class="aa-summary-stat"><div class="aa-stat-label">Aguardando análise</div><div class="aa-stat-value">'+emAnalise+'</div></div></div></div></div>';
-  html+=dashboardAjustesSection(ym,opFilter,blockFilter,espFilter,profFilter);
   html+='<div class="aa-dashboard-section"><h3>Progresso da meta mensal</h3><div class="aa-dashboard-grid" style="grid-template-columns:1fr 1fr; margin-bottom:0;">'+dashboardMetaCard('Meta de Psicólogos','psicologo',data.psicologo.total,dashboardMetas.psicologo,data.psicologo.agendas)+dashboardMetaCard('Meta de Psiquiatras','psiquiatra',data.psiquiatra.total,dashboardMetas.psiquiatra,data.psiquiatra.agendas)+'</div></div>';
   html+=dashboardOutOfRangeSection(periodSubs,ym);
   html+='<div class="aa-dashboard-section"><h3>Principais tipos de ajuste em '+monthLabel(ym)+'</h3><div class="aa-dashboard-grid" style="grid-template-columns:1fr 1fr; margin-bottom:0;"><div><div class="aa-meta-card-head"><b>Psicólogos</b><span class="aa-specialty-badge aa-specialty-psicologo">'+data.psicologo.agendas+' agendas</span></div>'+dashboardAdjustmentTable(data.psicologo)+'</div><div><div class="aa-meta-card-head"><b>Psiquiatras</b><span class="aa-specialty-badge aa-specialty-psiquiatra">'+data.psiquiatra.agendas+' agendas</span></div>'+dashboardAdjustmentTable(data.psiquiatra)+'</div></div></div>';
   html+=dashboardProductivitySection(periodSubs,ym);
+  html+=dashboardAjustesSection(ym,opFilter,blockFilter,espFilter,profFilter);
   const resumoId='aa-dashboard-profissionais-'+ym.replace(/[^0-9A-Za-z_-]/g,'');
   html+='<div class="aa-dashboard-section"><div class="aa-dashboard-section-head"><div><h3>Resumo por profissional</h3></div><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaToggleDashboardSection(\''+resumoId+'\',this)">Minimizar</button></div><div id="'+resumoId+'">'+dashboardProfessionalTable(professionalRows)+'</div></div>';
   content.innerHTML=html;
