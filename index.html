@@ -1826,12 +1826,20 @@ window.aaSolicitarResetSenha = async function(){
   if(err) err.textContent='';
   if(!email){ if(err) err.textContent='Informe seu e-mail para receber o link de redefinição.'; return; }
   try{
-    const redirectTo = new URL('reset-password.html', window.location.href).href;
+    const redirectTo = window.location.hostname.endsWith('github.io')
+      ? 'https://leobot-alt.github.io/agenda-profissionais/reset-password.html'
+      : new URL('reset-password.html', window.location.href).href;
     const {error} = await supabase.auth.resetPasswordForEmail(email, {redirectTo});
     if(error) throw error;
     if(err) err.textContent='Link enviado. Verifique seu e-mail e abra o link para criar uma nova senha.';
   }catch(error){
-    if(err) err.textContent='Não foi possível enviar o link de redefinição agora.';
+    const detail=String(error?.message||'').toLowerCase();
+    let message='Não foi possível enviar o link de redefinição agora.';
+    if(detail.includes('redirect')||detail.includes('url')) message='O Supabase recusou o endereço de retorno. Confirme nas Redirect URLs: https://leobot-alt.github.io/agenda-profissionais/reset-password.html';
+    else if(detail.includes('rate limit')) message='Limite de envio de e-mails atingido. Aguarde alguns minutos e tente novamente.';
+    else if(detail.includes('invalid')&&detail.includes('email')) message='Informe um e-mail válido cadastrado no Painel RH.';
+    else if(error?.message) message='Não foi possível enviar: '+error.message;
+    if(err) err.textContent=message;
     console.error('Falha ao solicitar reset de senha.', error);
   }
 };
