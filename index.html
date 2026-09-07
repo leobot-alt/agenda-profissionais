@@ -7,6 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
+.aa-user-search-panel{display:flex;align-items:center;gap:16px;margin:18px 0 16px;padding:14px 16px;border:1px solid #D8D0F1;border-radius:14px;background:linear-gradient(135deg,#FAF9FF 0%,#F2F7FF 100%);box-shadow:0 5px 14px rgba(75,50,168,.06)}.aa-user-search-copy{display:flex;flex-direction:column;gap:2px;min-width:180px}.aa-user-search-copy strong{color:var(--primary-dark);font-size:14px}.aa-user-search-copy small{color:var(--ink-soft);font-size:12px}.aa-user-search-field{position:relative;flex:1;min-width:240px}.aa-user-search-field::before{content:'⌕';position:absolute;left:13px;top:50%;transform:translateY(-53%);color:var(--primary);font-size:22px;font-weight:800;z-index:1}.aa-user-search-field input{width:100%;height:44px;padding:10px 14px 10px 40px;border:1.5px solid #CFC5EA;border-radius:10px;background:#fff;color:var(--ink);font-size:14px;box-shadow:inset 0 1px 2px rgba(34,28,54,.04);transition:border-color .15s,box-shadow .15s}.aa-user-search-field input::placeholder{color:#9A93AD}.aa-user-search-field input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(108,79,224,.14)}@media(max-width:640px){.aa-user-search-panel{align-items:stretch;flex-direction:column;gap:10px;padding:13px}.aa-user-search-copy{min-width:0}.aa-user-search-field{min-width:0}}
 .aa-adjust-compact-card{display:block;margin:0 0 10px;border:1px solid #DCE3ED;border-radius:11px;background:#fff;box-shadow:0 3px 10px rgba(38,58,92,.04);overflow:hidden}.aa-adjust-compact-card summary{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 15px;cursor:pointer;list-style:none}.aa-adjust-compact-card summary::-webkit-details-marker{display:none}.aa-adjust-compact-card summary>span:first-child{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap}.aa-adjust-compact-card summary b{color:var(--primary-dark);white-space:nowrap}.aa-adjust-compact-professional{color:var(--ink);font-weight:700;overflow-wrap:anywhere}.aa-adjust-compact-card summary small{color:var(--ink-soft);white-space:nowrap}.aa-adjust-compact-body{padding:0 10px 10px;border-top:1px solid #EEF1F6}.aa-ajuste-profissional-resumo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px 20px}.aa-ajuste-profissional-resumo-grid>div{min-width:0}.aa-ajuste-profissional-resumo-grid b{overflow-wrap:anywhere}@media(max-width:760px){.aa-ajuste-profissional-resumo-grid{grid-template-columns:1fr 1fr;gap:12px 16px}}@media(max-width:480px){.aa-ajuste-profissional-resumo-grid{grid-template-columns:1fr}}
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -676,7 +677,7 @@
               <button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" data-usuarios-view="desativados" onclick="aaSwitchUsuariosView('desativados')">Usuários desativados</button>
             </div>
             <div id="aa-usuarios-view-ativos">
-              <div class="aa-admin-toolbar" style="margin-bottom:14px;"><input id="aa-permissoes-search" type="search" placeholder="Pesquisar usuário por nome ou e-mail..." oninput="aaRenderPermissoes()" style="min-width:280px;flex:1;"></div>
+              <div class="aa-user-search-panel"><div class="aa-user-search-copy"><strong>Pesquisar usuário</strong><small>Filtre por nome ou endereço de e-mail</small></div><div class="aa-user-search-field"><input id="aa-permissoes-search" type="search" placeholder="Digite para pesquisar..." aria-label="Pesquisar usuário por nome ou e-mail" oninput="aaRenderPermissoes()"></div></div>
               <div id="aa-permissoes-list-wrap"><div class="aa-loading">Carregando usuários...</div></div>
             </div>
             <div id="aa-usuarios-view-desativados" style="display:none;">
@@ -4279,6 +4280,42 @@ window.aaRenderProfissionaisList=function(){
   try{aaApplyRHPermissionsUI()}catch(e){}
 })();
 
+</script>
+<script>
+(function(){
+  window.aaSalvarComunicacao=function(){
+    const titulo=String(document.getElementById('aa-comm-new-title')?.value||'').trim();
+    const descricao=String(document.getElementById('aa-comm-new-descricao')?.value||'').trim();
+    const responsavel=String(document.getElementById('aa-comm-new-responsavel')?.value||'');
+    const operacao=String(document.getElementById('aa-comm-new-operacao')?.value||'');
+    const prioridade=String(document.getElementById('aa-comm-new-prioridade')?.value||'Normal');
+    const prazo=String(document.getElementById('aa-comm-new-prazo')?.value||'');
+    if(!titulo||!descricao){alert('Preencha o título e a descrição da demanda.');return;}
+    const botao=document.querySelector('#aa-modal-content .aa-modal-actions .aa-btn-primary');
+    if(botao){botao.disabled=true;botao.textContent='Registrando...';}
+    (async function(){
+      try{
+        const cliente=window.__aaSupabaseClient;if(!cliente)throw new Error('Cliente Supabase ainda não foi inicializado.');
+        const sessionResult=await cliente.auth.getSession(),session=sessionResult&&sessionResult.data&&sessionResult.data.session;
+        if(!session)throw new Error('Sua sessão expirou. Faça login novamente.');
+        const leitura=await cliente.from('app_kv').select('value').eq('key','db:comunicacao_demandas').maybeSingle();
+        if(leitura.error)throw leitura.error;
+        let registros=leitura.data&&leitura.data.value?leitura.data.value:[];
+        if(typeof registros==='string')registros=JSON.parse(registros);
+        if(!Array.isArray(registros))registros=[];
+        const agora=new Date().toISOString(),demanda={id:'COM-'+Date.now().toString(36),titulo,descricao,solicitante:session.user.email,responsavel,operacao,prioridade,prazo,status:'aberta',mensagens:[],createdAt:agora,updatedAt:agora};
+        registros.unshift(demanda);
+        const gravacao=await cliente.from('app_kv').upsert({key:'db:comunicacao_demandas',value:registros,updated_at:agora},{onConflict:'key'});
+        if(gravacao.error)throw gravacao.error;
+        document.getElementById('aa-modal-backdrop')?.classList.remove('open');
+        if(window.aaRenderComunicacao)window.aaRenderComunicacao();
+        alert('Demanda registrada com sucesso.');
+        window.location.reload();
+      }catch(error){alert('Não foi possível registrar a demanda: '+(error.message||error));console.error('Erro no registro direto da Comunicação:',error);}
+      finally{if(botao){botao.disabled=false;botao.textContent='Criar demanda';}}
+    })();
+  };
+})();
 </script>
 </body>
 </html>
