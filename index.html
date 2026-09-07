@@ -451,6 +451,7 @@
           <div class="aa-field"><label>E-mail</label><input type="email" id="aa-rh-user" placeholder="rh@empresa.com"></div>
           <div class="aa-field"><label>Senha</label><input type="password" id="aa-rh-pass" onkeydown="if(event.key==='Enter') aaRHLogin();"></div>
           <button class="aa-btn aa-btn-primary" style="height:44px;" onclick="aaRHLogin()">Entrar</button>
+          <button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" style="margin-top:8px;" onclick="aaSolicitarResetSenha()">Esqueci minha senha</button>
         </div>
         <div class="aa-error-msg" id="aa-rh-login-err"></div>
       </div>
@@ -1816,6 +1817,47 @@ window.aaSwitchTab = function(tab){
   document.getElementById('aa-panel-consultar').classList.toggle('active', tab==='consultar');
   document.getElementById('aa-panel-painel').classList.toggle('active', tab==='painel');
   if(tab==='painel' && rhAuthenticated){ window.aaRenderDashboard().catch(function(e){ const el=document.getElementById('aa-dashboard-content'); if(el) el.innerHTML='<div class="aa-error-msg">Não foi possível carregar o Dashboard agora. Tente novamente.</div>'; console.error(e); }); loadCompanyHolidays().then(function(){ renderFeriadosList(); window.aaRenderNationalHolidays(); }).catch(function(e){ console.warn('Não foi possível carregar os fechamentos.',e); }); }
+};
+
+// ---------- Recuperação e troca de senha ----------
+window.aaSolicitarResetSenha = async function(){
+  const email = String(document.getElementById('aa-rh-user')?.value || '').trim().toLowerCase();
+  const err = document.getElementById('aa-rh-login-err');
+  if(err) err.textContent='';
+  if(!email){ if(err) err.textContent='Informe seu e-mail para receber o link de redefinição.'; return; }
+  try{
+    const redirectTo = new URL('reset-password.html', window.location.href).href;
+    const {error} = await supabase.auth.resetPasswordForEmail(email, {redirectTo});
+    if(error) throw error;
+    if(err) err.textContent='Link enviado. Verifique seu e-mail e abra o link para criar uma nova senha.';
+  }catch(error){
+    if(err) err.textContent='Não foi possível enviar o link de redefinição agora.';
+    console.error('Falha ao solicitar reset de senha.', error);
+  }
+};
+window.aaAbrirNovaSenha = function(){
+  const modal = document.getElementById('aa-modal-content');
+  if(!modal) return;
+  modal.innerHTML='<h2>Redefinir senha</h2><p class="aa-hint">Escolha uma nova senha para acessar o Painel RH.</p><div class="aa-field" style="margin-top:14px;"><label>Nova senha</label><input type="password" id="aa-reset-new-password" minlength="8" autocomplete="new-password" placeholder="Mínimo de 8 caracteres"></div><div class="aa-field" style="margin-top:12px;"><label>Confirmar nova senha</label><input type="password" id="aa-reset-confirm-password" minlength="8" autocomplete="new-password" placeholder="Repita a nova senha"></div><div class="aa-error-msg" id="aa-reset-password-err"></div><div class="aa-modal-actions"><button type="button" class="aa-btn aa-btn-primary" onclick="aaSalvarNovaSenha()">Salvar nova senha</button></div>';
+  document.getElementById('aa-modal-backdrop')?.classList.add('open');
+};
+window.aaSalvarNovaSenha = async function(){
+  const password = String(document.getElementById('aa-reset-new-password')?.value || '');
+  const confirmation = String(document.getElementById('aa-reset-confirm-password')?.value || '');
+  const err = document.getElementById('aa-reset-password-err');
+  if(err) err.textContent='';
+  if(password.length < 8){ if(err) err.textContent='A senha deve ter pelo menos 8 caracteres.'; return; }
+  if(password !== confirmation){ if(err) err.textContent='As senhas não conferem.'; return; }
+  try{
+    const {error} = await supabase.auth.updateUser({password});
+    if(error) throw error;
+    aaCloseModal();
+    aaToast('Senha alterada com sucesso. Faça login com a nova senha.','success');
+    await aaRHLogout();
+  }catch(error){
+    if(err) err.textContent='Não foi possível alterar a senha agora. O link pode ter expirado.';
+    console.error('Falha ao salvar nova senha.', error);
+  }
 };
 
 // ---------- RH login ----------
@@ -3538,6 +3580,7 @@ supabase.auth.getSession().then(async ({data})=>{
     aaPermissionsReady=false; rhAuthenticated=false; rhCurrentUser=null; rhCurrentProfile=null; rhCurrentPermissions=[]; console.error('Falha ao carregar a sessão do Painel RH.',e);
   }
 }).catch(function(e){ console.error('Falha ao verificar a sessão do Painel RH.',e); });
+supabase.auth.onAuthStateChange(function(event){ if(event==='PASSWORD_RECOVERY'){ setTimeout(function(){ window.aaAbrirNovaSenha(); }, 0); } });
 
 // ===== Ajustes solicitados: fichas, agendas, duplicação, notificações e Controler =====
 function aaToast(message,type){
