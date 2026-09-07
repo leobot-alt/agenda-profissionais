@@ -469,7 +469,6 @@
           <button class="aa-tab" data-rhtab="banco" onclick="aaSwitchRHTab('banco')">Banco de Dados</button>
           <button class="aa-tab" data-rhtab="rda" onclick="aaSwitchRHTab('rda')">RDA</button>
           <button class="aa-tab" data-rhtab="ajustes" onclick="aaSwitchRHTab('ajustes')">Solicitação de Ajuste</button>
-          <button class="aa-tab" data-rhtab="comunicacao" style="display:inline-block!important;" onclick="aaSwitchRHTab('comunicacao');document.querySelectorAll('.aa-rh-subpanel').forEach(function(el){el.style.setProperty('display','none','important')});var painelComunicacao=document.getElementById('aa-rhtab-comunicacao');if(painelComunicacao)painelComunicacao.style.setProperty('display','block','important');if(window.aaRenderComunicacao)window.aaRenderComunicacao();">Comunicação</button>
           <button class="aa-tab" data-rhtab="controler" onclick="aaSwitchRHTab('controler')">Controler</button>
         </div>
 
@@ -726,13 +725,6 @@
             </div>
           </div>
         </div>
-
-        <div class="aa-rh-subpanel" id="aa-rhtab-comunicacao" style="display:none;">
-          <div class="aa-card aa-comunicacao-card">
-            <div class="aa-comunicacao-header"><div><h2>Comunicação</h2><p class="aa-hint">Registre demandas, acompanhe responsáveis e mantenha toda a conversa dentro do sistema.</p></div><button type="button" class="aa-btn aa-btn-primary" onclick="var b=document.getElementById('aa-modal-backdrop'),m=document.getElementById('aa-modal-content');if(b)b.classList.add('open');if(window.aaNovaComunicacao){try{window.aaNovaComunicacao()}catch(e){console.error(e)}}">Nova demanda</button></div>
-            <div id="aa-comunicacao-list"></div>
-          </div>
-        </div>
         <div class="aa-rh-subpanel" id="aa-rhtab-controler" style="display:none;">
           <div class="aa-card">
             <div class="aa-lookup-head">
@@ -760,7 +752,8 @@
 </div>
 
 
-<div class="aa-modal-backdrop" id="aa-modal-backdrop" onclick="if(event.target===this&&window.aaCloseModal)window.aaCloseModal()"><div class="aa-modal" id="aa-modal-content"><h2>Nova demanda</h2><div class="aa-field-row"><div class="aa-field" style="grid-column:1/-1"><label>Título</label><input id="aa-comm-new-title" placeholder="Ex.: Solicitação de apoio operacional"></div><div class="aa-field" style="grid-column:1/-1"><label>Descrição</label><textarea id="aa-comm-new-descricao" rows="5" placeholder="Descreva a demanda com detalhes"></textarea></div></div><div class="aa-modal-actions"><button type="button" class="aa-btn aa-btn-ghost" onclick="if(window.aaCloseModal)window.aaCloseModal()">Cancelar</button><button type="button" class="aa-btn aa-btn-primary" onclick="if(window.aaSalvarComunicacao)window.aaSalvarComunicacao();else alert('A Comunicação ainda está carregando. Reabra o arquivo e tente novamente.')">Criar demanda</button></div></div></div>
+<div class="aa-modal-backdrop" id="aa-modal-backdrop" onclick="if(event.target===this&&window.aaCloseModal)window.aaCloseModal()"><div class="aa-modal" id="aa-modal-content"></div></div>
+
 <script>
 (function(){
 
@@ -857,11 +850,6 @@ const ADMIN_PASS = '';
     {key:'ajustes_backup', label:'Solicitação de Ajuste — baixar e restaurar backup', group:'Solicitação de Ajuste', kind:'Administrar', description:'Permite baixar uma cópia JSON e restaurar ajustes preservando o histórico.'},
     {key:'ajustes_ver_finalizados', label:'Solicitação de Ajuste — consultar ajustes finalizados', group:'Solicitação de Ajuste', kind:'Visualizar', description:'Permite consultar ajustes aprovados e encerrados como Ajuste feito.'},
     {key:'ajustes_pesquisar_todos', label:'Solicitação de Ajuste — pesquisar todos os ajustes', group:'Solicitação de Ajuste', kind:'Visualizar', description:'Permite pesquisar ajustes de todos os solicitantes, profissionais, códigos Medicina, meses e status.'},
-    {key:'comunicacao_ver', label:'Comunicação — visualizar demandas', group:'Comunicação', kind:'Visualizar', description:'Permite visualizar demandas próprias e demandas recebidas.'},
-    {key:'comunicacao_criar', label:'Comunicação — criar demandas', group:'Comunicação', kind:'Criar', description:'Permite registrar novas demandas para outro usuário ou operação.'},
-    {key:'comunicacao_responder', label:'Comunicação — responder demandas', group:'Comunicação', kind:'Editar', description:'Permite enviar mensagens e atualizações em uma demanda.'},
-    {key:'comunicacao_status', label:'Comunicação — alterar status', group:'Comunicação', kind:'Administrar', description:'Permite alterar o status de demandas e concluir atendimentos.'},
-    {key:'comunicacao_todas', label:'Comunicação — visualizar todas as demandas', group:'Comunicação', kind:'Administrar', description:'Permite consultar demandas de todos os usuários do sistema.'},
     {key:'usuarios_ver', label:'Usuários — visualizar usuários, perfis e operações', group:'Administração', kind:'Visualizar', description:'Permite consultar usuários do RH, perfil, operação e status.'},
     {key:'permissoes_gerenciar', label:'Usuários — administrar perfil e operação', group:'Administração / Usuários', kind:'Administrar', description:'Permissão legada que permite atribuir perfil e operação aos usuários para manter compatibilidade com configurações anteriores.'},
     {key:'usuarios_perfil_atribuir', label:'Usuários — atribuir ou trocar perfil', group:'Administração / Usuários', kind:'Editar', description:'Permite definir qual perfil de acesso será aplicado a um usuário.'},
@@ -899,7 +887,7 @@ const ADMIN_PASS = '';
   function blocoLabel(value,operation){ const key=normalizeBlocoKey(value),cfg=operationBlocks(operation).find(b=>b.key===key); return cfg&&cfg.nome ? cfg.nome : (key ? (['A','B','C','D','E'].includes(key)?'Bloco '+key:key) : 'Bloco não informado'); }
   function isGeneralProfile(profile){ return ['administrador_geral','administrativo'].includes(normalizePerfil(profile&&profile.perfil)); }
   function isAdminProfile(profile){ const key=normalizePerfil(profile&&profile.perfil); return ['administrador','administrador_geral','administrativo'].includes(key) || normalizePermissionKeys((allPerfis[key]&&allPerfis[key].permissions)||profile&&profile.permissions||[]).includes('usuarios_remover'); }
-  function profilePermissions(profile){ const key=normalizePerfil(profile&&profile.perfil); if(isGeneralProfile(profile)) return PERMISSOES.map(p=>p.key); const base=normalizePermissionKeys((allPerfis[key]&&allPerfis[key].permissions)||profile&&profile.permissions||[]); return key==='colaborador' ? [...new Set([...base,'comunicacao_ver','comunicacao_criar','comunicacao_responder'])] : base; }
+  function profilePermissions(profile){ const key=normalizePerfil(profile&&profile.perfil); if(isGeneralProfile(profile)) return PERMISSOES.map(p=>p.key); const base=normalizePermissionKeys((allPerfis[key]&&allPerfis[key].permissions)||profile&&profile.permissions||[]); return base; }
   function recordOperacao(record){ if(record&&record.operacao) return normalizeOperacao(record.operacao); const p=allProfissionais.find(x=>record&&(x.id===record.profissionalId||normText(x.usuarioMedicina)===normText(record.usuario))); return normalizeOperacao(p&&p.operacao); }
   function currentUserOperacao(){ return normalizeOperacao(rhCurrentProfile&&rhCurrentProfile.operacao); }
   function aaCanSeeOperation(operation){ const op=normalizeOperacao(operation); return isGeneralProfile(rhCurrentProfile) || (!!currentUserOperacao() && currentUserOperacao()===op); }
@@ -924,7 +912,7 @@ const LEGACY_PERMISSION_MAP = {
 };
 const RH_TAB_PERMISSION = {
   dashboard:'dashboard_ver', agendas:'agendas_ativas_ver', agendas2:'agendas_desativadas_ver',
-  banco:'banco_ver', rda:'rda_ver', historico:'historico_ver', config:'config_ver', ajustes:'ajustes_solicitar', comunicacao:'comunicacao_ver', permissoes:'usuarios_ver', operacoes:'perfis_gerenciar', perfis:'usuarios_ver'
+  banco:'banco_ver', rda:'rda_ver', historico:'historico_ver', config:'config_ver', ajustes:'ajustes_solicitar', permissoes:'usuarios_ver', operacoes:'perfis_gerenciar', perfis:'usuarios_ver'
 };
 function normalizePermissionKeys(keys){
   const out=[];
@@ -1937,7 +1925,7 @@ async function aaCheckCurrentUserAccess(){
   }catch(e){ console.warn('Não foi possível conferir o status do usuário agora.',e); }
   return true;
 }
-function aaCan(permission){ const basicCommunication=['comunicacao_ver','comunicacao_criar','comunicacao_responder'].includes(permission); return rhAuthenticated && (isGeneralProfile(rhCurrentProfile)||rhCurrentPermissions.includes(permission)||basicCommunication) && (!rhCurrentProfile || (rhCurrentProfile.ativo!==false && perfilAtivo(rhCurrentProfile.perfil))); }
+function aaCan(permission){ return rhAuthenticated && (isGeneralProfile(rhCurrentProfile)||rhCurrentPermissions.includes(permission)) && (!rhCurrentProfile || (rhCurrentProfile.ativo!==false && perfilAtivo(rhCurrentProfile.perfil))); }
 function aaCanAny(){ return [...arguments].some(permission=>aaCan(permission)); }
 function aaCanPerfilAction(action){ return aaCanAny('perfis_gerenciar','perfis_'+action); }
 function aaCanOperacoes(){ return aaCanAny('perfis_gerenciar','operacoes_gerenciar'); }
@@ -4178,7 +4166,6 @@ const aaOriginalRenderDashboard=window.aaRenderDashboard;window.aaRenderDashboar
     const style=document.createElement('style');
     style.id='aa-cadastro-compact-styles';
     style.textContent=`
-      .aa-comunicacao-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}.aa-comunicacao-header h2{margin-bottom:4px}.aa-comunicacao-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin:14px 0}.aa-comunicacao-filters input,.aa-comunicacao-filters select{min-width:150px}.aa-comunicacao-list{display:grid;gap:10px}.aa-comunicacao-item{border:1px solid var(--line);border-left:4px solid var(--primary);border-radius:11px;padding:14px;background:#fff}.aa-comunicacao-item-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}.aa-comunicacao-title{font-weight:900;color:var(--primary-dark);font-size:15px}.aa-comunicacao-meta{font-size:12px;color:var(--ink-soft);margin-top:5px;line-height:1.5}.aa-comunicacao-description{margin:10px 0 0;color:var(--ink);white-space:pre-wrap;line-height:1.45;font-size:13px}.aa-comunicacao-thread{margin-top:12px;padding-top:10px;border-top:1px solid #EEEAF7}.aa-comunicacao-message{padding:8px 10px;margin-top:7px;border-radius:8px;background:#FAF9FD;font-size:12.5px;white-space:pre-wrap}.aa-comunicacao-message b{color:var(--primary-dark)}.aa-comunicacao-actions{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-top:12px}.aa-comunicacao-actions textarea{min-width:260px;flex:1;min-height:42px;resize:vertical}.aa-comunicacao-badge{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800}.aa-comunicacao-badge.aberta{background:#FFF4D9;color:#956B00}.aa-comunicacao-badge.em-atendimento{background:#E8E1FC;color:#5135A8}.aa-comunicacao-badge.aguardando-informacao{background:#E6F1FB;color:#28618F}.aa-comunicacao-badge.concluida{background:#E5F6ED;color:#157456}.aa-comunicacao-badge.cancelada{background:#FBE7EB;color:#A8324A}@media(max-width:650px){.aa-comunicacao-actions textarea{min-width:100%}}
       #aa-rhtab-banco #aa-cadastro-page{display:none;width:100%;margin:0;padding:16px;border-radius:14px;box-shadow:none;background:#fff}
       #aa-rhtab-banco #aa-cadastro-page.aa-cadastro-form-visible{display:block}
       #aa-rhtab-banco #aa-cadastro-page .aa-cadastro-page-header{margin-bottom:10px;align-items:center}
@@ -4250,72 +4237,7 @@ window.aaRenderProfissionaisList=function(){
   window.aaExcluirTodosRegistrosRDAEAjustes=async function(){if(!await aaConfirm('Excluir dados','Excluir todos os registros de RDA e todos os ajustes já lançados?'))return;try{await loadRDA();await loadAjusteSolicitacoes();allRDA=[];allAjusteSolicitacoes=[];await saveRDA();await saveAjusteSolicitacoes();alert('Registros de RDA e ajustes excluídos.');if(window.aaRenderRDA)await window.aaRenderRDA();if(window.aaRenderAjustesFilas)window.aaRenderAjustesFilas();}catch(e){alert('Erro ao excluir: '+(e.message||e));console.error(e);}};
   document.querySelectorAll('#aa-rhtab-rda .aa-rda-export-collapse').forEach(d=>d.open=false);
 })();
-// ===== Comunicação interna =====
-(function(){
-  const COMM_KEY='db:comunicacao_demandas';
-  let allComunicacao=[];
-  let comunicacaoLoaded=false;
-  const commSafe=v=>aaHtmlSafe(String(v??''));
-  const commLabel=v=>String(v||'').replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
-  const commCan=k=>aaCan(k)||(['comunicacao_ver','comunicacao_criar','comunicacao_responder'].includes(k)&&rhAuthenticated)||isGeneralProfile(rhCurrentProfile);
-  async function loadComunicacao(){if(comunicacaoLoaded)return;const res=await cloudGet(COMM_KEY,true);let raw=res&&res.value?res.value:[];if(typeof raw==='string'){try{raw=JSON.parse(raw)}catch(e){raw=[]}}allComunicacao=Array.isArray(raw)?raw:[];comunicacaoLoaded=true;}
-  async function saveComunicacao(){await storageSetRetry(COMM_KEY,JSON.stringify(allComunicacao),true)}
-  function commUsers(){return (allRHUsers||[]).filter(u=>!u.removido&&u.ativo!==false)}
-  function commVisible(d){const current=String(rhCurrentUser||'').toLowerCase();return commCan('comunicacao_todas')||String(d.solicitante||'').toLowerCase()===current||String(d.responsavel||'').toLowerCase()===current}
-  function commSelectUsers(id,selected){return '<select id="'+id+'"><option value="">Selecione o responsável</option>'+commUsers().map(u=>'<option value="'+commSafe(u.username)+'" '+(String(u.username)===String(selected||'')?'selected':'')+'>'+commSafe(u.username)+'</option>').join('')+'</select>'}
-  function commSelectOperations(id,selected){return '<select id="'+id+'"><option value="">Todas as operações</option>'+Object.entries(allOperacoes||{}).map(([key,op])=>'<option value="'+commSafe(key)+'" '+(String(key)===String(selected||'')?'selected':'')+'>'+commSafe(op.nome)+'</option>').join('')+'</select>'}
-  function commRender(){const wrap=document.getElementById('aa-comunicacao-list');if(!wrap)return;if(!commCan('comunicacao_ver')){wrap.innerHTML='<div class="aa-empty-state">Você não tem permissão para acessar a Comunicação.</div>';return;}const query=normText(document.getElementById('aa-comm-search')?.value||''),status=document.getElementById('aa-comm-status')?.value||'',operation=document.getElementById('aa-comm-operation')?.value||'';const list=allComunicacao.filter(commVisible).filter(d=>(!query||normText(d.titulo+' '+d.descricao+' '+d.solicitante+' '+d.responsavel).includes(query))&&(!status||d.status===status)&&(!operation||d.operacao===operation)).sort((a,b)=>String(b.updatedAt||b.createdAt).localeCompare(String(a.updatedAt||a.createdAt)));let html='<div class="aa-comunicacao-filters"><input id="aa-comm-search" type="search" placeholder="Pesquisar demanda, solicitante ou responsável..." value="'+commSafe(query)+'" oninput="aaRenderComunicacao()"><select id="aa-comm-status" onchange="aaRenderComunicacao()"><option value="">Todos os status</option>'+['aberta','em-atendimento','aguardando-informacao','concluida','cancelada'].map(v=>'<option value="'+v+'" '+(status===v?'selected':'')+'>'+commLabel(v)+'</option>').join('')+'</select>'+commSelectOperations('aa-comm-operation',operation)+'</div>';
-    html+='<div class="aa-comunicacao-list">'+(list.length?list.map(commCard).join(''):'<div class="aa-empty-state">Nenhuma demanda encontrada.</div>')+'</div>';wrap.innerHTML=html;const op=document.getElementById('aa-comm-operation');if(op)op.onchange=()=>commRender();}
-  function commCard(d){const canRespond=commCan('comunicacao_responder')||String(d.solicitante||'').toLowerCase()===String(rhCurrentUser||'').toLowerCase()||String(d.responsavel||'').toLowerCase()===String(rhCurrentUser||'').toLowerCase();const canStatus=commCan('comunicacao_status');const msgs=(d.mensagens||[]).map(m=>'<div class="aa-comunicacao-message"><b>'+commSafe(m.por||'-')+' · '+commSafe(new Date(m.at).toLocaleString('pt-BR'))+'</b><br>'+commSafe(m.texto)+'</div>').join('');return '<article class="aa-comunicacao-item"><div class="aa-comunicacao-item-head"><div><div class="aa-comunicacao-title">'+commSafe(d.titulo)+'</div><div class="aa-comunicacao-meta">Solicitante: <b>'+commSafe(d.solicitante)+'</b> · Responsável: <b>'+commSafe(d.responsavel||'Não definido')+'</b> · Operação: <b>'+commSafe(d.operacao?operacaoLabel(d.operacao):'Todas')+'</b> · Prioridade: <b>'+commSafe(d.prioridade)+'</b> · Prazo: <b>'+commSafe(d.prazo||'Sem prazo')+'</b></div></div><span class="aa-comunicacao-badge '+commSafe(d.status)+'">'+commSafe(commLabel(d.status))+'</span></div><div class="aa-comunicacao-description">'+commSafe(d.descricao)+'</div>'+(msgs?'<div class="aa-comunicacao-thread">'+msgs+'</div>':'')+(canRespond?'<div class="aa-comunicacao-actions"><textarea id="aa-comm-msg-'+commSafe(d.id)+'" placeholder="Escreva uma atualização ou resposta..."></textarea><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaResponderComunicacao(\''+commSafe(d.id)+'\')">Enviar mensagem</button>'+(canStatus?'<select id="aa-comm-status-'+commSafe(d.id)+'" onchange="aaAlterarStatusComunicacao(\''+commSafe(d.id)+'\',this.value)"><option value="">Alterar status</option>'+['aberta','em-atendimento','aguardando-informacao','concluida','cancelada'].map(v=>'<option value="'+v+'">'+commLabel(v)+'</option>').join('')+'</select>':'')+'</div>':'')+'</article>'}
-  window.aaRenderComunicacao=function(){commRender()};
-  window.aaNovaComunicacao=function(){if(!commCan('comunicacao_criar')){alert('Você não tem permissão para criar demandas.');return;}const m=document.getElementById('aa-modal-content');m.innerHTML='<h2>Nova demanda</h2><div class="aa-field-row"><div class="aa-field" style="grid-column:1/-1"><label>Título</label><input id="aa-comm-new-title" placeholder="Ex.: Solicitação de apoio operacional"></div><div class="aa-field"><label>Responsável</label>'+commSelectUsers('aa-comm-new-responsavel','')+'</div><div class="aa-field"><label>Operação</label>'+commSelectOperations('aa-comm-new-operacao','')+'</div><div class="aa-field"><label>Prioridade</label><select id="aa-comm-new-prioridade"><option>Normal</option><option>Alta</option><option>Urgente</option><option>Baixa</option></select></div><div class="aa-field"><label>Prazo</label><input id="aa-comm-new-prazo" type="date"></div><div class="aa-field" style="grid-column:1/-1"><label>Descrição</label><textarea id="aa-comm-new-descricao" rows="5" placeholder="Descreva a demanda com detalhes"></textarea></div></div><div class="aa-modal-actions"><button type="button" class="aa-btn aa-btn-ghost" onclick="aaCloseModal()">Cancelar</button><button type="button" class="aa-btn aa-btn-primary" onclick="aaSalvarComunicacao()">Criar demanda</button></div>';document.getElementById('aa-modal-backdrop').classList.add('open')};
-  window.aaSalvarComunicacao=async function(){const titulo=document.getElementById('aa-comm-new-title')?.value.trim(),descricao=document.getElementById('aa-comm-new-descricao')?.value.trim();if(!titulo||!descricao){alert('Preencha o título e a descrição da demanda.');return}const now=new Date().toISOString(),d={id:'COM-'+Date.now().toString(36),titulo,descricao,solicitante:rhCurrentUser,responsavel:document.getElementById('aa-comm-new-responsavel')?.value||'',operacao:document.getElementById('aa-comm-new-operacao')?.value||'',prioridade:document.getElementById('aa-comm-new-prioridade')?.value||'Normal',prazo:document.getElementById('aa-comm-new-prazo')?.value||'',status:'aberta',mensagens:[],createdAt:now,updatedAt:now};allComunicacao.unshift(d);try{await saveComunicacao();try{await aaLogChange('Nova demanda de comunicação',d.titulo,'Demanda criada por '+d.solicitante+'.')}catch(e){}aaCloseModal();commRender();aaToast('Demanda criada com sucesso.','success')}catch(e){allComunicacao=allComunicacao.filter(x=>x.id!==d.id);alert('Não foi possível criar a demanda agora.');console.error(e)}};
-  window.aaResponderComunicacao=async function(id){if(!commCan('comunicacao_responder')){alert('Você não tem permissão para responder demandas.');return}const d=allComunicacao.find(x=>x.id===id),input=document.getElementById('aa-comm-msg-'+id),texto=input?.value.trim();if(!d||!texto)return;d.mensagens=d.mensagens||[];d.mensagens.push({texto,por:rhCurrentUser,at:new Date().toISOString()});d.updatedAt=new Date().toISOString();try{await saveComunicacao();commRender();aaToast('Mensagem enviada.','success')}catch(e){d.mensagens.pop();alert('Não foi possível enviar a mensagem agora.')}};
-  window.aaAlterarStatusComunicacao=async function(id,status){if(!commCan('comunicacao_status')){alert('Você não tem permissão para alterar o status.');return}const d=allComunicacao.find(x=>x.id===id);if(!d||!status)return;const old=d.status;d.status=status;d.updatedAt=new Date().toISOString();try{await saveComunicacao();aaLogChange('Status de demanda alterado',d.titulo,old+' para '+status);commRender();aaToast('Status atualizado.','success')}catch(e){d.status=old;alert('Não foi possível atualizar o status agora.')}};
-  window.aaNovaComunicacao=async function(){if(!rhAuthenticated){alert('Faça login no Painel RH para criar uma demanda.');return;}try{await Promise.allSettled([loadRHUsers(),loadOperacoes()]);}catch(e){console.warn('Não foi possível atualizar usuários e operações antes de abrir a demanda.',e);}const safe=v=>aaHtmlSafe(String(v??'')),users=Array.isArray(allRHUsers)?allRHUsers.filter(u=>!u.removido&&u.ativo!==false):[],ops=allOperacoes&&typeof allOperacoes==='object'?Object.entries(allOperacoes):[],modal=document.getElementById('aa-modal-content'),backdrop=document.getElementById('aa-modal-backdrop');if(!modal||!backdrop)return;modal.innerHTML='<h2>Nova demanda</h2><div class="aa-field-row"><div class="aa-field" style="grid-column:1/-1"><label>Título</label><input id="aa-comm-new-title" placeholder="Ex.: Solicitação de apoio operacional"></div><div class="aa-field"><label>Responsável</label><select id="aa-comm-new-responsavel"><option value="">Selecione o responsável</option>'+users.map(u=>'<option value="'+safe(u.username)+'">'+safe(u.username)+'</option>').join('')+'</select></div><div class="aa-field"><label>Operação</label><select id="aa-comm-new-operacao"><option value="">Todas as operações</option>'+ops.map(([key,op])=>'<option value="'+safe(key)+'">'+safe(op&&op.nome||key)+'</option>').join('')+'</select></div><div class="aa-field"><label>Prioridade</label><select id="aa-comm-new-prioridade"><option>Normal</option><option>Alta</option><option>Urgente</option><option>Baixa</option></select></div><div class="aa-field"><label>Prazo</label><input id="aa-comm-new-prazo" type="date"></div><div class="aa-field" style="grid-column:1/-1"><label>Descrição</label><textarea id="aa-comm-new-descricao" rows="5" placeholder="Descreva a demanda com detalhes"></textarea></div></div><div class="aa-modal-actions"><button type="button" class="aa-btn aa-btn-ghost" onclick="window.aaCloseModal&&window.aaCloseModal()">Cancelar</button><button type="button" class="aa-btn aa-btn-primary" onclick="window.aaSalvarComunicacao&&window.aaSalvarComunicacao()">Criar demanda</button></div>';backdrop.classList.add('open');};
-  window.aaSalvarComunicacao=async function(){if(!rhAuthenticated){alert('Faça login no Painel RH para criar uma demanda.');return;}const titulo=String(document.getElementById('aa-comm-new-title')?.value||'').trim(),descricao=String(document.getElementById('aa-comm-new-descricao')?.value||'').trim(),responsavel=String(document.getElementById('aa-comm-new-responsavel')?.value||''),operacao=String(document.getElementById('aa-comm-new-operacao')?.value||''),prioridade=String(document.getElementById('aa-comm-new-prioridade')?.value||'Normal'),prazo=String(document.getElementById('aa-comm-new-prazo')?.value||''),statusBox=document.getElementById('aa-comm-save-status');if(!titulo||!descricao){if(statusBox)statusBox.textContent='Preencha o título e a descrição.';else alert('Preencha o título e a descrição da demanda.');return;}const botao=document.querySelector('#aa-modal-content .aa-modal-actions .aa-btn-primary');if(botao){botao.disabled=true;botao.textContent='Registrando...';}if(statusBox)statusBox.textContent='Salvando no sistema...';let demanda=null;try{await loadComunicacao();const now=new Date().toISOString();demanda={id:'COM-'+Date.now().toString(36),titulo,descricao,solicitante:String(rhCurrentUser||''),responsavel,operacao,prioridade,prazo,status:'aberta',mensagens:[],createdAt:now,updatedAt:now};allComunicacao.unshift(demanda);await storageSetRetry(COMM_KEY,JSON.stringify(allComunicacao),true);const confirmado=await cloudGet(COMM_KEY);const registros=confirmado&&confirmado.value?JSON.parse(confirmado.value):[];if(!Array.isArray(registros)||!registros.some(x=>String(x.id)===String(demanda.id)))throw new Error('O sistema não confirmou a gravação da demanda.');try{await aaLogChange('Nova demanda de comunicação',demanda.titulo,'Demanda criada por '+demanda.solicitante+'.');}catch(logError){console.warn('Demanda salva, mas o histórico não foi registrado.',logError);}if(window.aaCloseModal)window.aaCloseModal();commRender();if(typeof aaToast==='function')aaToast('Demanda registrada com sucesso.','success');else alert('Demanda registrada com sucesso.');}catch(error){if(demanda)allComunicacao=allComunicacao.filter(x=>String(x.id)!==String(demanda.id));if(statusBox)statusBox.textContent='Erro ao registrar: '+(error.message||'verifique a conexão.');alert('Não foi possível registrar a demanda: '+(error.message||'verifique a conexão e tente novamente.'));console.error('Falha ao registrar demanda de comunicação:',error);}finally{if(botao){botao.disabled=false;botao.textContent='Criar demanda';}}};
-  const oldFirst=aaFirstAllowedRHTab;aaFirstAllowedRHTab=function(){return oldFirst()||((commCan('comunicacao_ver')||commCan('comunicacao_criar'))?'comunicacao':null)};
-  const oldApply=aaApplyRHPermissionsUI;aaApplyRHPermissionsUI=function(){oldApply();const b=document.querySelector('[data-rhtab="comunicacao"]');if(b)b.style.display=(commCan('comunicacao_ver')||commCan('comunicacao_criar'))?'':'none'};
-  const oldSwitch=window.aaSwitchRHTab;window.aaSwitchRHTab=function(tab){if(tab==='comunicacao'){if(!rhAuthenticated)return;document.querySelectorAll('[data-rhtab]').forEach(t=>t.classList.toggle('active',t.dataset.rhtab==='comunicacao'));document.querySelectorAll('.aa-rh-subpanel').forEach(el=>el.style.setProperty('display','none','important'));const panel=document.getElementById('aa-rhtab-comunicacao');if(panel)panel.style.setProperty('display','block','important');const wrap=document.getElementById('aa-comunicacao-list');if(wrap&&!wrap.innerHTML.trim())wrap.innerHTML='<div class="aa-empty-state">Carregando Comunicação...</div>';Promise.all([loadComunicacao(),loadRHUsers(),loadOperacoes()]).then(()=>{if(panel)panel.style.setProperty('display','block','important');commRender()}).catch(e=>{if(panel)panel.style.setProperty('display','block','important');if(wrap)wrap.innerHTML='<div class="aa-error-msg">Não foi possível carregar a Comunicação agora.</div>';console.error(e)});return}const commPanel=document.getElementById('aa-rhtab-comunicacao');if(commPanel)commPanel.style.setProperty('display','none','important');oldSwitch(tab)};
-  try{aaApplyRHPermissionsUI()}catch(e){}
-})();
 
-</script>
-<script>
-(function(){
-  window.aaSalvarComunicacao=function(){
-    const titulo=String(document.getElementById('aa-comm-new-title')?.value||'').trim();
-    const descricao=String(document.getElementById('aa-comm-new-descricao')?.value||'').trim();
-    const responsavel=String(document.getElementById('aa-comm-new-responsavel')?.value||'');
-    const operacao=String(document.getElementById('aa-comm-new-operacao')?.value||'');
-    const prioridade=String(document.getElementById('aa-comm-new-prioridade')?.value||'Normal');
-    const prazo=String(document.getElementById('aa-comm-new-prazo')?.value||'');
-    if(!titulo||!descricao){alert('Preencha o título e a descrição da demanda.');return;}
-    const botao=document.querySelector('#aa-modal-content .aa-modal-actions .aa-btn-primary');
-    if(botao){botao.disabled=true;botao.textContent='Registrando...';}
-    (async function(){
-      try{
-        const cliente=window.__aaSupabaseClient;if(!cliente)throw new Error('Cliente Supabase ainda não foi inicializado.');
-        const sessionResult=await cliente.auth.getSession(),session=sessionResult&&sessionResult.data&&sessionResult.data.session;
-        if(!session)throw new Error('Sua sessão expirou. Faça login novamente.');
-        const leitura=await cliente.from('app_kv').select('value').eq('key','db:comunicacao_demandas').maybeSingle();
-        if(leitura.error)throw leitura.error;
-        let registros=leitura.data&&leitura.data.value?leitura.data.value:[];
-        if(typeof registros==='string')registros=JSON.parse(registros);
-        if(!Array.isArray(registros))registros=[];
-        const agora=new Date().toISOString(),demanda={id:'COM-'+Date.now().toString(36),titulo,descricao,solicitante:session.user.email,responsavel,operacao,prioridade,prazo,status:'aberta',mensagens:[],createdAt:agora,updatedAt:agora};
-        registros.unshift(demanda);
-        const gravacao=await cliente.from('app_kv').upsert({key:'db:comunicacao_demandas',value:registros,updated_at:agora},{onConflict:'key'});
-        if(gravacao.error)throw gravacao.error;
-        document.getElementById('aa-modal-backdrop')?.classList.remove('open');
-        if(window.aaRenderComunicacao)window.aaRenderComunicacao();
-        alert('Demanda registrada com sucesso.');
-        window.location.reload();
-      }catch(error){alert('Não foi possível registrar a demanda: '+(error.message||error));console.error('Erro no registro direto da Comunicação:',error);}
-      finally{if(botao){botao.disabled=false;botao.textContent='Criar demanda';}}
-    })();
-  };
-})();
 </script>
 </body>
 </html>
