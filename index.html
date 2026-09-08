@@ -499,7 +499,7 @@
             <div id="aa-ajuste-tab-abrir">
               
               <div class="aa-adjust-form">
-                <h3>Abrir ajuste de solicitação de ajuste</h3>
+                <h3>Abrir solicitação de ajuste</h3>
                 <p class="aa-hint">Os campos marcados são necessários para registrar o ajuste corretamente.</p>
                 <div class="aa-adjust-operation-banner"><span>Operação deste registro</span><input type="text" id="aa-ajuste-operacao-atual" readonly aria-readonly="true" value="Carregando operação..."></div>
                 <div class="aa-field-row">
@@ -4322,5 +4322,157 @@ window.aaRenderProfissionaisList=function(){
   window.aaRenderProfissionaisDesativados=function(){renderInactive();};
 })();
 </script>
+
+<style id="aa-ajuste-form-polished-styles">
+  #aa-ajuste-tab-abrir { padding-top: 4px; }
+  #aa-ajuste-tab-abrir .aa-adjust-form {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 30px 32px 32px;
+    background: linear-gradient(145deg, #FFFFFF 0%, #FBFAFF 100%);
+    border: 1px solid #E3DDF5;
+    border-top: 5px solid #6C4FE0;
+    border-radius: 20px;
+    box-shadow: 0 14px 34px rgba(75, 50, 168, .10);
+  }
+  #aa-ajuste-tab-abrir .aa-adjust-form > h3 {
+    margin: 0;
+    color: #352275;
+    font-size: 25px;
+    line-height: 1.2;
+    letter-spacing: -.02em;
+  }
+  #aa-ajuste-tab-abrir .aa-adjust-form > .aa-hint {
+    margin: 8px 0 24px;
+    color: #6B6480;
+    font-size: 14px;
+  }
+  #aa-ajuste-tab-abrir .aa-adjust-operation-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 0 0 22px;
+    padding: 14px 16px;
+    background: #F3F0FD;
+    border: 1px solid #DCD2F5;
+    border-radius: 12px;
+  }
+  #aa-ajuste-tab-abrir .aa-adjust-operation-banner span {
+    color: #5B4AA1;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  #aa-ajuste-tab-abrir #aa-ajuste-operacao-atual {
+    width: min(300px, 48%);
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: #FFF;
+    color: #352275;
+    font-size: 14px;
+    font-weight: 800;
+    text-align: right;
+    box-shadow: inset 0 0 0 1px #D9D0EF;
+  }
+  #aa-ajuste-tab-abrir .aa-field-row {
+    grid-template-columns: minmax(0, 1.55fr) minmax(180px, .75fr) minmax(190px, .85fr);
+    gap: 18px;
+    margin-bottom: 0;
+  }
+  #aa-ajuste-tab-abrir .aa-field label {
+    margin-bottom: 7px;
+    color: #5F5876;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .055em;
+  }
+  #aa-ajuste-tab-abrir .aa-field input,
+  #aa-ajuste-tab-abrir .aa-field select {
+    min-height: 44px;
+    border: 1px solid #D9D2EB;
+    border-radius: 10px;
+    background: #FFF;
+    box-shadow: 0 2px 5px rgba(34, 28, 54, .035);
+  }
+  #aa-ajuste-tab-abrir .aa-field input:focus,
+  #aa-ajuste-tab-abrir .aa-field select:focus {
+    border-color: #6C4FE0;
+    box-shadow: 0 0 0 3px rgba(108, 79, 224, .13);
+  }
+  #aa-ajuste-tab-abrir #aa-ajuste-profissional-busca {
+    min-height: 52px;
+    padding-left: 16px;
+    font-size: 15px;
+  }
+  #aa-ajuste-tab-abrir #aa-ajuste-profissional-busca::placeholder { color: #9B94AB; }
+  #aa-ajuste-tab-abrir #aa-ajuste-profissional-hint {
+    display: block;
+    margin-top: 7px;
+    color: #817A94;
+    font-size: 11px;
+  }
+  #aa-ajuste-tab-abrir #aa-ajuste-profissionais-options {
+    top: calc(100% + 8px) !important;
+    border: 1px solid #D9D2EB !important;
+    border-radius: 12px !important;
+    box-shadow: 0 14px 28px rgba(45, 31, 92, .16) !important;
+  }
+  #aa-ajuste-tab-abrir .aa-field-row[style*="margin-top:12px"] {
+    margin-top: 22px !important;
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.6fr);
+  }
+  #aa-ajuste-tab-abrir .aa-adjust-description-field {
+    margin-top: 22px !important;
+    padding-top: 22px;
+    border-top: 1px solid #ECE8F5;
+  }
+  #aa-ajuste-tab-abrir .aa-adjust-description-field > div:first-child label {
+    color: #352275;
+    font-size: 13px;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  #aa-ajuste-tab-abrir .aa-rich-editor {
+    margin-top: 10px;
+    overflow: hidden;
+    border: 1px solid #D9D2EB;
+    border-radius: 12px;
+    background: #FFF;
+  }
+  #aa-ajuste-tab-abrir .aa-rich-toolbar {
+    padding: 7px 9px;
+    background: #F7F5FC;
+    border-bottom: 1px solid #ECE8F5;
+  }
+  #aa-ajuste-tab-abrir .aa-rich-content {
+    min-height: 150px;
+    padding: 14px 16px;
+    color: #302A43;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  #aa-ajuste-tab-abrir .aa-actions-row {
+    justify-content: flex-end;
+    margin-top: 22px;
+    padding-top: 20px;
+    border-top: 1px solid #ECE8F5;
+  }
+  #aa-ajuste-tab-abrir .aa-actions-row .aa-btn-primary {
+    min-width: 150px;
+    box-shadow: 0 7px 15px rgba(108, 79, 224, .22);
+  }
+  @media (max-width: 760px) {
+    #aa-ajuste-tab-abrir .aa-adjust-form { padding: 22px 16px 24px; border-radius: 16px; }
+    #aa-ajuste-tab-abrir .aa-adjust-form > h3 { font-size: 21px; }
+    #aa-ajuste-tab-abrir .aa-adjust-operation-banner { align-items: stretch; flex-direction: column; gap: 8px; }
+    #aa-ajuste-tab-abrir #aa-ajuste-operacao-atual { width: 100%; text-align: left; }
+    #aa-ajuste-tab-abrir .aa-field-row,
+    #aa-ajuste-tab-abrir .aa-field-row[style*="margin-top:12px"] { grid-template-columns: 1fr; gap: 14px; }
+    #aa-ajuste-tab-abrir .aa-adjust-description-field { margin-top: 18px !important; padding-top: 18px; }
+  }
+</style>
 </body>
 </html>
