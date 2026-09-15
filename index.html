@@ -2136,6 +2136,7 @@ window.aaCriarNovoUsuario=async function(){
   catch(e){showError(e?.message||'Não foi possível criar o usuário agora.');console.error(e);}
   finally{if(button){button.disabled=false;button.textContent='Criar acesso';}}
 };
+window.aaToggleUserCard=function(domKey){const card=document.getElementById('aa-user-card-'+domKey);if(!card)return;const body=card.querySelector('[data-user-body]'),button=card.querySelector('[data-user-toggle]'),open=body&&body.style.display!=='none';if(body)body.style.display=open?'none':'block';if(button)button.textContent=open?'Abrir detalhes':'Ocultar detalhes';};
 window.aaRenderPermissoes=function(){
   const wrap=document.getElementById('aa-permissoes-list-wrap'); if(!wrap)return;
   if(!aaCan('usuarios_ver')){wrap.innerHTML='<div class="aa-empty-state">Você não tem permissão para visualizar os usuários.</div>';return;}
@@ -2152,7 +2153,8 @@ window.aaRenderPermissoes=function(){
     const fichaButton='<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaEditExistingUser(\''+aaHtmlSafe(u.id)+'\')">Editar ficha cadastral</button>';
     const edit=inactive?'':'<button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaSaveUserAccess(\''+aaHtmlSafe(u.id)+'\')">Salvar alterações</button>';
     const fields=inactive?'<div class="aa-hint" style="margin:0;">Usuário desativado. Ative o controle para devolver o acesso ao Painel RH.</div>':('<label class="aa-field" style="min-width:150px;"><span>Perfil</span><select data-user-profile="'+aaHtmlSafe(u.id)+'" '+(!canAssignProfile||principal?'disabled':'')+'>'+profileOptions+'</select></label><label class="aa-field" style="min-width:150px;"><span>Operação</span><select data-user-operation="'+aaHtmlSafe(u.id)+'" '+(!canAssignOperation||principal?'disabled':'')+'>'+operationOptions+'</select></label>'+edit);
-    return '<div class="aa-card aa-user-card '+(inactive?'aa-user-card-inactive':'')+'"><div class="aa-user-card-head"><div><b>'+aaHtmlSafe(u.username||'-')+'</b><div class="aa-hint" style="margin:3px 0 0;">'+aaHtmlSafe(perfilLabel(u.perfil))+(principal?' · principal':'')+' · <span class="aa-operation-badge">'+aaHtmlSafe(operacaoLabel(u.operacao))+'</span></div></div><div class="aa-user-card-actions">'+fichaButton+status+fields+'</div></div>'+ficha+'</div>';
+    const domKey=String(u.id||u.username||'').replace(/[^a-zA-Z0-9_-]/g,'_');
+    return '<div class="aa-card aa-user-card '+(inactive?'aa-user-card-inactive':'')+'" id="aa-user-card-'+aaHtmlSafe(domKey)+'"><div class="aa-user-card-head"><div><b>'+aaHtmlSafe(u.username||'-')+'</b><div class="aa-hint" style="margin:3px 0 0;">'+aaHtmlSafe(perfilLabel(u.perfil))+(principal?' · principal':'')+' · <span class="aa-operation-badge">'+aaHtmlSafe(operacaoLabel(u.operacao))+'</span></div></div><div class="aa-user-card-actions">'+status+'<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" data-user-toggle-key="'+aaHtmlSafe(domKey)+'" onclick="aaToggleUserCard(this.dataset.userToggleKey)">Abrir detalhes</button></div></div><div class="aa-user-permissions-body" data-user-body style="display:none;">'+ficha+'<div class="aa-user-card-actions" style="margin-top:12px;">'+fichaButton+fields+'</div></div></div>';
   };
   const activeHtml=activeUsers.length?activeUsers.map(u=>userCard(u,false)).join(''):'<div class="aa-empty-state">Nenhum usuário ativo.</div>';
   const inactiveHtml=inactiveUsers.length?inactiveUsers.map(u=>userCard(u,true)).join(''):'<div class="aa-empty-state">Nenhum usuário desativado.</div>';
