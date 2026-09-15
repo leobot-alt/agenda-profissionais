@@ -2196,6 +2196,7 @@ window.aaSwitchRHTab = function(tab){
   document.getElementById('aa-rhtab-permissoes').style.display = tab==='permissoes' ? 'block' : 'none';
   document.getElementById('aa-rhtab-operacoes').style.display = tab==='operacoes' ? 'block' : 'none';
   document.getElementById('aa-rhtab-perfis').style.display = tab==='perfis' ? 'block' : 'none';
+  document.getElementById('aa-rhtab-portal').style.display = tab==='portal' ? 'block' : 'none';
   if(tab==='dashboard'){ if(typeof window.aaResetDashboardPeriodoAtual==='function')window.aaResetDashboardPeriodoAtual(); window.aaRenderDashboard().catch(function(e){ const el=document.getElementById('aa-dashboard-content'); if(el) el.innerHTML='<div class="aa-error-msg">Não foi possível carregar o Dashboard agora. Tente novamente.</div>'; console.error(e); }); }
   if(tab==='agendas') window.aaLoadAdminData();
   if(tab==='agendas2') window.aaLoadAdminData().then(()=>aaRenderAdminList2()).catch(function(e){ const el=document.getElementById('aa-admin-list-wrap-2'); if(el) el.innerHTML='<div class="aa-error-msg">Não foi possível carregar Agendas Desativadas agora.</div>'; console.error(e); });
