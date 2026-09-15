@@ -679,6 +679,7 @@
             </div>
             <div id="aa-usuarios-view-ativos">
               <div class="aa-user-search-panel"><div class="aa-user-search-copy"><strong>Pesquisar usuário</strong><small>Filtre por nome ou endereço de e-mail</small></div><div class="aa-user-search-field"><input id="aa-permissoes-search" type="search" placeholder="Digite para pesquisar..." aria-label="Pesquisar usuário por nome ou e-mail" oninput="aaRenderPermissoes()"></div></div>
+              <div id="aa-novo-usuario-card" class="aa-card" style="margin:0 0 16px;background:#FAF9FF;border:1px solid #D8D0F1;" data-permission-any="permissoes_gerenciar,usuarios_perfil_atribuir"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;"><div><h3 style="margin:0 0 4px;">Novo usuário</h3><p class="aa-hint" style="margin:0;">Crie o acesso e o perfil do usuário em uma única etapa.</p></div><button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaToggleNovoUsuario()">Cadastrar usuário</button></div><div id="aa-novo-usuario-form" style="display:none;margin-top:14px;"><div class="aa-field-row" style="grid-template-columns:repeat(2,minmax(0,1fr));"><div class="aa-field"><label>Nome completo</label><input id="aa-new-rh-name" type="text" maxlength="120" placeholder="Nome do usuário"></div><div class="aa-field"><label>E-mail de acesso</label><input id="aa-new-rh-email" type="email" maxlength="180" placeholder="usuario@empresa.com"></div></div><div class="aa-field-row" style="grid-template-columns:repeat(3,minmax(0,1fr));"><div class="aa-field"><label>Senha provisória</label><input id="aa-new-rh-password" type="password" minlength="6" placeholder="Mínimo de 6 caracteres"></div><div class="aa-field"><label>Perfil</label><select id="aa-new-rh-profile"></select></div><div class="aa-field"><label>Operação</label><select id="aa-new-rh-operation"></select></div></div><div id="aa-new-rh-error" class="aa-error-msg" style="display:none;margin:10px 0;"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;"><button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" onclick="aaToggleNovoUsuario(false)">Cancelar</button><button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaCriarNovoUsuario()">Criar acesso</button></div></div></div>
               <div id="aa-permissoes-list-wrap"><div class="aa-loading">Carregando usuários...</div></div>
             </div>
             <div id="aa-usuarios-view-desativados" style="display:none;">
@@ -996,26 +997,22 @@ async function cloudSet(key,value){
 }
 async function storageSetRetry(key,value,shared){ return cloudSet(key,value); }
 
-async function aaLogChange(action, target, details, actorOverride, beforeValue, afterValue){
+async function aaLogChange(action,target,details,actorOverride,beforeValue,afterValue){
   try{
-    const entry = { id: Date.now().toString(36)+Math.random().toString(36).slice(2,8), actor: actorOverride || rhCurrentUser || 'Sistema', action, target: target||'', details: details||'', before: beforeValue||'', after: afterValue||'', timestamp: new Date().toISOString() };
-    const res = await cloudGet('db:historico', true);
-    const parsed=res && res.value ? JSON.parse(res.value) : [];
-    if(!Array.isArray(parsed)) throw new Error('Dados do histórico estão inválidos no Supabase.');
-    parsed.unshift(entry);
-    await storageSetRetry('db:historico', JSON.stringify(parsed), true);
-    allHistorico=parsed; dataLoadState.historico=true;
-  } catch(e){ console.error('log falhou', e); }
+    const now=new Date().toISOString(),entry={id:Date.now().toString(36)+Math.random().toString(36).slice(2,8),actor:actorOverride||rhCurrentUser||'Sistema',action,target:target||'',details:details||'',before:beforeValue||'',after:afterValue||'',timestamp:now};
+    const result=await supabase.from('historico').insert({id:entry.id,actor:entry.actor,action:entry.action,target:entry.target,details:entry.details,before_value:entry.before,after_value:entry.after,dados:entry,created_at:now});
+    if(result.error)throw result.error;
+    const legacy=await cloudGet('db:historico',true),parsed=legacy&&legacy.value?JSON.parse(legacy.value):[];
+    if(Array.isArray(parsed)){parsed.unshift(entry);await storageSetRetry('db:historico',JSON.stringify(parsed),true);allHistorico=parsed;dataLoadState.historico=true;}
+  }catch(e){console.error('log falhou',e);}
 }
 async function loadHistorico(){
-  dataLoadState.historico=false;
-  const res = await cloudGet('db:historico', true);
-  const parsed=res && res.value ? JSON.parse(res.value) : [];
-  if(!Array.isArray(parsed)) throw new Error('Dados do histórico estão inválidos no Supabase.');
-  allHistorico=parsed.sort((a,b)=> (b.timestamp||'').localeCompare(a.timestamp||''));
-  dataLoadState.historico=true;
+  dataLoadState.historico=false; let parsed=[];
+  try{const result=await supabase.from('historico').select('id,actor,action,target,details,before_value,after_value,dados,created_at').order('created_at',{ascending:false});if(result.error)throw result.error;parsed=(result.data||[]).map(row=>({...row.dados,id:row.id,actor:row.actor,action:row.action,target:row.target,details:row.details,before:row.before_value,after:row.after_value,timestamp:row.created_at}));}
+  catch(e){const res=await cloudGet('db:historico',true);parsed=res&&res.value?JSON.parse(res.value):[];if(!Array.isArray(parsed))throw new Error('Dados do histórico estão inválidos no Supabase.');}
+  allHistorico=parsed.sort((a,b)=>String(b.timestamp||'').localeCompare(String(a.timestamp||'')));dataLoadState.historico=true;
 }
-async function saveAllHistorico(){ if(!dataLoadState.historico) throw new Error('O histórico ainda não foi carregado com sucesso.'); await storageSetRetry('db:historico', JSON.stringify(allHistorico), true); }
+async function saveAllHistorico(){if(!dataLoadState.historico)throw new Error('O histórico ainda não foi carregado com sucesso.');const rows=(allHistorico||[]).filter(x=>x&&x.id).map(x=>({id:String(x.id),actor:String(x.actor||''),action:String(x.action||''),target:String(x.target||''),details:String(x.details||''),before_value:String(x.before||''),after_value:String(x.after||''),dados:x,created_at:x.timestamp||new Date().toISOString()}));const result=await supabase.from('historico').upsert(rows,{onConflict:'id'});if(result.error)throw result.error;await storageSetRetry('db:historico',JSON.stringify(allHistorico),true);}
 function populateHistoricoFilters(){
   const userSel = document.getElementById('aa-hist-filter-user');
   const actionSel = document.getElementById('aa-hist-filter-action');
@@ -1063,19 +1060,8 @@ window.aaRenderHistorico = function(){
 window.aaSetHistoricoPage=function(page){ historicoPagina=Math.max(1,Number(page)||1); window.aaRenderHistorico(); };
 
 // ---------- Usuários do painel RH ----------
-async function loadOperacoes(){
-  try{
-    const res=await cloudGet('db:operacoes',true); const parsed=res&&res.value?JSON.parse(res.value):null;
-    if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed)){
-      const loaded={};
-      Object.entries(parsed).forEach(([key,op])=>{ if(op&&typeof op==='object'&&Array.isArray(op.blocos)){ const normalizedBlocks=op.blocos.map((b,i)=>typeof b==='string'?{key:normalizeBlocoKey(b),nome:b}:{key:normalizeBlocoKey(b.key||('BLOCO-'+i)),nome:String(b.nome||b.key||('Bloco '+(i+1))).trim()}).filter(b=>b.key&&b.nome); loaded[key]={key,nome:String(op.nome||key).trim()||key,blocos:normalizedBlocks}; } });
-      Object.keys(allOperacoes).forEach(key=>delete allOperacoes[key]);
-      Object.assign(allOperacoes,loaded);
-    }
-    OPERACOES=Object.keys(allOperacoes);
-  }catch(e){ console.warn('Operações personalizadas não puderam ser carregadas; usando as operações padrão.',e); OPERACOES=Object.keys(allOperacoes); }
-}
-async function saveOperacoes(){ await storageSetRetry('db:operacoes',JSON.stringify(allOperacoes),true); OPERACOES=Object.keys(allOperacoes); }
+async function loadOperacoes(){try{const result=await supabase.from('operacoes').select('key,nome,dados').order('nome',{ascending:true});if(result.error)throw result.error;const loaded={};(result.data||[]).forEach(row=>{const raw=row.dados&&typeof row.dados==='object'?row.dados:{};const blocks=Array.isArray(raw.blocos)?raw.blocos.map((b,i)=>typeof b==='string'?{key:normalizeBlocoKey(b),nome:b}:{key:normalizeBlocoKey(b.key||('BLOCO-'+i)),nome:String(b.nome||b.key||('Bloco '+(i+1))).trim()}).filter(b=>b.key&&b.nome):[];loaded[row.key]={key:row.key,nome:String(row.nome||raw.nome||row.key).trim()||row.key,blocos:blocks};});Object.keys(allOperacoes).forEach(key=>delete allOperacoes[key]);Object.assign(allOperacoes,loaded);OPERACOES=Object.keys(allOperacoes);}catch(e){try{const res=await cloudGet('db:operacoes',true),parsed=res&&res.value?JSON.parse(res.value):{};if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed)){Object.keys(allOperacoes).forEach(key=>delete allOperacoes[key]);Object.assign(allOperacoes,parsed);}}catch(ignore){}OPERACOES=Object.keys(allOperacoes);}}
+async function saveOperacoes(){const rows=Object.values(allOperacoes).map(op=>({key:op.key,nome:op.nome,dados:op,updated_at:new Date().toISOString()}));const result=await supabase.from('operacoes').upsert(rows,{onConflict:'key'});if(result.error)throw result.error;const blocks=rows.flatMap(row=>(row.dados.blocos||[]).map(b=>({key:b.key,operacao_key:row.key,nome:b.nome,dados:b})));if(blocks.length){const br=await supabase.from('operacao_blocos').upsert(blocks,{onConflict:'key'});if(br.error)throw br.error;}await storageSetRetry('db:operacoes',JSON.stringify(allOperacoes),true);OPERACOES=Object.keys(allOperacoes);}
 async function loadRHUsers(){
   dataLoadState.rhusers=false;
   let parsed=[];
@@ -1241,14 +1227,14 @@ function formatDateNascimento(value){
 
 // ---------- Company holidays ----------
 async function loadCompanyHolidays(){
-  dataLoadState.feriados=false;
-  const res = await cloudGet('config:feriados', true);
-  const parsed=res && res.value ? JSON.parse(res.value) : [];
-  if(!Array.isArray(parsed)) throw new Error('Dados de fechamentos estão inválidos no Supabase.');
-  companyHolidays=parsed;
-  dataLoadState.feriados=true; dataLoadState.domingos=false;
-  try { const dom = await cloudGet('config:fechar_domingos', true); const domValue=dom&&dom.value?JSON.parse(dom.value):false; fecharTodosDomingos=!!domValue; dataLoadState.domingos=true; } catch(e2){ console.warn('Não foi possível carregar a configuração de domingos.',e2); }
+  dataLoadState.feriados=false;let parsed=[];
+  try{const result=await supabase.from('fechamentos_empresa').select('id,de,ate,motivo,dados,created_at').order('de',{ascending:true});if(result.error)throw result.error;parsed=(result.data||[]).map(row=>({...row.dados,id:row.id,de:row.de,ate:row.ate,motivo:row.motivo}));}
+  catch(e){const res=await cloudGet('config:feriados',true);parsed=res&&res.value?JSON.parse(res.value):[];if(!Array.isArray(parsed))throw new Error('Dados de fechamentos estão inválidos no Supabase.');}
+  companyHolidays=parsed;dataLoadState.feriados=true;dataLoadState.domingos=false;
+  try{const dom=await cloudGet('config:fechar_domingos',true),domValue=dom&&dom.value?JSON.parse(dom.value):false;fecharTodosDomingos=!!domValue;dataLoadState.domingos=true;}catch(e2){console.warn('Não foi possível carregar a configuração de domingos.',e2);}
 }
+async function saveCompanyHolidays(){const rows=(companyHolidays||[]).filter(x=>x).map((h,i)=>({id:String(h.id||('FECH-'+i+'-'+h.de+'-'+h.ate)),de:h.de||null,ate:h.ate||null,motivo:String(h.motivo||''),dados:h,created_at:h.createdAt||new Date().toISOString()}));const result=await supabase.from('fechamentos_empresa').upsert(rows,{onConflict:'id'});if(result.error)throw result.error;await storageSetRetry('config:feriados',JSON.stringify(companyHolidays),true);}
+
 function isCompanyHoliday(iso){ return companyHolidays.find(h=> iso>=h.de && iso<=h.ate); }
 
 // ---------- National holidays (feriados nacionais) ----------
@@ -1312,7 +1298,7 @@ window.aaToggleNationalHoliday = async function(dateIso, label, checked){
   } else {
     companyHolidays = companyHolidays.filter(h=>!(h.de===dateIso && h.ate===dateIso && h.motivo===label));
   }
-  try{ await storageSetRetry('config:feriados', JSON.stringify(companyHolidays), true); try{ await aaLogChange(checked ? 'Feriado nacional adicionado' : 'Feriado nacional removido', label, fmtDateBRFull(dateIso)); }catch(logError){ console.warn('Feriado salvo, mas não foi possível registrar o histórico.',logError); } renderFeriadosList(); window.aaRenderNationalHolidays(); }
+  try{ await saveCompanyHolidays(); try{ await aaLogChange(checked ? 'Feriado nacional adicionado' : 'Feriado nacional removido', label, fmtDateBRFull(dateIso)); }catch(logError){ console.warn('Feriado salvo, mas não foi possível registrar o histórico.',logError); } renderFeriadosList(); window.aaRenderNationalHolidays(); }
   catch(e){ companyHolidays=anterior; alert('Não foi possível salvar o feriado agora.'); console.error(e); }
 };
 
@@ -1338,7 +1324,7 @@ window.aaAddFeriado = async function(){
   const anterior=companyHolidays;
   companyHolidays=[...companyHolidays,{de, ate, motivo, origem:'manual'}];
   let persisted=false;
-  try{ await storageSetRetry('config:feriados', JSON.stringify(companyHolidays), true); persisted=true; try{ await aaLogChange('Dia de fechamento adicionado', motivo||'-', (de===ate?fmtDateBRFull(de):fmtDateBRFull(de)+' a '+fmtDateBRFull(ate))); }catch(logError){ console.warn('Fechamento salvo, mas não foi possível registrar o histórico.',logError); } document.getElementById('aa-fer-de').value=''; document.getElementById('aa-fer-ate').value=''; document.getElementById('aa-fer-motivo').value=''; renderFeriadosList(); }
+  try{ await saveCompanyHolidays(); persisted=true; try{ await aaLogChange('Dia de fechamento adicionado', motivo||'-', (de===ate?fmtDateBRFull(de):fmtDateBRFull(de)+' a '+fmtDateBRFull(ate))); }catch(logError){ console.warn('Fechamento salvo, mas não foi possível registrar o histórico.',logError); } document.getElementById('aa-fer-de').value=''; document.getElementById('aa-fer-ate').value=''; document.getElementById('aa-fer-motivo').value=''; renderFeriadosList(); }
   catch(e){ if(!persisted) companyHolidays=anterior; alert('Não foi possível salvar o fechamento agora.'); console.error(e); }
 };
 window.aaRemoveFeriado = async function(idx){
@@ -1348,7 +1334,7 @@ window.aaRemoveFeriado = async function(idx){
   const anterior=companyHolidays;
   companyHolidays=companyHolidays.filter((_,i)=>i!==idx);
   let persisted=false;
-  try{ await storageSetRetry('config:feriados', JSON.stringify(companyHolidays), true); persisted=true; try{ await moveToLixeira('fechamento','Fechamento '+(h.motivo||'sem motivo'),h,{tipo:'fechamento'}); }catch(trashError){ companyHolidays=anterior; try{ await storageSetRetry('config:feriados', JSON.stringify(companyHolidays), true); }catch(restoreError){ console.error('Falha ao restaurar o fechamento após erro da lixeira.',restoreError); } throw trashError; } try{ await aaLogChange('Dia de fechamento removido', h.motivo||'-', (h.de===h.ate?fmtDateBRFull(h.de):fmtDateBRFull(h.de)+' a '+fmtDateBRFull(h.ate))); }catch(logError){ console.warn('Fechamento removido, mas não foi possível registrar o histórico.',logError); } renderFeriadosList(); }
+  try{ await saveCompanyHolidays(); persisted=true; try{ await moveToLixeira('fechamento','Fechamento '+(h.motivo||'sem motivo'),h,{tipo:'fechamento'}); }catch(trashError){ companyHolidays=anterior; try{ await saveCompanyHolidays(); }catch(restoreError){ console.error('Falha ao restaurar o fechamento após erro da lixeira.',restoreError); } throw trashError; } try{ await aaLogChange('Dia de fechamento removido', h.motivo||'-', (h.de===h.ate?fmtDateBRFull(h.de):fmtDateBRFull(h.de)+' a '+fmtDateBRFull(h.ate))); }catch(logError){ console.warn('Fechamento removido, mas não foi possível registrar o histórico.',logError); } renderFeriadosList(); }
   catch(e){ if(!persisted) companyHolidays=anterior; alert('Não foi possível remover o fechamento agora.'); console.error(e); }
 };
 
@@ -1360,27 +1346,29 @@ function generateProfissionalId(){
 }
 async function loadProfissionais(){
   dataLoadState.profissionais=false;
+  let profs=[];
   try{
-    let res;
-    try{ res=await cloudGet('db:profissionais',true); }
-    catch(firstError){ await aaSleep(500); res=await cloudGet('db:profissionais',true); }
-    let profs=[];
-    if(res&&res.value){
-      try{profs=typeof res.value==='string'?JSON.parse(res.value):res.value;}catch(parseError){console.warn('db:profissionais não contém JSON válido; usando lista vazia.',parseError);profs=[];}
-    }
-    if(!Array.isArray(profs)){console.warn('db:profissionais não é uma lista; usando lista vazia.');profs=[];}
-    allProfissionais=profs.filter(p=>p&&typeof p==='object').map((p,index)=>{
-      try{const operacao=normalizeOperacao(p.operacao),blocoAgenda=normalizeBlocoKey(p.blocoAgenda||p.bloco,operacao);return {...p,operacao,blocoAgenda};}
-      catch(recordError){console.warn('Cadastro de profissional ignorado por estar inválido na posição '+index+'.',recordError);return null;}
-    }).filter(Boolean).sort((a,b)=>String(a.nomeCompleto||'').localeCompare(String(b.nomeCompleto||''),'pt-BR'));
-  }catch(error){
-    console.error('Erro real ao carregar db:profissionais:',error);
-    dataLoadState.profissionais=false;
-    throw error;
+    const result=await supabase.from('profissionais').select('id,nome_completo,usuario_medicina,email,cpf,whatsapp,crp_crm,especialidade,operacao,bloco_agenda,ativo,dados,created_at,updated_at').order('nome_completo',{ascending:true});
+    if(result.error)throw result.error;
+    profs=(result.data||[]).map(row=>{const extra=row.dados&&typeof row.dados==='object'?row.dados:{};return {...extra,id:String(row.id||extra.id||''),nomeCompleto:String(row.nome_completo||extra.nomeCompleto||''),usuarioMedicina:String(row.usuario_medicina||extra.usuarioMedicina||''),email:String(row.email||extra.email||''),cpf:String(row.cpf||extra.cpf||''),whatsapp:String(row.whatsapp||extra.whatsapp||''),crpCrm:String(row.crp_crm||extra.crpCrm||''),especialidade:String(row.especialidade||extra.especialidade||''),operacao:row.operacao||extra.operacao||'',blocoAgenda:row.bloco_agenda||extra.blocoAgenda||extra.bloco||'',ativo:row.ativo!==false,createdAt:extra.createdAt||row.created_at,updatedAt:extra.updatedAt||row.updated_at};}).filter(p=>p.id);
+  }catch(tableError){
+    console.warn('Tabela profissionais indisponível; usando compatibilidade app_kv.',tableError);
+    const res=await cloudGet('db:profissionais',true); const legacy=res&&res.value?JSON.parse(res.value):[];
+    if(!Array.isArray(legacy))throw new Error('Dados de profissionais inválidos no Supabase.'); profs=legacy;
   }
+  allProfissionais=profs.filter(p=>p&&typeof p==='object').map((p,index)=>{try{const operacao=normalizeOperacao(p.operacao),blocoAgenda=normalizeBlocoKey(p.blocoAgenda||p.bloco,operacao);return {...p,operacao,blocoAgenda};}catch(e){console.warn('Cadastro de profissional inválido na posição '+index,e);return null;}}).filter(Boolean).sort((a,b)=>String(a.nomeCompleto||'').localeCompare(String(b.nomeCompleto||''),'pt-BR'));
   dataLoadState.profissionais=true;
 }
-async function saveAllProfissionais(){ if(!dataLoadState.profissionais) throw new Error('Os profissionais ainda não foram carregados com sucesso.'); await storageSetRetry('db:profissionais', JSON.stringify(allProfissionais), true); }
+async function saveAllProfissionais(){
+  if(!dataLoadState.profissionais)throw new Error('Os profissionais ainda não foram carregados com sucesso.');
+  const rows=(allProfissionais||[]).filter(p=>p&&p.id).map(p=>({id:String(p.id),nome_completo:String(p.nomeCompleto||''),usuario_medicina:String(p.usuarioMedicina||''),email:String(p.email||''),cpf:String(p.cpf||''),whatsapp:String(p.whatsapp||''),crp_crm:String(p.crpCrm||''),especialidade:String(p.especialidade||''),operacao:normalizeOperacao(p.operacao),bloco_agenda:normalizeBlocoKey(p.blocoAgenda||p.bloco,p.operacao),ativo:p.ativo!==false,dados:p,created_at:p.createdAt||new Date().toISOString(),updated_at:p.updatedAt||new Date().toISOString()}));
+  const result=await supabase.from('profissionais').upsert(rows,{onConflict:'id'}); if(result.error)throw result.error;
+  await storageSetRetry('db:profissionais',JSON.stringify(allProfissionais),true);
+}
+async function aaBuscarProfissionalPublico(raw){
+  try{const result=await supabase.functions.invoke('buscar-profissional-publico',{body:{identificador:String(raw||'').trim()}});if(result.error)throw result.error;return result.data&&result.data.data&&typeof result.data.data==='object'?result.data.data:null;}catch(error){console.error('Busca pública de profissional indisponível.',error);return null;}
+}
+
 function findProfissionalByIdentifier(raw){
   const text=normText(raw), digits=normDigits(raw), phoneDigits=normWhatsDigits(raw), date=formatDateNascimento(raw);
   return allProfissionais.find(p=>{
@@ -1423,8 +1411,8 @@ window.aaBuscarCadastro = async function(){
   const periodoBox = document.getElementById('aa-step1-periodo');
   if(!raw){ wrap.innerHTML = '<div class="aa-error-msg">Digite um dado para buscar.</div>'; periodoBox.style.display='none'; return; }
   wrap.innerHTML = '<div class="aa-loading">Buscando...</div>';
-  await loadOperacoes(); await loadProfissionais();
-  const found = findProfissionalByIdentifier(raw);
+  await loadOperacoes();
+  const found = await aaBuscarProfissionalPublico(raw);
   state.profissional = null;
   periodoBox.style.display='none';
   if(!found){
@@ -1915,7 +1903,7 @@ window.aaRHLogin = async function(){
     document.getElementById('aa-rh-authed-content').style.display='block';
     document.getElementById('aa-rh-user').value=data.user.email; document.getElementById('aa-rh-session-name').textContent=profile.nomeCompleto||data.user.email; document.getElementById('aa-rh-session-email').textContent=data.user.email; document.getElementById('aa-rh-session-bar').style.display='block';
     document.getElementById('aa-nat-ano').value=document.getElementById('aa-nat-ano').value || new Date().getFullYear();
-    aaApplyRHPermissionsUI(); aaUpdateProfessionalOperationOptions(); aaUpdateDashboardOperations(); const firstTab=aaFirstAllowedRHTab(); if(firstTab) aaSwitchRHTab(firstTab);
+    aaApplyRHPermissionsUI(); aaUpdateProfessionalOperationOptions(); aaUpdateDashboardOperations(); const firstTab=aaFirstAllowedRHTab(); if(firstTab) aaSwitchRHTab(firstTab); if(window.aaApplyHashRoute)setTimeout(window.aaApplyHashRoute,0);
     try{ await loadLixeira(); }catch(e){ console.warn('Não foi possível carregar a lixeira agora.',e); }
     try{ await loadCompanyHolidays(); renderFeriadosList(); window.aaRenderNationalHolidays(); }catch(e){ console.warn('Não foi possível carregar as configurações de fechamento agora.',e); }
     aaLogChange('Login no painel RH',data.user.email,'Autenticação Supabase');
@@ -2111,6 +2099,26 @@ window.aaSwitchUsuariosView=function(view){
   if(ativos)ativos.style.display=view==='ativos'?'block':'none';
   if(desativados)desativados.style.display=view==='desativados'?'block':'none';
   document.querySelectorAll('[data-usuarios-view]').forEach(btn=>btn.classList.toggle('active',btn.dataset.usuariosView===view));
+};
+window.aaToggleNovoUsuario=function(open){
+  const form=document.getElementById('aa-novo-usuario-form'); if(!form)return;
+  const show=open===undefined?form.style.display==='none':!!open; form.style.display=show?'block':'none';
+  if(show){
+    const profile=document.getElementById('aa-new-rh-profile'),operation=document.getElementById('aa-new-rh-operation');
+    if(profile)profile.innerHTML=Object.entries(allPerfis).filter(([k,v])=>v.ativo!==false).map(([k,v])=>'<option value="'+aaHtmlSafe(k)+'">'+aaHtmlSafe(v.nome)+'</option>').join('');
+    if(operation)operation.innerHTML='<option value="">Sem operação</option>'+Object.entries(allOperacoes).map(([k,v])=>'<option value="'+aaHtmlSafe(k)+'">'+aaHtmlSafe(v.nome)+'</option>').join('');
+  }
+};
+window.aaCriarNovoUsuario=async function(){
+  if(!aaCanAny('permissoes_gerenciar','usuarios_perfil_atribuir')){alert('Você não tem permissão para criar usuários.');return;}
+  const name=String(document.getElementById('aa-new-rh-name')?.value||'').trim(),email=String(document.getElementById('aa-new-rh-email')?.value||'').trim().toLowerCase(),password=String(document.getElementById('aa-new-rh-password')?.value||''),perfil=String(document.getElementById('aa-new-rh-profile')?.value||'colaborador'),operacao=String(document.getElementById('aa-new-rh-operation')?.value||'');
+  const error=document.getElementById('aa-new-rh-error'); const showError=msg=>{if(error){error.textContent=msg;error.style.display='block';}}; if(error){error.textContent='';error.style.display='none';}
+  if(!email||!email.includes('@'))return showError('Informe um e-mail válido.'); if(password.length<6)return showError('A senha deve ter pelo menos 6 caracteres.');
+  if((allRHUsers||[]).some(u=>String(u.username||'').toLowerCase()===email))return showError('Este e-mail já possui um usuário no painel.');
+  const button=document.querySelector('#aa-novo-usuario-form button[onclick="aaCriarNovoUsuario()"]'); if(button){button.disabled=true;button.textContent='Criando...';}
+  try{const result=await supabase.functions.invoke('create-rh-user',{body:{email,password,nomeCompleto:name,perfil,operacao}});if(result.error)throw result.error;if(result.data?.error)throw new Error(result.data.error);await loadRHUsers();aaRenderPermissoes();aaToggleNovoUsuario(false);['aa-new-rh-name','aa-new-rh-email','aa-new-rh-password'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});aaToast('Usuário criado com sucesso.','success');}
+  catch(e){showError(e?.message||'Não foi possível criar o usuário agora.');console.error(e);}
+  finally{if(button){button.disabled=false;button.textContent='Criar acesso';}}
 };
 window.aaRenderPermissoes=function(){
   const wrap=document.getElementById('aa-permissoes-list-wrap'); if(!wrap)return;
@@ -2927,8 +2935,8 @@ window.aaLookupPorCadastro = async function(){
   const raw = document.getElementById('aa-lookup-cadastro-id').value.trim();
   if(!raw){ wrap.innerHTML = '<div class="aa-error-msg">Digite um dado para buscar.</div>'; return; }
   wrap.innerHTML = '<div class="aa-loading">Consultando...</div>';
-  await loadOperacoes(); await loadProfissionais();
-  const found = findProfissionalByIdentifier(raw);
+  await loadOperacoes();
+  const found = await aaBuscarProfissionalPublico(raw);
   if(!found){ wrap.innerHTML = '<div class="aa-error-msg">Cadastro não encontrado. Verifique o dado informado.</div>'; return; }
   const secondary = secondaryFieldFor(raw, found);
   if(!secondary){ wrap.innerHTML='<div class="aa-error-msg">Este cadastro não possui outro dado cadastral disponível para a confirmação de segurança. Procure o RH.</div>'; return; }
@@ -2982,18 +2990,8 @@ window.aaFinalizeLookupPorCadastro = async function(found){
 };
 
 // ---------- Admin panel ----------
-async function loadAllSubmissions(){
-  dataLoadState.submissions=false;
-  const anterior=allSubmissions;
-  try{
-    const res = await cloudGet('db:submissions', true);
-    const subs = res && res.value ? JSON.parse(res.value) : [];
-    if(!Array.isArray(subs)) throw new Error('Dados de agendas estão inválidos no Supabase.');
-    allSubmissions=subs.sort((a,b)=> (b.submittedAt||'').localeCompare(a.submittedAt||''));
-    dataLoadState.submissions=true;
-  } catch(e){ allSubmissions=anterior; dataLoadState.submissions=false; throw e; }
-}
-async function saveAllSubmissions(){ if(!dataLoadState.submissions) throw new Error('As agendas ainda não foram carregadas com sucesso.'); await storageSetRetry('db:submissions', JSON.stringify(allSubmissions), true); }
+async function loadAllSubmissions(){dataLoadState.submissions=false;const anterior=allSubmissions;try{let subs=[];try{const result=await supabase.from('agendas').select('id,protocolo,profissional_id,submitted_by_auth_id,usuario,nome,status,operacao,bloco_agenda,especialidade,ano,periodo_meses,submitted_at,reviewed_at,dados,created_at,updated_at').order('submitted_at',{ascending:false});if(result.error)throw result.error;subs=(result.data||[]).map(row=>{const extra=row.dados&&typeof row.dados==='object'?row.dados:{};return {...extra,id:row.id,protocolo:row.protocolo||extra.protocolo,submittedByAuthId:row.submitted_by_auth_id||extra.submittedByAuthId||null,profissionalId:row.profissional_id||extra.profissionalId,usuario:row.usuario||extra.usuario,nome:row.nome||extra.nome,status:row.status||extra.status,operacao:row.operacao||extra.operacao,blocoAgenda:row.bloco_agenda||extra.blocoAgenda,especialidade:row.especialidade||extra.especialidade,ano:row.ano||extra.ano,periodoMeses:Array.isArray(row.periodo_meses)?row.periodo_meses:(extra.periodoMeses||[]),submittedAt:row.submitted_at||extra.submittedAt,reviewedAt:row.reviewed_at||extra.reviewedAt};});}catch(tableError){const res=await cloudGet('db:submissions',true);subs=res&&res.value?JSON.parse(res.value):[];if(!Array.isArray(subs))throw new Error('Dados de agendas estão inválidos no Supabase.');}allSubmissions=subs.sort((a,b)=>String(b.submittedAt||'').localeCompare(String(a.submittedAt||'')));dataLoadState.submissions=true;}catch(e){allSubmissions=anterior;dataLoadState.submissions=false;throw e;}}
+async function saveAllSubmissions(){if(!dataLoadState.submissions)throw new Error('As agendas ainda não foram carregadas com sucesso.');const currentAuthId=(typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile&&rhCurrentProfile.auth_user_id)||null;const rows=(allSubmissions||[]).filter(x=>x).map(x=>({id:String(x.id||x.protocolo||('AGENDA-'+Date.now()+Math.random())),protocolo:String(x.protocolo||''),submitted_by_auth_id:x.submittedByAuthId||currentAuthId,profissional_id:x.profissionalId||null,usuario:String(x.usuario||''),nome:String(x.nome||''),status:String(x.status||''),operacao:String(x.operacao||''),bloco_agenda:String(x.blocoAgenda||x.bloco||''),especialidade:String(x.especialidade||''),ano:String(x.ano||''),periodo_meses:Array.isArray(x.periodoMeses)?x.periodoMeses:[],submitted_at:x.submittedAt||new Date().toISOString(),reviewed_at:x.reviewedAt||null,dados:x,created_at:x.submittedAt||new Date().toISOString(),updated_at:x.updatedAt||new Date().toISOString()}));const result=await supabase.from('agendas').upsert(rows,{onConflict:'id'});if(result.error)throw result.error;const days=[];rows.forEach(row=>{const months=row.dados.computedByMonth&&typeof row.dados.computedByMonth==='object'?row.dados.computedByMonth:{};Object.entries(months).forEach(([month,value])=>(value.days||[]).forEach(day=>days.push({id:row.id+':'+month+':'+day.iso,agenda_id:row.id,mes:month,iso:day.iso,total:Number(day.total)||0,status:String(day.status||''),conferido:day.conferido===true,ajustado:day.ajustado===true,dados:day})));});if(days.length){const dr=await supabase.from('agenda_dias').upsert(days,{onConflict:'id'});if(dr.error)throw dr.error;}await storageSetRetry('db:submissions',JSON.stringify(allSubmissions),true);}
 window.aaLoadAdminData = async function(){
   const wrap = document.getElementById('aa-admin-list-wrap');
   wrap.innerHTML = '<div class="aa-loading">Carregando envios...</div>';
@@ -3455,7 +3453,7 @@ window.aaRestoreTrash=async function(id){
       await loadCompanyHolidays();
       const h=payload;
       if(!h || !h.de) throw new Error('Dados do fechamento estão incompletos.');
-      if(!companyHolidays.some(x=>x.de===h.de && x.ate===h.ate && x.motivo===h.motivo)){ companyHolidays.push(h); await storageSetRetry('config:feriados',JSON.stringify(companyHolidays),true); }
+      if(!companyHolidays.some(x=>x.de===h.de && x.ate===h.ate && x.motivo===h.motivo)){ companyHolidays.push(h); await saveCompanyHolidays(); }
     } else if(tipo==='ajuste'){
       await loadAllSubmissions();
       const meta=item.meta||{};
@@ -3618,7 +3616,7 @@ document.getElementById('aa-dash-trimestre').innerHTML = TRIMESTRES.map(t=>'<opt
   window.__aaGetProfissionais = function(){ return allProfissionais; };
 
   window.__aaGetProfissionais = function(){ return allProfissionais; };
-  window.__aaSaveProfissionais = async function(){ await storageSetRetry('db:profissionais', JSON.stringify(allProfissionais), true); dataLoadState.profissionais=true; };
+  window.__aaSaveProfissionais = async function(){ await saveAllProfissionais(); };
   window.__aaIsGeneralProfile = function(){ return isGeneralProfile(rhCurrentProfile) || String(rhCurrentUser||'').trim().toLowerCase()===String(ADMIN_EMAIL||'').trim().toLowerCase(); };
 
 })();
@@ -3947,9 +3945,9 @@ const aaOriginalRenderDashboard=window.aaRenderDashboard;window.aaRenderDashboar
   function ajusteCacheWrite(){try{localStorage.setItem('aa_ajuste_solicitacoes_cache',JSON.stringify(allAjusteSolicitacoes));}catch(e){console.warn('Não foi possível atualizar o cache local dos ajustes.',e);}}
   async function loadAjusteSolicitacoes(){
     dataLoadState.ajustes=false;
-    const {data:rows,error}=await supabase.from('ajuste_solicitacoes').select('id,data,status,created_at,updated_at').order('updated_at',{ascending:false});
+    const {data:rows,error}=await supabase.from('ajuste_solicitacoes').select('id,data,status,solicitante_auth_id,created_at,updated_at').order('updated_at',{ascending:false});
     if(error)throw error;
-    const list=(rows||[]).map(row=>{const item=row&&row.data&&typeof row.data==='object'?{...row.data}:{};item.id=String(row.id||item.id||'');item.status=item.status||row.status||'aberto';item.createdAt=item.createdAt||row.created_at;item.updatedAt=item.updatedAt||row.updated_at;return item;}).filter(item=>item.id);
+    const list=(rows||[]).map(row=>{const item=row&&row.data&&typeof row.data==='object'?{...row.data}:{};item.id=String(row.id||item.id||'');item.solicitanteAuthId=item.solicitanteAuthId||row.solicitante_auth_id||null;item.status=item.status||row.status||'aberto';item.createdAt=item.createdAt||row.created_at;item.updatedAt=item.updatedAt||row.updated_at;return item;}).filter(item=>item.id);
     let migratedOpen=false;
     list.forEach(item=>{if(ajusteStatusNorm(item.status)!=='aberto')return;const when=item.confirmadoEm||item.criadoEm||item.createdAt||new Date().toISOString(),by=item.confirmadoPor||item.solicitanteNome||item.solicitanteEmail||'Sistema';item.status='analise';item.analiseInicioEm=item.analiseInicioEm||when;item.analiseInicioPor=item.analiseInicioPor||by;item.confirmadoEm=item.confirmadoEm||when;item.confirmadoPor=item.confirmadoPor||by;item.analiseFimEm=null;item.updatedAt=new Date().toISOString();item.historicoStatus=[...(item.historicoStatus||[]),{status:'analise',at:when,por:by,observacao:'Migrado automaticamente do status Em aberto para Em análise.'}];migratedOpen=true;});
     allAjusteSolicitacoes=list;dataLoadState.ajustes=true;ajusteCacheWrite();ajustePersistedSnapshot=new Map(list.map(item=>[String(item.id),JSON.stringify(item)]));
@@ -3959,7 +3957,7 @@ const aaOriginalRenderDashboard=window.aaRenderDashboard;window.aaRenderDashboar
   async function saveAjusteSolicitacoes(){
     if(!dataLoadState.ajustes)throw new Error('As solicitações de ajuste ainda não foram carregadas com sucesso.');
     const dirty=(allAjusteSolicitacoes||[]).filter(item=>item&&item.id&&ajustePersistedSnapshot.get(String(item.id))!==JSON.stringify(item));
-    for(const item of dirty){const now=item.updatedAt||new Date().toISOString();const {error}=await supabase.from('ajuste_solicitacoes').upsert({id:String(item.id),data:item,status:ajusteStatusNorm(item.status),created_at:item.createdAt||item.criadoEm||now,updated_at:now},{onConflict:'id'});if(error)throw error;ajustePersistedSnapshot.set(String(item.id),JSON.stringify(item));}
+    for(const item of dirty){const now=item.updatedAt||new Date().toISOString();const {error}=await supabase.from('ajuste_solicitacoes').upsert({id:String(item.id),data:item,status:ajusteStatusNorm(item.status),solicitante_auth_id:item.solicitanteAuthId||((typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile&&rhCurrentProfile.auth_user_id)||null),created_at:item.createdAt||item.criadoEm||now,updated_at:now},{onConflict:'id'});if(error)throw error;ajustePersistedSnapshot.set(String(item.id),JSON.stringify(item));}
     ajusteCacheWrite();
   }
   function ajusteProfissionalLabel(item){const p=allProfissionais.find(prof=>prof.id===item.profissionalId);return String(item.profissionalNome||(p&&p.nomeCompleto)||item.profissionalUsuario||(p&&p.usuarioMedicina)||'-');}
@@ -4127,8 +4125,12 @@ const aaOriginalRenderDashboard=window.aaRenderDashboard;window.aaRenderDashboar
   function rdaUsuarioIdentificador(user){return String(user&& (user.email||user.username||user.user||user.login)||'').trim().toLowerCase();}
   function rdaEhAdmin(){return isAdminProfile(rhCurrentProfile)||isGeneralProfile(rhCurrentProfile);}
   function rdaVisiveis(){const admin=rdaEhAdmin(),email=String(rhCurrentUser||'').trim().toLowerCase();return (allRDA||[]).filter(item=>String(item.data||'')<=rdaHoje()).filter(item=>admin||rdaOwnerEmail(item)===email).filter(item=>!admin||!rdaFiltroColaborador||rdaOwnerEmail(item)===rdaFiltroColaborador).sort((a,b)=>String(b.data||'').localeCompare(String(a.data||''))||String(b.atualizadoEm||b.criadoEm||'').localeCompare(String(a.atualizadoEm||a.criadoEm||'')));}
-  async function loadRDA(){if(dataLoadState.rda)return;const res=await cloudGet('db:rda',true),parsed=res&&res.value?JSON.parse(res.value):[];if(!Array.isArray(parsed))throw new Error('Dados de RDA inválidos.');allRDA=parsed;dataLoadState.rda=true;}
-  async function saveRDA(){if(!dataLoadState.rda)throw new Error('Os RDAs ainda não foram carregados.');await storageSetRetry('db:rda',JSON.stringify(allRDA),true);}
+  async function loadRDA(){
+    if(dataLoadState.rda)return;
+    try{const result=await supabase.from('rda_registros').select('id,usuario_email,usuario_auth_id,data,operacao,entrada,pausa,saida,tarefa,realizou,realizado,status,bloqueado,automatico,dados,criado_em,atualizado_em').order('data',{ascending:false});if(result.error)throw result.error;allRDA=(result.data||[]).map(row=>{const extra=row.dados&&typeof row.dados==='object'?row.dados:{};return {...extra,id:row.id,usuarioEmail:row.usuario_email,usuarioAuthId:row.usuario_auth_id||extra.usuarioAuthId||null,data:row.data,operacao:row.operacao,entrada:row.entrada,pausa:row.pausa,saida:row.saida,tarefa:row.tarefa,realizou:row.realizou,realizado:row.realizado,status:row.status,bloqueado:row.bloqueado,automatico:row.automatico,criadoEm:row.criado_em,atualizadoEm:row.atualizado_em};});dataLoadState.rda=true;}catch(e){const res=await cloudGet('db:rda',true),parsed=res&&res.value?JSON.parse(res.value):[];if(!Array.isArray(parsed))throw new Error('Dados de RDA inválidos.');allRDA=parsed;dataLoadState.rda=true;}
+  }
+  async function saveRDA(){if(!dataLoadState.rda)throw new Error('Os RDAs ainda não foram carregados.');const rows=(allRDA||[]).filter(x=>x&&x.id).map(x=>({id:String(x.id),usuario_email:String(x.usuarioEmail||''),usuario_auth_id:x.usuarioAuthId||((typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile&&rhCurrentProfile.auth_user_id)||null),data:x.data||null,operacao:String(x.operacao||''),entrada:String(x.entrada||''),pausa:String(x.pausa||''),saida:String(x.saida||''),tarefa:String(x.tarefa||''),realizou:String(x.realizou||''),realizado:String(x.realizado||''),status:String(x.status||''),bloqueado:x.bloqueado===true,automatico:x.automatico===true,dados:x,criado_em:x.criadoEm||new Date().toISOString(),atualizado_em:x.atualizadoEm||new Date().toISOString()}));const result=await supabase.from('rda_registros').upsert(rows,{onConflict:'id'});if(result.error)throw result.error;await storageSetRetry('db:rda',JSON.stringify(allRDA),true);}
+
   function rdaEsc(value){return aaHtmlSafe(value==null?'':String(value));}
   function rdaEntradaHTML(item){if(rdaEhDispensado())return '<div class="aa-empty-state">Perfil administrativo dispensado do preenchimento de RDA. Nenhum registro será criado por ausência de preenchimento.</div>';const hoje=rdaHoje(),existing=item||{},locked=!!existing.id&&String(existing.data)!==hoje,canWrite=aaCan('rda_registrar')&&!locked;return '<form class="aa-rda-form" onsubmit="aaSalvarRDA(event)"><div class="aa-rda-line aa-rda-line-two"><div class="aa-field"><label>Data</label><input class="aa-rda-readonly" type="date" id="aa-rda-data" value="'+rdaEsc(existing.data||hoje)+'" readonly></div><div class="aa-field"><label>Usuário</label><input class="aa-rda-readonly" type="text" id="aa-rda-usuario" value="'+rdaEsc(String(rhCurrentUser||existing.usuarioEmail||'').trim())+'" readonly></div></div><div class="aa-rda-line aa-rda-line-three"><div class="aa-field"><label>Entrada</label><input type="time" id="aa-rda-entrada" value="'+rdaEsc(existing.entrada||'')+'" '+(canWrite?'':'disabled')+' required></div><div class="aa-field"><label>Pausa</label><input type="time" id="aa-rda-pausa" value="'+rdaEsc(existing.pausa||'')+'" '+(canWrite?'':'disabled')+'></div><div class="aa-field"><label>Saída</label><input type="time" id="aa-rda-saida" value="'+rdaEsc(existing.saida||'')+'" '+(canWrite?'':'disabled')+' required></div></div><div class="aa-rda-line aa-rda-line-two"><div class="aa-field"><label>Tarefa atribuída</label><input type="text" id="aa-rda-tarefa" value="'+rdaEsc(existing.tarefa||'')+'" '+(canWrite?'':'disabled')+' required></div><div class="aa-field"><label>Conseguiu realizar?</label><select id="aa-rda-realizou" '+(canWrite?'':'disabled')+'><option value="">Selecione</option><option value="Sim" '+(existing.realizou==='Sim'?'selected':'')+'>Sim</option><option value="Não" '+(existing.realizou==='Não'?'selected':'')+'>Não</option></select></div></div><div class="aa-rda-line aa-rda-line-one"><div class="aa-field aa-rda-realizado-field aa-field-full"><label>Conte brevemente o que foi realizado</label><textarea id="aa-rda-realizado" rows="3" '+(canWrite?'':'disabled')+' required>'+rdaEsc(existing.realizado||'')+'</textarea></div></div><div class="aa-modal-actions" style="justify-content:flex-end;margin-top:2px;">'+(canWrite?'<button class="aa-btn aa-btn-primary" type="submit">Salvar RDA</button>': '<span class="aa-rda-entry-meta">Este registro está encerrado e não pode mais ser editado.</span>')+'</div></form>';}
   function rdaMesLabel(key){const parts=String(key||'').split('-'),year=parts[0],month=Number(parts[1]);return (MESES_NOMES[month-1]||'Mês')+' de '+year;}
@@ -4167,7 +4169,7 @@ const aaOriginalRenderDashboard=window.aaRenderDashboard;window.aaRenderDashboar
       if(!plainDescription){showError('Descreva a solicitação de ajuste ou use um modelo.');return;}
       if(plainDescription.length>3000){showError('A descrição deve ter no máximo 3000 caracteres.');return;}
       try{await loadAjusteSolicitacoes();}catch(loadError){if(!dataLoadState.ajustes){const cached=ajusteCacheRead();if(cached.length){allAjusteSolicitacoes=cached;dataLoadState.ajustes=true;}else throw loadError;}}
-      const now=new Date().toISOString(),requester=ajusteSolicitanteNome(),userOperation=normalizeOperacao(rhCurrentProfile&&rhCurrentProfile.operacao),item={id:ajusteGerarNumeroChamado(),status:'analise',analiseInicioEm:now,analiseInicioPor:requester,confirmadoEm:now,confirmadoPor:requester,profissionalId:professional.id,profissionalNome:professional.nomeCompleto||'',profissionalUsuario:professional.usuarioMedicina||'',profissionalMedicina:professional.medicina||'',canalPoliChat:professional.canalPoliChat||'',especialidade:normalizeEspecialidade(professional.especialidade),operacao:userOperation||normalizeOperacao(professional.operacao),blocoAgenda:normalizeBlocoKey(professional.blocoAgenda),mesReferencia:month,motivoPrincipal:motive,descricao:description,solicitanteNome:requester,solicitanteEmail:String(rhCurrentUser||requester),dataSolicitacao:now,criadoEm:now,createdAt:now,updatedAt:now,historicoStatus:[{status:'analise',at:now,por:requester}],historicoEdicoes:[],comentarios:[]};
+      const now=new Date().toISOString(),requester=ajusteSolicitanteNome(),userOperation=normalizeOperacao(rhCurrentProfile&&rhCurrentProfile.operacao),item={id:ajusteGerarNumeroChamado(),status:'analise',analiseInicioEm:now,analiseInicioPor:requester,confirmadoEm:now,confirmadoPor:requester,profissionalId:professional.id,profissionalNome:professional.nomeCompleto||'',profissionalUsuario:professional.usuarioMedicina||'',profissionalMedicina:professional.medicina||'',canalPoliChat:professional.canalPoliChat||'',especialidade:normalizeEspecialidade(professional.especialidade),operacao:userOperation||normalizeOperacao(professional.operacao),blocoAgenda:normalizeBlocoKey(professional.blocoAgenda),mesReferencia:month,motivoPrincipal:motive,descricao:description,solicitanteNome:requester,solicitanteEmail:String(rhCurrentUser||requester),solicitanteAuthId:((typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile&&rhCurrentProfile.auth_user_id)||null),dataSolicitacao:now,criadoEm:now,createdAt:now,updatedAt:now,historicoStatus:[{status:'analise',at:now,por:requester}],historicoEdicoes:[],comentarios:[]};
       allAjusteSolicitacoes=[item,...allAjusteSolicitacoes];
       try{await saveAjusteSolicitacoes();}catch(saveError){allAjusteSolicitacoes=allAjusteSolicitacoes.filter(request=>String(request.id)!==String(item.id));throw saveError;}
       try{await aaLogChange('Nova solicitação de ajuste',item.id,'Solicitação criada por '+requester+' para '+(professional.nomeCompleto||professional.usuarioMedicina||'profissional')+' no mês '+month+'.');}catch(logError){console.warn('Solicitação salva, mas não foi possível registrar o histórico.',logError);}
@@ -4522,5 +4524,29 @@ window.aaRenderProfissionaisList=function(){
 <style id="aa-user-profile-ficha-styles">
 .aa-user-ficha-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px;padding:10px;border:1px solid #E1DCF3;border-radius:10px;background:#FAF9FD}.aa-user-ficha-summary span{display:flex;flex-direction:column;gap:2px;min-width:0}.aa-user-ficha-summary small{font-size:10px;text-transform:uppercase;color:var(--ink-faint);font-weight:800}.aa-user-ficha-summary b{font-size:12.5px;overflow-wrap:anywhere}@media(max-width:640px){.aa-user-ficha-summary{grid-template-columns:1fr}}
 </style>
+
+<script>
+(function(){
+  let routing=false;
+  const clean=v=>String(v||'').replace(/^#\/?/,'').replace(/\/+$/,'').toLowerCase();
+  const setHash=value=>{const next='#/'+value;if(location.hash!==next)history.replaceState(null,'',next);};
+  const originalTab=window.aaSwitchTab;
+  window.aaSwitchTab=function(tab){originalTab(tab);if(!routing)setHash(tab);};
+  const originalRH=window.aaSwitchRHTab;
+  window.aaSwitchRHTab=function(tab){originalRH(tab);if(!routing){if(tab==='ajustes')setHash('painel/ajustes');else if(tab==='banco')setHash('painel/profissionais');else if(tab==='permissoes')setHash('painel/usuarios');else setHash('painel/'+tab);}};
+  function apply(){
+    const route=clean(location.hash),parts=route.split('/');
+    if(!route||['enviar','consultar','painel'].includes(route)){routing=true;originalTab(route||'enviar');routing=false;return;}
+    if(parts[0]!=='painel')return;
+    routing=true;originalTab('painel');routing=false;
+    if(!rhAuthenticated)return;
+    const target={profissionais:'banco',usuarios:'permissoes',ajustes:'ajustes',operacoes:'operacoes',perfis:'perfis',config:'config',historico:'historico'}[parts[1]];
+    if(target&&typeof window.aaSwitchRHTab==='function'){routing=true;window.aaSwitchRHTab(target);routing=false;}
+  }
+  window.addEventListener('hashchange',apply);
+  window.aaApplyHashRoute=apply;
+  setTimeout(apply,0);
+})();
+</script>
 </body>
 </html>
