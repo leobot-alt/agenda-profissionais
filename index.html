@@ -474,27 +474,9 @@
           <button class="aa-tab active" data-rhtab="dashboard" onclick="aaSwitchRHTab('dashboard')">Dashboard</button>
           <button class="aa-tab" data-rhtab="agendas" onclick="aaSwitchRHTab('agendas')">Agendas Ativas</button>
           <button class="aa-tab" data-rhtab="banco" onclick="aaSwitchRHTab('banco')">Banco de Dados</button>
-          <button class="aa-tab" data-rhtab="rda" onclick="aaSwitchRHTab('rda')">RDA</button>
           <button class="aa-tab" data-rhtab="ajustes" onclick="aaSwitchRHTab('ajustes')">Solicitação de Ajuste</button>
           <button class="aa-tab" data-rhtab="portal" onclick="aaSwitchRHTab('portal')">Portal</button>
           <button class="aa-tab" data-rhtab="controler" onclick="aaSwitchRHTab('controler')">Controler</button>
-        </div>
-
-        <div class="aa-rh-subpanel" id="aa-rhtab-rda" style="display:none;">
-          <div class="aa-rda-card">
-            <div class="aa-ficha-header"><div><h2>RDA — Relatório Diário de Atividades</h2></div><span id="aa-rda-lock-status" class="aa-rda-status open">Registro do dia aberto</span></div>
-            <div id="aa-rda-admin-filter-wrap"></div><div id="aa-rda-form-wrap"></div>
-            <div id="aa-rda-list-wrap" class="aa-rda-list" style="margin-top:20px;"></div>
-          </div>
-        </div>
-
-        <div class="aa-rh-subpanel" id="aa-rhtab-portal" style="display:none;">
-          <div class="aa-card">
-            <div class="aa-ficha-header"><div><h2>Portal</h2><p class="aa-hint">Escala mensal dos usuários, com horários, folgas, aceite e solicitações.</p></div><span class="aa-scale-badge">Escala mensal</span></div>
-            <div class="aa-portal-scale-toolbar"><div class="aa-field"><label>Mês</label><input type="month" id="aa-escala-mes" onchange="aaPortalLoadEscala()"></div><div class="aa-field"><label>Usuário</label><select id="aa-escala-usuario" onchange="aaPortalLoadEscala()"></select></div><button type="button" class="aa-btn aa-btn-primary aa-btn-sm" data-escala-admin onclick="aaPortalNovaEscala()">Nova/editar escala</button><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaPortalExportarEscala()">Exportar CSV</button><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaPortalTogglePanorama()">Panorama da equipe</button></div>
-            <p class="aa-scale-note">Nos dias de trabalho, entrada, saída e almoço são obrigatórios. Colaboradores podem aceitar a escala e solicitar troca de folga, horário ou banco de horas.</p>
-            <div id="aa-portal-panorama" class="aa-team-overview" style="display:none;"><div class="aa-scale-section-heading"><div><h3>Panorama geral da equipe</h3><p>Visão consolidada das escalas do mês selecionado.</p></div><span id="aa-panorama-count" class="aa-scale-badge"></span></div><div id="aa-panorama-content"><div class="aa-scale-empty">Selecione um mês.</div></div></div><div id="aa-portal-escala-content"><div class="aa-scale-empty">Selecione um mês.</div></div>
-          </div>
         </div>
 
         <div class="aa-rh-subpanel" id="aa-rhtab-ajustes" style="display:none;">
