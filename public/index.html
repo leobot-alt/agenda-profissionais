@@ -436,7 +436,7 @@
         </div>
 
         <div id="aa-constab-protocolo">
-          <p class="aa-hint">Informe o número de protocolo recebido no envio ou o número do ajuste de ajuste para consultar o andamento.</p>
+          <p class="aa-hint">Informe o número de protocolo recebido no envio ou o número do ajuste para consultar o andamento.</p>
           <div class="aa-field-row" style="grid-template-columns: 2fr auto;">
             <div class="aa-field"><label>Número do protocolo ou ajuste</label><input type="text" id="aa-lookup-protocolo" placeholder="ex: SOM-7K9QXZ4M ou 12345678" onkeydown="if(event.key==='Enter') aaLookupProtocolo()"></div>
             <button class="aa-btn aa-btn-primary" style="height:44px;" onclick="aaLookupProtocolo()">Consultar</button>
@@ -722,6 +722,23 @@
               <div class="aa-field"><label>Motivo</label><input data-permission-disable="config_fechamentos_adicionar" type="text" id="aa-fer-motivo" placeholder="Recesso, evento interno..."></div>
               <button data-permission-action="config_fechamentos_adicionar" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaAddFeriado()">Adicionar</button>
             </div>
+          </div>
+        </div>
+        <div class="aa-rh-subpanel" id="aa-rhtab-portal" style="display:none;">
+          <div class="aa-card">
+            <div class="aa-lookup-head">
+              <div><h2 style="margin:0;">Portal de escala</h2><p class="aa-hint" style="margin:4px 0 0;">Consulte a escala mensal, registre o aceite e envie solicitações de ajuste.</p></div>
+            </div>
+            <div class="aa-field-row" style="align-items:end; margin-top:14px;">
+              <div class="aa-field"><label>Mês de referência</label><input type="month" id="aa-escala-mes" onchange="aaPortalLoadEscala()"></div>
+              <div class="aa-field" data-escala-admin><label>Usuário</label><select id="aa-escala-usuario" onchange="aaPortalLoadEscala()"><option value="">Carregando usuários...</option></select></div>
+              <div class="aa-actions-row" data-escala-admin style="margin:0;"><button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaPortalNovaEscala()">Nova escala</button><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaPortalExportarEscala()">Exportar escala</button></div>
+            </div>
+            <div id="aa-portal-escala-content" style="margin-top:18px;"><div class="aa-scale-empty">Selecione o mês e o usuário para carregar a escala.</div></div>
+            <section id="aa-portal-panorama" data-escala-admin style="display:none;margin-top:18px;">
+              <div class="aa-scale-section-heading"><div><h3>Panorama da equipe</h3><p class="aa-hint">Visão resumida das escalas lançadas no mês.</p></div><span class="aa-scale-badge" id="aa-panorama-count">0 escala(s) lançada(s)</span></div>
+              <div id="aa-panorama-content"><div class="aa-scale-empty">Carregando panorama...</div></div>
+            </section>
           </div>
         </div>
         <div class="aa-rh-subpanel" id="aa-rhtab-controler" style="display:none;">
