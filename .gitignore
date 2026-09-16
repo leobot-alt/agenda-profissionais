@@ -1,0 +1,23 @@
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Segredos e configurações locais
+.env
+.env.*
+!.env.example
+*.local
+
+# Artefatos de build e dependências
+node_modules/
+dist/
+coverage/
+
+# Backups e arquivos temporários
+*.bak
+*.backup
+*.tmp
