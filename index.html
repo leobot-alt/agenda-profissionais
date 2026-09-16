@@ -3954,7 +3954,7 @@ const aaOriginalRenderDashboard=window.aaRenderDashboard;window.aaRenderDashboar
   function ajusteCanReprovar(){return aaCanAny('ajustes_reprovar','ajustes_analisar');}
   function ajusteCanCancelarAberto(){return aaCanAny('ajustes_cancelar_aberto','ajustes_finalizar');}
   function ajusteCanCancelarAprovado(){return aaCanAny('ajustes_cancelar_aprovado','ajustes_finalizar');}
-  function ajusteCanMarcarFeito(){return aaCanAny('ajustes_marcar_feito','ajustes_finalizar');}
+  function ajusteCanMarcarFeito(){return aaCanAny('ajustes_marcar_feito','ajustes_finalizar','ajustes_confirmar');}
   function ajusteCanSlaGerenciar(){return aaCanAny('ajustes_sla_gerenciar','ajustes_analisar')||isGeneralProfile(rhCurrentProfile)||aaIsAdministrator();}
   function ajusteCanComentar(){return aaCanAny('ajustes_comentar','ajustes_analisar','ajustes_confirmar')||isGeneralProfile(rhCurrentProfile);}
   function ajusteComentarioDomId(id){return 'aa-ajuste-comentario-'+String(id||'').replace(/[^a-zA-Z0-9_-]/g,'_');}
