@@ -840,9 +840,6 @@ const ADMIN_PASS = '';
     {key:'ajustes_modelos_gerenciar', label:'Solicitação de Ajuste — administrar modelos de descrição', group:'Solicitação de Ajuste', kind:'Administrar', description:'Permite criar, editar e excluir modelos usados para preencher descrições de ajustes.'},
     {key:'ajustes_filtros_avancados', label:'Solicitação de Ajuste — usar filtros avançados', group:'Solicitação de Ajuste', kind:'Visualizar', description:'Permite filtrar ajustes por status, operação, responsável e período.'},
     {key:'ajustes_exportar', label:'Solicitação de Ajuste — exportar relatório', group:'Solicitação de Ajuste', kind:'Exportar', description:'Permite exportar os ajustes filtrados em CSV compatível com Excel.'},
-    {key:'rda_ver', label:'RDA — visualizar relatórios diários', group:'RDA', kind:'Visualizar', description:'Permite abrir a página de Relatório Diário de Atividades.'},
-    {key:'rda_registrar', label:'RDA — registrar e editar o relatório do dia', group:'RDA', kind:'Criar', description:'Permite preencher o próprio RDA do dia até o encerramento automático.'},
-    {key:'rda_todos', label:'RDA — visualizar relatórios de todos os colaboradores', group:'RDA', kind:'Administrar', description:'Permite ao perfil Administração consultar os RDAs de todos os colaboradores.'},
     {key:'ajustes_sla_gerenciar', label:'Solicitação de Ajuste — configurar prazos SLA', group:'Solicitação de Ajuste', kind:'Administrar', description:'Permite definir os prazos de análise e aprovação e identificar ajustes atrasados.'},
     {key:'ajustes_backup', label:'Solicitação de Ajuste — baixar e restaurar backup', group:'Solicitação de Ajuste', kind:'Administrar', description:'Permite baixar uma cópia JSON e restaurar ajustes preservando o histórico.'},
     {key:'ajustes_ver_finalizados', label:'Solicitação de Ajuste — consultar ajustes finalizados', group:'Solicitação de Ajuste', kind:'Visualizar', description:'Permite consultar ajustes aprovados e encerrados como Ajuste feito.'},
@@ -914,7 +911,7 @@ const LEGACY_PERMISSION_MAP = {
 };
 const RH_TAB_PERMISSION = {
   dashboard:'dashboard_ver', agendas:'agendas_ativas_ver', agendas2:'agendas_desativadas_ver',
-  banco:'banco_ver', rda:'rda_ver', historico:'historico_ver', config:'config_ver', ajustes:'ajustes_solicitar', permissoes:'usuarios_ver', operacoes:'perfis_gerenciar', perfis:'usuarios_ver', portal:'portal_escala_ver'
+  banco:'banco_ver', historico:'historico_ver', config:'config_ver', ajustes:'ajustes_solicitar', permissoes:'usuarios_ver', operacoes:'perfis_gerenciar', perfis:'usuarios_ver', portal:'portal_escala_ver'
 };
 function normalizePermissionKeys(keys){
   const out=[];
@@ -1970,7 +1967,7 @@ function aaApplyRHPermissionsUI(){
   });
 }
 function aaFirstAllowedRHTab(){
-  return ['dashboard','agendas','agendas2','banco','rda','historico','config','permissoes'].find(tab=>aaCan(RH_TAB_PERMISSION[tab])) || null;
+  return ['dashboard','agendas','agendas2','banco','historico','config','permissoes'].find(tab=>aaCan(RH_TAB_PERMISSION[tab])) || null;
 }
 window.aaRHLogout = async function(){
   await supabase.auth.signOut();
