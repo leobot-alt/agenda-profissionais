@@ -2202,17 +2202,8 @@ window.aaDeleteOperacao=async function(key){
 window.aaSwitchRHTab = function(tab){
   if(!aaCan(RH_TAB_PERMISSION[tab])) return;
   document.querySelectorAll('[data-rhtab]').forEach(t=>t.classList.toggle('active', t.dataset.rhtab===tab));
-  document.getElementById('aa-rhtab-dashboard').style.display = tab==='dashboard' ? 'block' : 'none';
-  document.getElementById('aa-rhtab-agendas').style.display = tab==='agendas' ? 'block' : 'none';
-  document.getElementById('aa-rhtab-agendas2').style.display = tab==='agendas2' ? 'block' : 'none';
-  document.getElementById('aa-rhtab-banco').style.display = tab==='banco' ? 'block' : 'none';
-  document.getElementById('aa-rhtab-rda').style.display = tab==='rda' ? 'block' : 'none';
-  document.getElementById('aa-rhtab-historico').style.display = tab==='historico' ? 'block' : 'none';
-  document.getElementById('aa-rhtab-config').style.display = tab==='config' ? 'block' : 'none';
-  document.getElementById('aa-rhtab-permissoes').style.display = tab==='permissoes' ? 'block' : 'none';
-  document.getElementById('aa-rhtab-operacoes').style.display = tab==='operacoes' ? 'block' : 'none';
-  document.getElementById('aa-rhtab-perfis').style.display = tab==='perfis' ? 'block' : 'none';
-  document.getElementById('aa-rhtab-portal').style.display = tab==='portal' ? 'block' : 'none';
+  document.querySelectorAll('#aa-rh-authed-content .aa-rh-subpanel').forEach(panel=>panel.style.display='none');
+  const activePanel=document.getElementById('aa-rhtab-'+tab);if(activePanel)activePanel.style.display='block';
   if(tab==='dashboard'){ if(typeof window.aaResetDashboardPeriodoAtual==='function')window.aaResetDashboardPeriodoAtual(); window.aaRenderDashboard().catch(function(e){ const el=document.getElementById('aa-dashboard-content'); if(el) el.innerHTML='<div class="aa-error-msg">Não foi possível carregar o Dashboard agora. Tente novamente.</div>'; console.error(e); }); }
   if(tab==='agendas') window.aaLoadAdminData();
   if(tab==='agendas2') window.aaLoadAdminData().then(()=>aaRenderAdminList2()).catch(function(e){ const el=document.getElementById('aa-admin-list-wrap-2'); if(el) el.innerHTML='<div class="aa-error-msg">Não foi possível carregar Agendas Desativadas agora.</div>'; console.error(e); });
@@ -3740,7 +3731,7 @@ window.aaSwitchRHTab=function(tab){
   if(tab==='controler'){
     if(!aaControlerAllowed())return;
     document.querySelectorAll('[data-rhtab]').forEach(t=>t.classList.toggle('active',t.dataset.rhtab==='controler'));
-    ['dashboard','agendas','agendas2','banco','rda','historico','config','portal'].forEach(key=>{const el=document.getElementById('aa-rhtab-'+key);if(el)el.style.display='none';});
+    ['dashboard','agendas','agendas2','banco','rda','historico','config','portal','ajustes'].forEach(key=>{const el=document.getElementById('aa-rhtab-'+key);if(el)el.style.display='none';});
     const panel=document.getElementById('aa-rhtab-controler');if(panel)panel.style.display='block';
     aaEnsureControlerSources();aaSwitchControlerTab('permissoes');return;
   }
