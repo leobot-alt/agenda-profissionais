@@ -480,6 +480,8 @@
           <button class="aa-tab" data-rhtab="portal" onclick="aaSwitchRHTab('portal')">Portal</button>
           <button class="aa-tab" data-rhtab="controler" onclick="aaSwitchRHTab('controler')">Administração</button>
         </div>
+        <main id="aa-rh-page-mount" aria-live="polite"></main>
+        <div id="aa-rh-page-cache" aria-hidden="true"></div>
 
         <div class="aa-rh-subpanel" id="aa-rhtab-ajustes" style="display:none;">
           <div class="aa-card">
@@ -4603,7 +4605,16 @@ window.aaRenderProfissionaisList=function(){
   const originalTab=window.aaSwitchTab;
   window.aaSwitchTab=function(tab){originalTab(tab);if(!routing)setHash(tab);};
   const originalRH=window.aaSwitchRHTab;
-  window.aaSwitchRHTab=function(tab){originalRH(tab);if(!routing){if(tab==='ajustes')setHash('painel/ajustes');else if(tab==='banco')setHash('painel/profissionais');else if(tab==='permissoes')setHash('painel/usuarios');else setHash('painel/'+tab);}};
+  const pageId=tab=>'aa-rhtab-'+tab;
+  function mountRHPage(tab){
+    const mount=document.getElementById('aa-rh-page-mount'),cache=document.getElementById('aa-rh-page-cache');
+    if(!mount||!cache)return;
+    const panels=[...document.querySelectorAll('.aa-rh-subpanel')];
+    panels.forEach(panel=>{if(panel!==mount&&panel!==cache&&panel.parentElement!==cache)cache.appendChild(panel);panel.style.display='none';panel.hidden=true;});
+    const active=document.getElementById(pageId(tab));
+    if(active){mount.appendChild(active);active.hidden=false;active.style.display='block';}
+  }
+  window.aaSwitchRHTab=function(tab){originalRH(tab);mountRHPage(tab);if(!routing){if(tab==='ajustes')setHash('painel/ajustes');else if(tab==='banco')setHash('painel/profissionais');else if(tab==='permissoes')setHash('painel/usuarios');else setHash('painel/'+tab);}};
   function apply(){
     const route=clean(location.hash),parts=route.split('/');
     if(!route||['enviar','consultar','painel'].includes(route)){routing=true;originalTab(route||'enviar');routing=false;return;}
