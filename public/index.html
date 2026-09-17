@@ -4638,7 +4638,7 @@ window.aaRenderProfissionaisList=function(){
 const E={scale:null};
 const mes=()=>document.getElementById('aa-escala-mes').value||new Date().toISOString().slice(0,7);
 const portalState=()=>window.__aaPortalState||{};const uid=()=>String((portalState().profile&&portalState().profile.auth_user_id)||'');
-const manager=()=>{const p=portalState().profile||{};const n=String(p.perfil||'').toLowerCase();return /admin|gest[aã]o|gestor|coordenador/.test(n)||!!portalState().canManage;};const canPanorama=()=>manager()||!!portalState().canPanorama;
+const manager=()=>{const p=portalState().profile||{};const n=String(p.perfil||'').toLowerCase();return /admin|gest[aã]o|gestor|coordenador|rh|recursos humanos/.test(n)||!!portalState().canManage;};const canPanorama=()=>manager()||!!portalState().canPanorama;
 const users=()=>((portalState().users||[]).filter(u=>u.ativo!==false&&!u.removido&&(u.auth_user_id||u.authUserId)));
 const uname=id=>{const u=users().find(x=>String(x.auth_user_id||x.authUserId)===String(id));return u?.nomeCompleto||u?.username||u?.email||id;};
 const dateBR=value=>{const m=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:String(value||'');};
