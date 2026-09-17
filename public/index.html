@@ -478,7 +478,7 @@
           <button class="aa-tab" data-rhtab="banco" onclick="aaSwitchRHTab('banco')">Banco de Dados</button>
           <button class="aa-tab" data-rhtab="ajustes" onclick="aaSwitchRHTab('ajustes')">Solicitação de Ajuste</button>
           <button class="aa-tab" data-rhtab="portal" onclick="aaSwitchRHTab('portal')">Portal</button>
-          <button class="aa-tab" data-rhtab="controler" onclick="aaSwitchRHTab('controler')">Controler</button>
+          <button class="aa-tab" data-rhtab="controler" onclick="aaSwitchRHTab('controler')">Administração</button>
         </div>
 
         <div class="aa-rh-subpanel" id="aa-rhtab-ajustes" style="display:none;">
@@ -488,7 +488,7 @@
             <div class="aa-adjust-tabs">
               <button class="aa-adjust-tab aa-adjust-tab-highlight" data-ajustetab="pesquisa" onclick="aaSwitchAjusteTab('pesquisa')">Pesquisar todos</button>
               <button class="aa-adjust-tab aa-adjust-tab-highlight active" data-ajustetab="abrir" onclick="aaSwitchAjusteTab('abrir')">Nova solicitação</button>
-              <button class="aa-adjust-tab" data-ajustetab="analise" onclick="aaSwitchAjusteTab('analise')">Em Analise</button>
+              <button class="aa-adjust-tab" data-ajustetab="analise" onclick="aaSwitchAjusteTab('analise')">Em análise</button>
               <button class="aa-adjust-tab" data-ajustetab="aprovados" onclick="aaSwitchAjusteTab('aprovados')">Aprovados</button>
               <button class="aa-adjust-tab" data-ajustetab="finalizados" onclick="aaSwitchAjusteTab('finalizados')">Finalizados</button>
               <button class="aa-adjust-tab" data-ajustetab="recusados-cancelados" onclick="aaSwitchAjusteTab('recusados-cancelados')">Recusados e Cancelados</button>
@@ -744,7 +744,7 @@
         <div class="aa-rh-subpanel" id="aa-rhtab-controler" style="display:none;">
           <div class="aa-card">
             <div class="aa-lookup-head">
-              <div><h2 style="margin:0;">Controler</h2></div>
+              <div><h2 style="margin:0;">Administração</h2></div>
             </div>
             <div class="aa-tabs aa-controler-tabs" style="margin-bottom:18px;">
               <button class="aa-tab active" data-controlertab="permissoes" onclick="aaSwitchControlerTab('permissoes')">Usuários e permissões</button>
@@ -4562,6 +4562,34 @@ window.aaRenderProfissionaisList=function(){
   .aa-reconferencia-alert{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;background:#FBE6EA;color:#B4233B;border:1px solid #E8A9B4;font-size:11px;font-weight:900;letter-spacing:.02em}
   .aa-reconferencia-alert::before{content:'!';display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#C6283D;color:#fff;font-size:10px}
   .aa-adjust-compact-actions{display:inline-flex;align-items:center;margin-left:auto}
+</style>
+<style id="aa-visual-improvements">
+  #aa-rhtab-portal>.aa-card{border:0;box-shadow:0 12px 30px rgba(55,42,105,.10);padding:24px;background:linear-gradient(180deg,#fff 0%,#fbfaff 100%)}
+  #aa-rhtab-portal .aa-lookup-head{padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:4px}
+  #aa-rhtab-portal .aa-lookup-head h2{font-size:24px;letter-spacing:-.02em}
+  #aa-rhtab-portal .aa-field label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);font-weight:900}
+  #aa-rhtab-portal #aa-escala-mes,#aa-rhtab-portal #aa-escala-usuario{min-height:44px;border-radius:10px;border:1px solid #CFC5EA;background:#fff;font-size:14px}
+  #aa-rhtab-portal .aa-scale-empty{padding:22px;text-align:center;border:1px dashed #CFC5EA;border-radius:12px;background:#FAF9FF;color:var(--ink-soft);font-size:14px}
+  #aa-rhtab-portal .aa-scale-week-summary,#aa-rhtab-portal .aa-scale-saturday,#aa-rhtab-portal .aa-scale-exceptional{box-shadow:0 4px 14px rgba(55,42,105,.05)}
+  #aa-rhtab-portal .aa-actions-row{gap:9px;flex-wrap:wrap}
+  #aa-rhtab-portal .aa-scale-request{margin-top:18px;padding:18px;border:1px solid #CFE8DD;border-radius:12px;background:#F5FCF8}
+  #aa-rhtab-portal .aa-scale-request textarea{min-height:110px;font-size:14px;line-height:1.55}
+  #aa-portal-panorama{padding-top:4px}
+  .aa-table-scroll,.aa-table-wrap,.aa-scale-grid-wrap{overflow:auto;max-width:100%;border-radius:10px}
+  .aa-compact-table,.aa-subs-table,.aa-scale-grid{border-collapse:separate;border-spacing:0;width:100%;min-width:640px}
+  .aa-compact-table th,.aa-subs-table th,.aa-scale-grid th{position:sticky;top:0;z-index:2;background:#243F72;color:#fff;font-size:11px;letter-spacing:.03em;text-transform:uppercase;padding:11px 12px;text-align:left}
+  .aa-compact-table td,.aa-subs-table td,.aa-scale-grid td{padding:11px 12px;border-bottom:1px solid #ECE8F5;background:#fff;font-size:13px;vertical-align:middle}
+  .aa-compact-table tr:hover td,.aa-subs-table tr:hover td,.aa-scale-grid tbody tr:hover td{background:#FAF9FF}
+  #aa-rh-login-card{border:0;box-shadow:0 12px 30px rgba(55,42,105,.10);background:linear-gradient(135deg,#fff 0%,#FAF9FF 100%)}
+  #aa-rh-login-card h2{font-size:24px;letter-spacing:-.02em}
+  #aa-rh-login-card input{min-height:46px;border-radius:10px;font-size:15px}
+  #aa-rh-login-card input:focus,#aa-rhtab-portal input:focus,#aa-rhtab-portal select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(108,79,224,.14)}
+  #aa-rh-login-card .aa-btn-primary{min-height:44px;min-width:116px}
+  #aa-ajuste-tab-abrir .aa-rich-content{min-height:190px;font-size:16px;line-height:1.7;letter-spacing:.01em}
+  #aa-ajuste-tab-abrir .aa-rich-content:focus{outline:none;background:#FCFBFF;box-shadow:inset 0 0 0 2px rgba(108,79,224,.16)}
+  .aa-admin-toolbar{gap:12px;align-items:flex-end}
+  .aa-hint{line-height:1.5}
+  @media(max-width:760px){#aa-rhtab-portal>.aa-card{padding:17px}#aa-rhtab-portal .aa-field-row{grid-template-columns:1fr!important}#aa-rhtab-portal .aa-actions-row{justify-content:stretch}#aa-rhtab-portal .aa-actions-row .aa-btn{flex:1}#aa-rh-login-card{padding:20px 16px}}
 </style>
 <style id="aa-user-profile-ficha-styles">
 .aa-user-ficha-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px;padding:10px;border:1px solid #E1DCF3;border-radius:10px;background:#FAF9FD}.aa-user-ficha-summary span{display:flex;flex-direction:column;gap:2px;min-width:0}.aa-user-ficha-summary small{font-size:10px;text-transform:uppercase;color:var(--ink-faint);font-weight:800}.aa-user-ficha-summary b{font-size:12.5px;overflow-wrap:anywhere}@media(max-width:640px){.aa-user-ficha-summary{grid-template-columns:1fr}}
