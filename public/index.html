@@ -911,7 +911,7 @@ const ADMIN_PASS = '';
   function blocoLabel(value,operation){ const key=normalizeBlocoKey(value,operation),cfg=operationBlocks(operation).find(b=>b.key===key); return cfg&&cfg.nome ? cfg.nome : (key ? (['A','B','C','D','E'].includes(key)?'Bloco '+key:key) : 'Bloco não informado'); }
   function isGeneralProfile(profile){ return ['administrador_geral','administrativo'].includes(normalizePerfil(profile&&profile.perfil)); }
   function isAdminProfile(profile){ const key=normalizePerfil(profile&&profile.perfil); return ['administrador','administrador_geral','administrativo'].includes(key) || normalizePermissionKeys((allPerfis[key]&&allPerfis[key].permissions)||profile&&profile.permissions||[]).includes('usuarios_remover'); }
-  function profilePermissions(profile){ const key=normalizePerfil(profile&&profile.perfil); if(isGeneralProfile(profile)) return PERMISSOES.map(p=>p.key); const base=normalizePermissionKeys((allPerfis[key]&&allPerfis[key].permissions)||profile&&profile.permissions||[]); return base; }
+  function profilePermissions(profile){ const key=normalizePerfil(profile&&profile.perfil); if(isGeneralProfile(profile) && String(profile&&profile.username||'').toLowerCase()===String(ADMIN_EMAIL||'').toLowerCase()) return PERMISSOES.map(p=>p.key); const source=Array.isArray(profile&&profile.permissions)?profile.permissions:((allPerfis[key]&&allPerfis[key].permissions)||[]); return normalizePermissionKeys(source); }
   function recordOperacao(record){ if(record&&record.operacao) return normalizeOperacao(record.operacao); const p=allProfissionais.find(x=>record&&(x.id===record.profissionalId||normText(x.usuarioMedicina)===normText(record.usuario))); return normalizeOperacao(p&&p.operacao); }
   function currentUserOperacao(){ return normalizeOperacao(rhCurrentProfile&&rhCurrentProfile.operacao); }
   function aaCanSeeOperation(operation){ const op=normalizeOperacao(operation); return isGeneralProfile(rhCurrentProfile) || (!!currentUserOperacao() && currentUserOperacao()===op); }
@@ -1964,7 +1964,7 @@ async function aaCheckCurrentUserAccess(){
   }catch(e){ console.warn('Não foi possível conferir o status do usuário agora.',e); }
   return true;
 }
-function aaCan(permission){ return rhAuthenticated && (isGeneralProfile(rhCurrentProfile)||rhCurrentPermissions.includes(permission)) && (!rhCurrentProfile || (rhCurrentProfile.ativo!==false && perfilAtivo(rhCurrentProfile.perfil))); }
+function aaCan(permission){ const root=String(rhCurrentUser||'').toLowerCase()===String(ADMIN_EMAIL||'').toLowerCase(); return rhAuthenticated && (root||rhCurrentPermissions.includes(permission)) && (!rhCurrentProfile || (rhCurrentProfile.ativo!==false && perfilAtivo(rhCurrentProfile.perfil))); }
 function aaCanAny(){ return [...arguments].some(permission=>aaCan(permission)); }
 function aaCanPerfilAction(action){ return aaCanAny('perfis_gerenciar','perfis_'+action); }
 function aaCanOperacoes(){ return aaCanAny('perfis_gerenciar','operacoes_gerenciar'); }
