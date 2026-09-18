@@ -909,9 +909,9 @@ const ADMIN_PASS = '';
   function normalizeBlocoKey(value,operation){ const raw=String(value||'').trim(); if(!raw)return ''; const clean=raw.replace(/^BLOCO\s*/i,'').trim(); const scopedBlocks=operation?operationBlocks(operation):[]; const blocks=scopedBlocks.length?scopedBlocks:Object.values(allOperacoes).flatMap(op=>operationBlocks(op.key)); const opBlock=blocks.find(b=>String(b.key).toLowerCase()===raw.toLowerCase()||String(b.nome).trim().toLowerCase()===raw.toLowerCase()); return opBlock?opBlock.key:(['A','B','C','D','E'].includes(clean.toUpperCase())?clean.toUpperCase():raw); }
   function operacaoLabel(value){ const op=normalizeOperacao(value),cfg=allOperacoes[op]; return cfg&&cfg.nome ? cfg.nome : (op ? 'Operação '+op : 'Sem operação'); }
   function blocoLabel(value,operation){ const key=normalizeBlocoKey(value,operation),cfg=operationBlocks(operation).find(b=>b.key===key); return cfg&&cfg.nome ? cfg.nome : (key ? (['A','B','C','D','E'].includes(key)?'Bloco '+key:key) : 'Bloco não informado'); }
-  function isGeneralProfile(profile){ return ['administrador_geral','administrativo'].includes(normalizePerfil(profile&&profile.perfil)); }
-  function isAdminProfile(profile){ const key=normalizePerfil(profile&&profile.perfil); return ['administrador','administrador_geral','administrativo'].includes(key) || normalizePermissionKeys((allPerfis[key]&&allPerfis[key].permissions)||profile&&profile.permissions||[]).includes('usuarios_remover'); }
-  function profilePermissions(profile){ const key=normalizePerfil(profile&&profile.perfil); if(isGeneralProfile(profile) && String(profile&&profile.username||'').toLowerCase()===String(ADMIN_EMAIL||'').toLowerCase()) return PERMISSOES.map(p=>p.key); const source=Array.isArray(profile&&profile.permissions)?profile.permissions:((allPerfis[key]&&allPerfis[key].permissions)||[]); return normalizePermissionKeys(source); }
+  function isGeneralProfile(profile){ return String(profile&&profile.username||'').trim().toLowerCase()===String(ADMIN_EMAIL||'').trim().toLowerCase(); }
+  function isAdminProfile(profile){ const key=normalizePerfil(profile&&profile.perfil); return isGeneralProfile(profile) || normalizePermissionKeys((allPerfis[key]&&allPerfis[key].permissions)||[]).includes('usuarios_remover'); }
+  function profilePermissions(profile){ const key=normalizePerfil(profile&&profile.perfil); if(isGeneralProfile(profile)) return PERMISSOES.map(p=>p.key); return normalizePermissionKeys((allPerfis[key]&&allPerfis[key].permissions)||[]); }
   function recordOperacao(record){ if(record&&record.operacao) return normalizeOperacao(record.operacao); const p=allProfissionais.find(x=>record&&(x.id===record.profissionalId||normText(x.usuarioMedicina)===normText(record.usuario))); return normalizeOperacao(p&&p.operacao); }
   function currentUserOperacao(){ return normalizeOperacao(rhCurrentProfile&&rhCurrentProfile.operacao); }
   function aaCanSeeOperation(operation){ const op=normalizeOperacao(operation); return isGeneralProfile(rhCurrentProfile) || (!!currentUserOperacao() && currentUserOperacao()===op); }
@@ -4638,7 +4638,7 @@ window.aaRenderProfissionaisList=function(){
 const E={scale:null};
 const mes=()=>document.getElementById('aa-escala-mes').value||new Date().toISOString().slice(0,7);
 const portalState=()=>window.__aaPortalState||{};const uid=()=>String((portalState().profile&&portalState().profile.auth_user_id)||'');
-const manager=()=>{const p=portalState().profile||{};const n=String(p.perfil||'').toLowerCase();return /admin|gest[aã]o|gestor|coordenador|rh|recursos humanos/.test(n)||!!portalState().canManage;};const canPanorama=()=>manager()||!!portalState().canPanorama;
+const manager=()=>!!portalState().canManage;const canPanorama=()=>manager()||!!portalState().canPanorama;
 const users=()=>((portalState().users||[]).filter(u=>u.ativo!==false&&!u.removido&&(u.auth_user_id||u.authUserId)));
 const uname=id=>{const u=users().find(x=>String(x.auth_user_id||x.authUserId)===String(id));return u?.nomeCompleto||u?.username||u?.email||id;};
 const dateBR=value=>{const m=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:String(value||'');};
