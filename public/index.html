@@ -894,10 +894,11 @@ const ADMIN_PASS = '';
   const PERFIL_DEFINICOES_PADRAO = {
     colaborador: {nome:'Colaborador', descricao:'Acesso operacional limitado à operação atribuída, com abertura, edição dos próprios ajustes em aberto antes da confirmação, acompanhamento dos ajustes e registro diário de atividades.', permissions:['dashboard_ver','agendas_ativas_ver','banco_ver','ajustes_solicitar','ajustes_ver_abertos','ajustes_editar_aberto','ajustes_ver_aprovados','ajustes_ver_recusados','ajustes_ver_cancelados','ajustes_ver_finalizados','ajustes_ver_historico','ajustes_comentar','ajustes_indicadores','portal_escala_ver','portal_escala_aceitar','portal_escala_solicitar']},
     administrador: {nome:'Administrador', descricao:'Acesso amplo de gestão, sem remoção definitiva de usuários nem administração de perfis e operações.', permissions:PERMISSOES.map(p=>p.key).filter(k=>!['usuarios_remover','perfis_gerenciar','perfis_criar','perfis_editar','perfis_status','perfis_excluir','operacoes_gerenciar'].includes(k))},
-    administrador_geral: {nome:'Administrador geral', descricao:'Acesso total às operações, perfis, usuários e configurações.', permissions:PERMISSOES.map(p=>p.key)}
+    administrador_geral: {nome:'Administrador geral', descricao:'Acesso total às operações, perfis, usuários e configurações.', permissions:PERMISSOES.map(p=>p.key)},
+    gestao: {nome:'Gestão', descricao:'Acesso de gestão operacional, incluindo escalas, aceite da própria escala, ajustes e panorama da equipe.', permissions:PERMISSOES.map(p=>p.key).filter(k=>!['usuarios_remover','perfis_gerenciar','perfis_criar','perfis_editar','perfis_status','perfis_excluir','operacoes_gerenciar'].includes(k))}
   };
   let allPerfis = JSON.parse(JSON.stringify(PERFIL_DEFINICOES_PADRAO));
-  const PERFIL_ALIASES = {administrativo:'administrador_geral', admin:'administrador', administrador_geral:'administrador_geral', administrador:'administrador', colaborador:'colaborador'};
+  const PERFIL_ALIASES = {administrativo:'administrador_geral', admin:'administrador', administrador_geral:'administrador_geral', administrador:'administrador', gestao:'gestao', 'gestão':'gestao', colaborador:'colaborador'};
   function normalizePerfil(value){
     const raw=String(value||'').trim(), lower=raw.toLowerCase();
     if(PERFIL_ALIASES[lower]) return PERFIL_ALIASES[lower];
