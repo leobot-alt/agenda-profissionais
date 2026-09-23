@@ -329,14 +329,14 @@
       <div class="aa-header-left">
         <div class="aa-brand-badge">somente</div>
         <div>
-          <h1>Painel de Agenda</h1>
+          <h1>Painel RH Clínico</h1>
           
         </div>
       </div>
       <div class="aa-tabs">
         <button class="aa-tab active" data-tab="enviar" onclick="aaSwitchTab('enviar')">Enviar agenda</button>
         <button class="aa-tab" data-tab="consultar" onclick="aaSwitchTab('consultar')">Consultar agenda</button>
-        <button class="aa-tab" data-tab="painel" onclick="aaSwitchTab('painel')">Painel RH</button>
+        <button class="aa-tab" data-tab="painel" onclick="aaSwitchTab('painel')">Painel RH Clínico</button>
       </div>
     </div>
 
@@ -476,7 +476,7 @@
           <button class="aa-tab active" data-rhtab="dashboard" onclick="aaSwitchRHTab('dashboard')">Dashboard</button>
           <button class="aa-tab" data-rhtab="agendas" onclick="aaSwitchRHTab('agendas')">Agendas Ativas</button>
           <button class="aa-tab" data-rhtab="banco" onclick="aaSwitchRHTab('banco')">Banco de Dados</button>
-          <button class="aa-tab" data-rhtab="ajustes" onclick="aaSwitchRHTab('ajustes')">Solicitação de Ajuste</button>
+          <button class="aa-tab" data-rhtab="ajustes" onclick="aaSwitchRHTab('ajustes')">Ajuste de Agenda</button><button class="aa-tab" data-rhtab="registros" onclick="aaSwitchRHTab('registros')">Registros de Agenda</button>
           <button class="aa-tab" data-rhtab="portal" onclick="aaSwitchRHTab('portal')">Portal</button>
           <button class="aa-tab" data-rhtab="controler" onclick="aaSwitchRHTab('controler')">Administração</button>
         </div>
@@ -485,7 +485,7 @@
 
         <div class="aa-rh-subpanel" id="aa-rhtab-ajustes" style="display:none;">
           <div class="aa-card">
-            <h2>Solicitação de Ajuste</h2>
+            <h2>Ajuste de Agenda</h2>
             
             <div class="aa-adjust-tabs">
               <button class="aa-adjust-tab aa-adjust-tab-highlight" data-ajustetab="pesquisa" onclick="aaSwitchAjusteTab('pesquisa')">Pesquisar todos</button>
@@ -527,6 +527,11 @@
 
         </div>
         </div>
+
+        <div class="aa-rh-subpanel" id="aa-rhtab-registros" style="display:none;">
+<div class="aa-card"><h2>Registros de Agenda</h2><p class="aa-hint">Registre e consulte ocorrências por data. Este módulo não possui análise, aprovação ou recusa.</p>
+<div class="aa-adjust-form"><h3>Novo registro</h3><div class="aa-field-row"><div class="aa-field"><label>Profissional</label><select id="aa-registro-profissional"><option value="">Carregando...</option></select></div><div class="aa-field"><label>Data de referência</label><input type="date" id="aa-registro-data"></div><div class="aa-field"><label>Tipo de remanejamento</label><select id="aa-registro-tipo"><option value="">Selecione</option><option value="remanejado">Remanejado</option><option value="distrato">Distrato</option></select></div></div><div class="aa-field-row" style="grid-template-columns:1fr 2fr;margin-top:12px"><div class="aa-field"><label>Motivo</label><input type="text" id="aa-registro-motivo" maxlength="300" placeholder="Informe o motivo"></div><div class="aa-field"><label>Observações (opcional)</label><textarea id="aa-registro-observacao" maxlength="1000" placeholder="Informações adicionais"></textarea></div></div><div class="aa-error-msg" id="aa-registro-err"></div><div class="aa-actions-row" style="justify-content:flex-end"><button type="button" class="aa-btn aa-btn-primary" onclick="aaSalvarRegistroAgenda()">Registrar</button></div></div>
+<div class="aa-admin-toolbar"><div class="aa-admin-filters"><input type="search" id="aa-registro-filtro" placeholder="Pesquisar profissional, motivo ou tipo" oninput="aaRenderRegistrosAgenda()"><input type="date" id="aa-registro-filtro-de" onchange="aaRenderRegistrosAgenda()"><input type="date" id="aa-registro-filtro-ate" onchange="aaRenderRegistrosAgenda()"></div><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaRenderRegistrosAgenda()">Atualizar</button></div><div id="aa-registros-agenda-list"><div class="aa-loading">Carregando registros...</div></div></div></div>
 
         <div class="aa-rh-subpanel active" id="aa-rhtab-dashboard">
           <div class="aa-card">
@@ -938,7 +943,7 @@ const LEGACY_PERMISSION_MAP = {
 };
 const RH_TAB_PERMISSION = {
   dashboard:'dashboard_ver', agendas:'agendas_ativas_ver', agendas2:'agendas_desativadas_ver',
-  banco:'banco_ver', historico:'historico_ver', config:'config_ver', ajustes:'ajustes_solicitar', permissoes:'usuarios_ver', operacoes:'perfis_gerenciar', perfis:'usuarios_ver', portal:'portal_escala_ver'
+  banco:'banco_ver', historico:'historico_ver', config:'config_ver', ajustes:'ajustes_solicitar', registros:'ajustes_solicitar', permissoes:'usuarios_ver', operacoes:'perfis_gerenciar', perfis:'usuarios_ver', portal:'portal_escala_ver'
 };
   const REMOVED_PORTAL_PERMISSIONS = new Set(['portal_escala_solicitar']);
   function normalizePermissionKeys(keys){
@@ -971,13 +976,14 @@ let allProfissionais = [];
 let allRHUsers = [];
 let allHistorico = [];
 let allRDA = [];
+let allRegistrosAgenda = [];
 let rdaFiltroColaborador = '';
 let rdaMesSelecionado = '';
 let allLixeira = [];
 let historicoPagina=1;
 const HISTORICO_PAGE_SIZE=20;
 let historicoFiltrosAtuais={user:'',action:''};
-const dataLoadState={submissions:false,profissionais:false,rhusers:false,historico:false,rda:false,lixeira:false,feriados:false,domingos:false,metas:false,ajustes:false};
+const dataLoadState={submissions:false,profissionais:false,rhusers:false,historico:false,rda:false,lixeira:false,feriados:false,domingos:false,metas:false,ajustes:false,registros:false};
 window.__aaPortalState={get client(){return supabase},get profile(){return rhCurrentProfile},get users(){return allRHUsers},get currentUser(){return rhCurrentUser},get authenticated(){return rhAuthenticated},get canManage(){return typeof aaCan==='function'&&aaCan('portal_escala_gerenciar')},get canPanorama(){return typeof aaCan==='function'&&aaCan('portal_escala_panorama_ver')}};
 const TRASH_RETENTION_DAYS = 60;
 let selectedProtocolos = new Set();
@@ -2209,6 +2215,12 @@ window.aaDeleteOperacao=async function(key){
     aaRenderOperacoes();aaUpdateProfessionalOperationOptions();aaUpdateDashboardOperations();aaToast('Operação excluída com sucesso.','success');
   }catch(e){allOperacoes[key]=snapshot;try{await saveOperacoes();}catch(ignore){}alert('Não foi possível excluir a operação agora.');console.error(e);}
 };
+async function loadRegistrosAgenda(){dataLoadState.registros=false;const res=await cloudGet('db:registros_agenda',true),raw=res&&res.value?JSON.parse(res.value):[];if(!Array.isArray(raw))throw Error('Registros inválidos');allRegistrosAgenda=raw;dataLoadState.registros=true;return raw;}
+async function saveRegistrosAgenda(){await storageSetRetry('db:registros_agenda',JSON.stringify(allRegistrosAgenda),true);}
+function aaRegistroDate(v){const x=String(v||'').split('-');return x.length===3?x[2]+'/'+x[1]+'/'+x[0]:v||'-';}
+function aaRegistroOptions(){const e=document.getElementById('aa-registro-profissional');if(!e)return;e.innerHTML='<option value="">Selecione o profissional</option>'+(allProfissionais||[]).filter(x=>x&&x.id&&x.removido!==true).sort((a,b)=>String(a.nomeCompleto||'').localeCompare(String(b.nomeCompleto||''),'pt-BR')).map(x=>'<option value="'+aaHtmlSafe(x.id)+'">'+aaHtmlSafe(x.nomeCompleto||x.usuarioMedicina||x.id)+'</option>').join('');}
+window.aaRenderRegistrosAgenda=function(){const w=document.getElementById('aa-registros-agenda-list');if(!w)return;const q=(document.getElementById('aa-registro-filtro')?.value||'').toLowerCase(),de=document.getElementById('aa-registro-filtro-de')?.value||'',ate=document.getElementById('aa-registro-filtro-ate')?.value||'',a=(allRegistrosAgenda||[]).filter(x=>(!q||[x.profissionalNome,x.profissionalUsuario,x.tipo,x.motivo,x.observacao].join(' ').toLowerCase().includes(q))&&(!de||x.dataReferencia>=de)&&(!ate||x.dataReferencia<=ate)).sort((a,b)=>String(b.dataReferencia).localeCompare(String(a.dataReferencia)));if(!a.length){w.innerHTML='<div class="aa-empty-state">Nenhum registro de agenda encontrado.</div>';return;}w.innerHTML='<div class="aa-table-scroll"><table class="aa-subs-table"><thead><tr><th>Data</th><th>Profissional</th><th>Tipo</th><th>Motivo</th><th>Observações</th><th>Registrado por</th></tr></thead><tbody>'+a.map(x=>'<tr class="aa-subs-row"><td><b>'+aaHtmlSafe(aaRegistroDate(x.dataReferencia))+'</b></td><td>'+aaHtmlSafe(x.profissionalNome||x.profissionalUsuario||'-')+'<br><small>'+aaHtmlSafe(x.profissionalUsuario||'')+'</small></td><td><span class="aa-status-badge '+(x.tipo==='distrato'?'aa-status-reprovado':'aa-status-aprovado')+'">'+(x.tipo==='distrato'?'Distrato':'Remanejado')+'</span></td><td>'+aaHtmlSafe(x.motivo||'-')+'</td><td>'+aaHtmlSafe(x.observacao||'-')+'</td><td>'+aaHtmlSafe(x.criadoPor||'-')+'</td></tr>').join('')+'</tbody></table></div>';};
+window.aaSalvarRegistroAgenda=async function(){const e=document.getElementById('aa-registro-err'),id=document.getElementById('aa-registro-profissional')?.value||'',d=document.getElementById('aa-registro-data')?.value||'',t=document.getElementById('aa-registro-tipo')?.value||'',m=(document.getElementById('aa-registro-motivo')?.value||'').trim(),o=(document.getElementById('aa-registro-observacao')?.value||'').trim();if(e)e.textContent='';if(!id||!d||!t||!m){if(e)e.textContent='Preencha profissional, data, tipo e motivo.';return;}const p=(allProfissionais||[]).find(x=>String(x.id)===String(id))||{},r={id:'REG-'+Date.now().toString(36).toUpperCase(),profissionalId:id,profissionalNome:p.nomeCompleto||'',profissionalUsuario:p.usuarioMedicina||'',dataReferencia:d,tipo:t,motivo:m,observacao:o,criadoPor:rhCurrentProfile?.nomeCompleto||rhCurrentUser||'Sistema',criadoEm:new Date().toISOString()};allRegistrosAgenda.unshift(r);try{await saveRegistrosAgenda();await aaLogChange('Registro de agenda criado',r.id,(t==='distrato'?'Distrato':'Remanejado')+' em '+aaRegistroDate(d)+' para '+(r.profissionalNome||r.profissionalUsuario));['aa-registro-data','aa-registro-tipo','aa-registro-motivo','aa-registro-observacao'].forEach(i=>{const x=document.getElementById(i);if(x)x.value='';});aaRenderRegistrosAgenda();aaToast('Registro salvo.','success');}catch(x){allRegistrosAgenda.shift();if(e)e.textContent='Não foi possível salvar: '+(x.message||'verifique a conexão.');}};
 window.aaSwitchRHTab = function(tab){
   if(!aaCan(RH_TAB_PERMISSION[tab])) return;
   document.querySelectorAll('[data-rhtab]').forEach(t=>t.classList.toggle('active', t.dataset.rhtab===tab));
@@ -2220,6 +2232,7 @@ window.aaSwitchRHTab = function(tab){
   if(tab==='banco'){ Promise.all([loadOperacoes(),loadProfissionais()]).then(()=>{ window.aaRenderProfissionaisList(); window.aaRenderProfissionaisDesativados(); }).catch(function(error){ const detail=String(error&&error.message||error||'erro desconhecido').slice(0,180); const active=document.getElementById('aa-profissionais-list-wrap'); if(active) active.innerHTML='<div class="aa-error-msg">Não foi possível carregar o Banco de Dados agora.<br><small>Detalhe: '+aaHtmlSafe(detail)+'</small></div>'; const inactive=document.getElementById('aa-profissionais-desativados-wrap'); if(inactive) inactive.innerHTML=''; console.error('Falha ao carregar o Banco de Dados:',error); }); }
   if(tab==='rda'){ window.aaRenderRDA().catch(function(e){ const el=document.getElementById('aa-rda-list-wrap'); if(el) el.innerHTML='<div class="aa-error-msg">Não foi possível carregar os RDAs agora.</div>'; console.error(e); }); }
   if(tab==='historico'){ loadHistorico().then(function(){ populateHistoricoFilters(); window.aaRenderHistorico(); }).catch(function(e){ const el=document.getElementById('aa-historico-list-wrap'); if(el) el.innerHTML='<div class="aa-error-msg">Não foi possível carregar o histórico agora.</div>'; console.error(e); }); }
+  if(tab==='registros'){Promise.all([loadRegistrosAgenda(),loadProfissionais()]).then(()=>{aaRegistroOptions();aaRenderRegistrosAgenda();}).catch(e=>{const x=document.getElementById('aa-registros-agenda-list');if(x)x.innerHTML='<div class="aa-error-msg">Não foi possível carregar os registros.</div>';console.error(e);});}
   if(tab==='permissoes'){ Promise.all([loadRHUsers(),loadPerfis(),loadOperacoes()]).then(()=>aaRenderPermissoes()).catch(function(e){ const el=document.getElementById('aa-permissoes-list-wrap'); if(el) el.innerHTML='<div class="aa-error-msg">Não foi possível carregar os usuários agora.</div>'; console.error(e); }); }
   if(tab==='operacoes'){ Promise.all([loadOperacoes(),loadRHUsers(),loadProfissionais(),loadAllSubmissions()]).then(()=>aaRenderOperacoes()).catch(function(e){ const el=document.getElementById('aa-operacoes-list-wrap'); if(el) el.innerHTML='<div class="aa-error-msg">Não foi possível carregar as operações agora.</div>'; console.error(e); }); }
   if(tab==='perfis'){ loadPerfis().then(()=>aaRenderPerfis()).catch(function(e){ const el=document.getElementById('aa-perfis-list-wrap'); if(el) el.innerHTML='<div class="aa-error-msg">Não foi possível carregar os perfis agora.</div>'; console.error(e); }); }
@@ -4259,7 +4272,7 @@ const aaOriginalRenderDashboard=window.aaRenderDashboard;window.aaRenderDashboar
     if(tab==='ajustes'){
       if(!ajusteCanAccess())return;
       document.querySelectorAll('[data-rhtab]').forEach(t=>t.classList.toggle('active',t.dataset.rhtab==='ajustes'));
-      ['dashboard','agendas','agendas2','banco','rda','historico','config','controler'].forEach(key=>{const el=document.getElementById('aa-rhtab-'+key);if(el)el.style.display='none';});
+      ['dashboard','agendas','agendas2','banco','rda','historico','config','registros','controler'].forEach(key=>{const el=document.getElementById('aa-rhtab-'+key);if(el)el.style.display='none';});
       const panel=document.getElementById('aa-rhtab-ajustes');if(panel)panel.style.display='block';
       aaRenderAjustes().catch(function(error){console.error('Falha ao abrir a aba de ajustes:',error);});return;
     }
@@ -4633,7 +4646,7 @@ window.aaRenderProfissionaisList=function(){
     if(parts[0]!=='painel')return;
     routing=true;originalTab('painel');routing=false;
     if(!rhAuthenticated)return;
-    const target={profissionais:'banco',usuarios:'permissoes',ajustes:'ajustes',operacoes:'operacoes',perfis:'perfis',config:'config',historico:'historico',portal:'portal'}[parts[1]];
+    const target={profissionais:'banco',usuarios:'permissoes',ajustes:'ajustes',operacoes:'operacoes',perfis:'perfis',config:'config',historico:'historico',registros:'registros',portal:'portal'}[parts[1]];
     if(target&&typeof window.aaSwitchRHTab==='function'){routing=true;window.aaSwitchRHTab(target);routing=false;}
   }
   window.addEventListener('hashchange',apply);
