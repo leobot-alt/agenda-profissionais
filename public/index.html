@@ -3737,7 +3737,7 @@ window.aaSwitchControlerTab=function(tab){
 const aaOriginalFirstAllowedRHTab=aaFirstAllowedRHTab;  aaFirstAllowedRHTab=function(){const existing=['dashboard','agendas','banco','rda'].find(tab=>aaCan(RH_TAB_PERMISSION[tab]));return existing|| (aaControlerAllowed()?'controler':null);};
 const aaOriginalApplyRHPermissionsUI=aaApplyRHPermissionsUI;
 aaApplyRHPermissionsUI=function(){ aaOriginalApplyRHPermissionsUI(); const btn=document.querySelector('[data-rhtab="controler"]'); if(btn)btn.style.display=aaControlerAllowed()?'':'none'; };
-const aaOriginalSwitchRHTab=window.aaSwitchRHTab;
+const aaOriginalSwitchRHTab=typeof window.aaSwitchRHTab==='function'?window.aaSwitchRHTab:function(tab){if(typeof aaCan==='function'&&!aaCan(RH_TAB_PERMISSION[tab]))return;document.querySelectorAll('[data-rhtab]').forEach(t=>t.classList.toggle('active',t.dataset.rhtab===tab));document.querySelectorAll('#aa-rh-authed-content .aa-rh-subpanel').forEach(panel=>panel.style.display='none');const active=document.getElementById('aa-rhtab-'+tab);if(active)active.style.display='block';};
 window.aaSwitchRHTab=function(tab){
   if(tab==='controler'){
     if(!aaControlerAllowed())return;
