@@ -1,22 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <title>Agenda Profissionais</title>
-<style id="aa-remanejamento-message-styles">.aa-remanejamento-message-screen{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(29,21,61,.52);backdrop-filter:blur(3px)}.aa-remanejamento-message-card{width:min(560px,calc(100vw - 32px));padding:28px;border:1px solid #e4def3;border-radius:20px;background:#fff;box-shadow:0 24px 70px rgba(25,17,61,.3)}.aa-remanejamento-message-card h2{margin:5px 0 18px;color:#342b55;font-size:21px}.aa-remanejamento-message-kicker{color:#7855d9;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.aa-remanejamento-message-card pre{margin:0 0 22px;padding:16px;border:1px solid #e5e0f2;border-radius:12px;background:#faf9ff;color:#342b55;font:500 14px/1.7 inherit;white-space:pre-wrap;overflow-wrap:anywhere}.aa-remanejamento-message-card .aa-btn{min-width:100px}@media(max-width:640px){.aa-remanejamento-message-card{padding:21px}.aa-remanejamento-message-card h2{font-size:18px}}.aa-registro-data-row input[type=time]{height:38px;border:1px solid #d8d0eb;border-radius:9px;padding:0 9px;font-size:13px;width:125px}.aa-registro-data-row input[type=date]{flex:1}.aa-registro-data-row{align-items:flex-start;flex-wrap:wrap}.aa-registro-horarios{display:flex;min-width:245px}.aa-registro-horario-row{display:flex;gap:5px;align-items:center}.aa-registro-horario-row input[type=time]{width:105px}.aa-registro-horario-row span{font-size:12px;color:var(--ink-soft)}
-</style>
-
-<style id="aa-remanejamento-search-polish">
-#aa-rhtab-registros #aa-registro-profissionais-options{top:76px!important;left:0!important;right:0!important;width:100%;max-height:260px!important;overflow-y:auto;padding:6px!important;background:#fff!important;border:1px solid #ded7ee!important;border-radius:12px!important;box-shadow:0 14px 32px rgba(42,31,83,.16)!important;box-sizing:border-box}
-#aa-rhtab-registros button.aa-professional-search-option{display:block!important;width:100%!important;min-height:0!important;margin:0!important;padding:10px 12px!important;border:0!important;border-bottom:1px solid #f0edf7!important;border-radius:8px!important;background:#fff!important;color:#342b55!important;text-align:left!important;font-family:inherit!important;font-size:13px!important;font-weight:500!important;line-height:1.25!important;white-space:normal!important;cursor:pointer!important;transition:background .15s ease,transform .15s ease}
-#aa-rhtab-registros button.aa-professional-search-option:last-child{border-bottom:0!important}
-#aa-rhtab-registros button.aa-professional-search-option:hover{background:#f5f1ff!important;transform:translateX(2px)}
-#aa-rhtab-registros button.aa-professional-search-option b{display:block!important;margin:0 0 3px!important;color:#342b55!important;font-size:13px!important;font-weight:750!important;line-height:1.3!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#aa-rhtab-registros button.aa-professional-search-option small{display:block!important;margin:0!important;color:#80779a!important;font-size:11px!important;font-weight:500!important;line-height:1.25!important;white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis}
-#aa-rhtab-registros #aa-registro-profissional-busca{height:42px;padding:0 13px;border:1px solid #d8d0eb;border-radius:10px;background:#fff;font-size:14px;box-sizing:border-box;transition:border-color .15s ease,box-shadow .15s ease}
-#aa-rhtab-registros #aa-registro-profissional-busca:focus{border-color:#7855d9;box-shadow:0 0 0 3px rgba(120,85,217,.13);outline:none}
-#aa-rhtab-registros .aa-registro-data-row{padding:5px 0}
-#aa-rhtab-registros .aa-registro-data-row input{height:38px;border:1px solid #d8d0eb;border-radius:9px;padding:0 10px;font-size:13px}
-</style>
-
 <meta name="description" content="Gestão de agendas, escalas e solicitações de profissionais.">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -492,7 +476,7 @@
           <button class="aa-tab active" data-rhtab="dashboard" onclick="aaSwitchRHTab('dashboard')">Dashboard</button>
           <button class="aa-tab" data-rhtab="agendas" onclick="aaSwitchRHTab('agendas')">Agendas Ativas</button>
           <button class="aa-tab" data-rhtab="banco" onclick="aaSwitchRHTab('banco')">Banco de Dados</button>
-          <button class="aa-tab" data-rhtab="ajustes" onclick="aaSwitchRHTab('ajustes')">Ajuste de Agenda</button><button class="aa-tab" data-rhtab="registros" onclick="aaSwitchRHTab('registros')">Remanejamento</button>
+          <button class="aa-tab" data-rhtab="ajustes" onclick="aaSwitchRHTab('ajustes')">Ajuste de Agenda</button>
           <button class="aa-tab" data-rhtab="portal" onclick="aaSwitchRHTab('portal')">Portal</button>
           <button class="aa-tab" data-rhtab="controler" onclick="aaSwitchRHTab('controler')">Administração</button>
         </div>
@@ -543,11 +527,6 @@
 
         </div>
         </div>
-
-        <div class="aa-rh-subpanel" id="aa-rhtab-registros" style="display:none;">
-<div class="aa-card"><h2>Remanejamento</h2><p class="aa-hint">Registre e consulte ocorrências por data. Este módulo não possui análise, aprovação ou recusa.</p>
-<div class="aa-adjust-form"><h3>Novo registro</h3><div class="aa-field-row"><div class="aa-field" style="position:relative"><label>Pesquisar profissional</label><input type="search" id="aa-registro-profissional-busca" placeholder="Digite o nome ou outro dado" autocomplete="off" oninput="aaBuscarProfissionalRegistro(this.value)"><input type="hidden" id="aa-registro-profissional"><div id="aa-registro-profissionais-options" class="aa-professional-search-list" style="display:none;position:absolute;z-index:20;left:0;right:0;top:72px;max-height:230px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 22px rgba(31,23,54,.14)"></div><small>Digite para pesquisar e selecione um profissional do banco de dados.</small></div><div class="aa-field"><label>Datas de referência</label><div id="aa-registro-dias" class="aa-registro-dias"></div><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" style="margin-top:8px" onclick="aaAdicionarDataRegistro()">Adicionar outra data</button></div><div class="aa-field"><label>Tipo de remanejamento</label><select id="aa-registro-tipo"><option value="">Selecione</option><option value="remanejado">Remanejado</option><option value="distrato">Distrato</option></select></div></div><div class="aa-field-row" style="grid-template-columns:1fr 2fr;margin-top:12px"><div class="aa-field"><label>Motivo</label><input type="text" id="aa-registro-motivo" maxlength="300" placeholder="Informe o motivo"></div><div class="aa-field"><label>Observações (opcional)</label><textarea id="aa-registro-observacao" maxlength="1000" placeholder="Informações adicionais"></textarea></div></div><div class="aa-error-msg" id="aa-registro-err"></div><div class="aa-actions-row" style="justify-content:flex-end"><button type="button" class="aa-btn aa-btn-primary" onclick="aaSalvarRegistroAgenda()">Registrar</button></div></div>
-<div class="aa-registro-view-tabs"><button type="button" class="aa-adjust-tab active" data-registro-view="mes" onclick="aaSwitchRegistroView('mes')">Mês atual</button><button type="button" class="aa-adjust-tab" data-registro-view="todos" onclick="aaSwitchRegistroView('todos')">Todos os remanejamentos</button></div><div class="aa-admin-toolbar"><div class="aa-admin-filters"><input type="search" id="aa-registro-filtro" placeholder="Pesquisar profissional, motivo ou tipo" oninput="aaRenderRegistrosAgenda()"><input type="date" id="aa-registro-filtro-de" onchange="aaRenderRegistrosAgenda()"><input type="date" id="aa-registro-filtro-ate" onchange="aaRenderRegistrosAgenda()"></div><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaRenderRegistrosAgenda()">Atualizar</button></div><div id="aa-registros-agenda-list"><div class="aa-loading">Carregando registros...</div></div></div></div>
 
         <div class="aa-rh-subpanel active" id="aa-rhtab-dashboard">
           <div class="aa-card">
@@ -868,9 +847,6 @@ const ADMIN_PASS = '';
     {key:'config_fechamentos_remover', label:'Configurações — remover fechamento manual', group:'Configurações', kind:'Excluir', description:'Permite retirar um fechamento cadastrado.'},
     {key:'historico_ver', label:'Histórico — visualizar alterações e comparações', group:'Consulta e exportação', kind:'Visualizar', description:'Permite consultar quem alterou, quando alterou e os estados Antes/Depois.'},
     {key:'ajustes_solicitar', label:'Solicitação de Ajuste — abrir ajustes', group:'Solicitação de Ajuste', kind:'Criar', description:'Permite criar ajustes informando profissional, mês, data da solicitação e descrição do ajuste.'},
-    {key:'remanejamento_ver', label:'Remanejamento — visualizar registros', group:'Remanejamento', kind:'Visualizar', description:'Permite abrir o módulo e consultar os registros do mês atual.'},
-    {key:'remanejamento_registrar', label:'Remanejamento — registrar ocorrências', group:'Remanejamento', kind:'Criar', description:'Permite registrar ocorrências para um ou mais dias, inclusive em meses diferentes.'},
-    {key:'remanejamento_pesquisar_todos', label:'Remanejamento — consultar todos os registros', group:'Remanejamento', kind:'Visualizar', description:'Permite consultar o histórico completo de remanejamentos.'},
     {key:'ajustes_ver_abertos', label:'Solicitação de Ajuste — consultar ajustes em aberto', group:'Solicitação de Ajuste', kind:'Visualizar', description:'Permite consultar ajustes recém-criados que aguardam encaminhamento para análise.'},
     {key:'ajustes_editar_aberto', label:'Solicitação de Ajuste — editar ajustes em aberto', group:'Solicitação de Ajuste', kind:'Editar', description:'Permite alterar os dados de um ajuste somente enquanto ele estiver em aberto, registrando a última edição e seu responsável.'},
     {key:'ajustes_analisar', label:'Solicitação de Ajuste — analisar, aprovar e recusar', group:'Solicitação de Ajuste', kind:'Administrar', description:'Permissão legada que mantém acesso completo à triagem e decisão dos ajustes.'},
@@ -915,7 +891,7 @@ const ADMIN_PASS = '';
   let OPERACOES = ['A','B','C','D','E'];
   const allOperacoes = {A:{key:'A',nome:'Operação A',blocos:['A','B','C','D','E'].map(k=>({key:k,nome:'Bloco '+k}))},B:{key:'B',nome:'Operação B',blocos:['A','B','C','D','E'].map(k=>({key:k,nome:'Bloco '+k}))},C:{key:'C',nome:'Operação C',blocos:['A','B','C','D','E'].map(k=>({key:k,nome:'Bloco '+k}))},D:{key:'D',nome:'Operação D',blocos:['A','B','C','D','E'].map(k=>({key:k,nome:'Bloco '+k}))},E:{key:'E',nome:'Operação E',blocos:['A','B','C','D','E'].map(k=>({key:k,nome:'Bloco '+k}))}};
   const PERFIL_DEFINICOES_PADRAO = {
-    colaborador: {nome:'Colaborador', descricao:'Acesso operacional limitado à operação atribuída, com consulta da escala mensal e registro diário de atividades.', permissions:['dashboard_ver','agendas_ativas_ver','banco_ver','remanejamento_ver','remanejamento_registrar','remanejamento_pesquisar_todos','ajustes_solicitar','ajustes_ver_abertos','ajustes_editar_aberto','ajustes_ver_aprovados','ajustes_ver_recusados','ajustes_ver_cancelados','ajustes_ver_finalizados','ajustes_ver_historico','ajustes_comentar','ajustes_indicadores','portal_escala_ver','portal_escala_aceitar']},
+    colaborador: {nome:'Colaborador', descricao:'Acesso operacional limitado à operação atribuída, com consulta da escala mensal e registro diário de atividades.', permissions:['dashboard_ver','agendas_ativas_ver','banco_ver','ajustes_solicitar','ajustes_ver_abertos','ajustes_editar_aberto','ajustes_ver_aprovados','ajustes_ver_recusados','ajustes_ver_cancelados','ajustes_ver_finalizados','ajustes_ver_historico','ajustes_comentar','ajustes_indicadores','portal_escala_ver','portal_escala_aceitar']},
     administrador: {nome:'Administrador', descricao:'Acesso amplo de gestão, sem remoção definitiva de usuários nem administração de perfis e operações.', permissions:PERMISSOES.map(p=>p.key).filter(k=>!['usuarios_remover','perfis_gerenciar','perfis_criar','perfis_editar','perfis_status','perfis_excluir','operacoes_gerenciar'].includes(k))},
     administrador_geral: {nome:'Administrador geral', descricao:'Acesso total às operações, perfis, usuários e configurações.', permissions:PERMISSOES.map(p=>p.key)},
     gestao: {nome:'Gestão', descricao:'Acesso de gestão operacional, incluindo lançamento, edição e panorama das escalas.', permissions:PERMISSOES.map(p=>p.key).filter(k=>!['usuarios_remover','perfis_gerenciar','perfis_criar','perfis_editar','perfis_status','perfis_excluir','operacoes_gerenciar'].includes(k))}
@@ -962,7 +938,7 @@ const LEGACY_PERMISSION_MAP = {
 };
 const RH_TAB_PERMISSION = {
   dashboard:'dashboard_ver', agendas:'agendas_ativas_ver', agendas2:'agendas_desativadas_ver',
-  banco:'banco_ver', historico:'historico_ver', config:'config_ver', ajustes:'ajustes_solicitar', registros:'remanejamento_ver', permissoes:'usuarios_ver', operacoes:'perfis_gerenciar', perfis:'usuarios_ver', portal:'portal_escala_ver'
+  banco:'banco_ver', historico:'historico_ver', config:'config_ver', ajustes:'ajustes_solicitar', permissoes:'usuarios_ver', operacoes:'perfis_gerenciar', perfis:'usuarios_ver', portal:'portal_escala_ver'
 };
   const REMOVED_PORTAL_PERMISSIONS = new Set(['portal_escala_solicitar']);
   function normalizePermissionKeys(keys){
@@ -995,14 +971,13 @@ let allProfissionais = [];
 let allRHUsers = [];
 let allHistorico = [];
 let allRDA = [];
-let allRegistrosAgenda = [];
 let rdaFiltroColaborador = '';
 let rdaMesSelecionado = '';
 let allLixeira = [];
 let historicoPagina=1;
 const HISTORICO_PAGE_SIZE=20;
 let historicoFiltrosAtuais={user:'',action:''};
-const dataLoadState={submissions:false,profissionais:false,rhusers:false,historico:false,rda:false,lixeira:false,feriados:false,domingos:false,metas:false,ajustes:false,registros:false};
+const dataLoadState={submissions:false,profissionais:false,rhusers:false,historico:false,rda:false,lixeira:false,feriados:false,domingos:false,metas:false,ajustes:false};
 window.__aaPortalState={get client(){return supabase},get profile(){return rhCurrentProfile},get users(){return allRHUsers},get currentUser(){return rhCurrentUser},get authenticated(){return rhAuthenticated},get canManage(){return typeof aaCan==='function'&&aaCan('portal_escala_gerenciar')},get canPanorama(){return typeof aaCan==='function'&&aaCan('portal_escala_panorama_ver')}};
 const TRASH_RETENTION_DAYS = 60;
 let selectedProtocolos = new Set();
@@ -2234,20 +2209,6 @@ window.aaDeleteOperacao=async function(key){
     aaRenderOperacoes();aaUpdateProfessionalOperationOptions();aaUpdateDashboardOperations();aaToast('Operação excluída com sucesso.','success');
   }catch(e){allOperacoes[key]=snapshot;try{await saveOperacoes();}catch(ignore){}alert('Não foi possível excluir a operação agora.');console.error(e);}
 };
-async function loadRegistrosAgenda(){dataLoadState.registros=false;const res=await cloudGet('db:registros_agenda',true),raw=res&&res.value?JSON.parse(res.value):[];if(!Array.isArray(raw))throw Error('Registros inválidos');allRegistrosAgenda=raw;dataLoadState.registros=true;return raw;}
-async function saveRegistrosAgenda(){await storageSetRetry('db:registros_agenda',JSON.stringify(allRegistrosAgenda),true);}
-function aaRegistroDate(v){const x=String(v||'').split('-');return x.length===3?x[2]+'/'+x[1]+'/'+x[0]:v||'-';}
-function aaHojeMes(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
-window.aaBuscarProfissionalRegistro=function(q){const b=document.getElementById('aa-registro-profissionais-options');if(!b)return;q=normText(q);const a=(allProfissionais||[]).filter(x=>x&&x.id&&[x.nomeCompleto,x.usuarioMedicina,x.email,x.cpf,x.whatsapp,x.dataNascimento,x.medicina,x.canalPoliChat].map(normText).join(' ').includes(q)).slice(0,30);b.innerHTML=a.map(x=>'<button type="button" class="aa-professional-search-option" onclick="aaSelecionarProfissionalRegistro(\''+aaHtmlSafe(x.id)+'\')">'+aaHtmlSafe(x.nomeCompleto||x.usuarioMedicina||x.id)+' <small>'+aaHtmlSafe(x.usuarioMedicina||x.email||'')+'</small></button>').join('')||'<div class="aa-hint" style="padding:10px">Nenhum profissional encontrado.</div>';b.style.display='block';}
-window.aaSelecionarProfissionalRegistro=function(id){const p=(allProfissionais||[]).find(x=>String(x.id)===String(id));if(!p)return;document.getElementById('aa-registro-profissional').value=p.id;document.getElementById('aa-registro-profissional-busca').value=p.nomeCompleto||p.usuarioMedicina||'';document.getElementById('aa-registro-profissionais-options').style.display='none';}
-function aaRegistroOptions(){const allTab=document.querySelector('[data-registro-view=\"todos\"]');if(allTab)allTab.style.display=aaCan('remanejamento_pesquisar_todos')?'':'none';const form=document.querySelector('#aa-rhtab-registros .aa-adjust-form');if(form)form.style.display=aaCan('remanejamento_registrar')?'':'none';aaAtualizarDiasRegistro();}
-window.aaAdicionarDataRegistro=function(value){const box=document.getElementById('aa-registro-dias');if(!box)return;const row=document.createElement('div');row.className='aa-registro-data-row';row.innerHTML='<input type="date" aria-label="Data do remanejamento" value="'+(value||'')+'"><div class="aa-registro-horarios"><div class="aa-registro-horario-row"><input type="time" aria-label="Horário inicial" title="De" placeholder="De"><span>até</span><input type="time" aria-label="Horário final" title="Até" placeholder="Até"><button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" onclick="this.parentElement.remove()">Remover</button></div></div><button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" onclick="this.parentElement.remove()">Remover data</button>';box.appendChild(row);}
-function aaAtualizarDiasRegistro(){const box=document.getElementById('aa-registro-dias');if(!box)return;box.innerHTML='';aaAdicionarDataRegistro('');}
-window.aaSwitchRegistroView=function(v){if(v==='todos'&&!aaCan('remanejamento_pesquisar_todos')){alert('Você não tem permissão para consultar todos os remanejamentos.');return;}document.querySelectorAll('[data-registro-view]').forEach(x=>x.classList.toggle('active',x.dataset.registroView===v));const e=document.getElementById('aa-registros-agenda-list');if(e)e.dataset.view=v;aaRenderRegistrosAgenda();};
-window.aaRenderRegistrosAgenda=function(){const w=document.getElementById('aa-registros-agenda-list');if(!w)return;const view=w.dataset.view||'mes',q=(document.getElementById('aa-registro-filtro')?.value||'').toLowerCase(),mes=aaHojeMes(),a=(allRegistrosAgenda||[]).filter(x=>(view==='todos'||String(x.dataReferencia||'').startsWith(mes))&&(!q||[x.profissionalNome,x.profissionalUsuario,x.tipo,x.motivo,x.observacao].join(' ').toLowerCase().includes(q))).sort((a,b)=>String(b.dataReferencia).localeCompare(String(a.dataReferencia)));if(!a.length){w.innerHTML='<div class="aa-empty-state">Nenhum registro encontrado '+(view==='mes'?'neste mês.':'na consulta geral.')+'</div>';return;}w.innerHTML='<div class="aa-table-scroll"><table class="aa-subs-table"><thead><tr><th>Data</th><th>Profissional</th><th>Tipo</th><th>Motivo</th><th>Observações</th><th>Registrado por</th></tr></thead><tbody>'+a.map(x=>'<tr class="aa-subs-row"><td><b>'+aaHtmlSafe(aaRegistroDate(x.dataReferencia))+'</b></td><td>'+aaHtmlSafe(x.profissionalNome||x.profissionalUsuario||'-')+'<br><small>'+aaHtmlSafe(x.profissionalUsuario||'')+'</small></td><td>'+aaHtmlSafe(x.tipo==='distrato'?'Distrato':'Remanejado')+'</td><td>'+aaHtmlSafe(x.motivo||'-')+'</td><td>'+aaHtmlSafe(x.observacao||'-')+'</td><td>'+aaHtmlSafe(x.criadoPor||'-')+'</td></tr>').join('')+'</tbody></table></div>';};
-window.aaFecharMensagemRemanejamento=function(){const el=document.getElementById('aa-remanejamento-message-screen');if(el)el.remove();};
-window.aaMostrarMensagemRemanejamento=function(message){window.aaFecharMensagemRemanejamento();const screen=document.createElement('div');screen.id='aa-remanejamento-message-screen';screen.className='aa-remanejamento-message-screen';screen.innerHTML='<div class="aa-remanejamento-message-card" role="dialog" aria-modal="true"><div class="aa-remanejamento-message-kicker">Mensagem para envio</div><h2>Enviar mensagem ao grupo de Remanejamento</h2><pre>'+aaHtmlSafe(message)+'</pre><button type="button" class="aa-btn aa-btn-primary" onclick="aaFecharMensagemRemanejamento()">OK</button></div>';document.body.appendChild(screen);};
-window.aaSalvarRegistroAgenda=async function(){if(!aaCan('remanejamento_registrar')){alert('Você não tem permissão para registrar remanejamentos.');return;}const e=document.getElementById('aa-registro-err'),id=document.getElementById('aa-registro-profissional')?.value||'',t=document.getElementById('aa-registro-tipo')?.value||'',m=(document.getElementById('aa-registro-motivo')?.value||'').trim(),o=(document.getElementById('aa-registro-observacao')?.value||'').trim();if(e)e.textContent='';const p=(allProfissionais||[]).find(x=>String(x.id)===String(id))||{},rows=[...document.querySelectorAll('#aa-registro-dias .aa-registro-data-row')].map(row=>({data:row.querySelector('input[type=date]')?.value||'',faixas:[...row.querySelectorAll('.aa-registro-horario-row')].map(r=>{const i=r.querySelectorAll('input[type=time]');return {inicio:i[0]?.value||'',fim:i[1]?.value||''};}).filter(x=>x.inicio||x.fim)})),dates=rows.map(x=>x.data),missingTime=rows.some(x=>x.data&&(!x.faixas.length||x.faixas.some(f=>!f.inicio||!f.fim||f.fim<=f.inicio)));if(!id||!rows.some(x=>x.data)||!t||!m||missingTime){if(e)e.textContent=missingTime?'Informe o horário de cada data selecionada.':'Selecione o profissional, pelo menos um dia, o tipo e informe o motivo.';return;}const now=new Date().toISOString(),message='Remanejar: '+rows.filter(x=>x.data).map(x=>aaRegistroDate(x.data)+' '+x.faixas.map(f=>'das '+f.inicio+' às '+f.fim).join(' e ')).join(', ')+'\nMotivo: '+m,records=rows.filter(x=>x.data).map(x=>({id:'REG-'+Date.now().toString(36).toUpperCase()+'-'+x.data.replaceAll('-','')+'-'+x.faixas.map(f=>f.inicio+'-'+f.fim).join('_').replaceAll(':',''),profissionalId:id,profissionalNome:p.nomeCompleto||'',profissionalUsuario:p.usuarioMedicina||'',dataReferencia:x.data,horario:x.faixas.map(f=>f.inicio+' às '+f.fim).join(', '),horarios:x.faixas.map(f=>f.inicio+' às '+f.fim),faixasHorarios:x.faixas,tipo:t,motivo:m,observacao:o,mensagemRemanejamento:message,criadoPor:rhCurrentProfile?.nomeCompleto||rhCurrentUser||'Sistema',criadoEm:now}));allRegistrosAgenda.unshift(...records);try{await saveRegistrosAgenda();aaMostrarMensagemRemanejamento(message);document.getElementById('aa-registro-profissional').value='';document.getElementById('aa-registro-profissional-busca').value='';document.getElementById('aa-registro-tipo').value='';document.getElementById('aa-registro-motivo').value='';document.getElementById('aa-registro-observacao').value='';aaAtualizarDiasRegistro();aaRenderRegistrosAgenda();aaToast(records.length+' registro(s) salvo(s).','success');}catch(x){allRegistrosAgenda.splice(0,records.length);if(e)e.textContent='Não foi possível salvar: '+(x.message||'verifique a conexão.');}};
 window.aaSwitchConsultaTab = function(tab){
   document.querySelectorAll('[data-constab]').forEach(t=>t.classList.toggle('active', t.dataset.constab===tab));
   document.getElementById('aa-constab-protocolo').style.display = tab==='protocolo' ? 'block' : 'none';
@@ -4282,7 +4243,7 @@ const aaOriginalRenderDashboard=window.aaRenderDashboard;window.aaRenderDashboar
     if(tab==='ajustes'){
       if(!ajusteCanAccess())return;
       document.querySelectorAll('[data-rhtab]').forEach(t=>t.classList.toggle('active',t.dataset.rhtab==='ajustes'));
-      ['dashboard','agendas','agendas2','banco','rda','historico','config','registros','controler'].forEach(key=>{const el=document.getElementById('aa-rhtab-'+key);if(el)el.style.display='none';});
+      ['dashboard','agendas','agendas2','banco','rda','historico','config','controler'].forEach(key=>{const el=document.getElementById('aa-rhtab-'+key);if(el)el.style.display='none';});
       const panel=document.getElementById('aa-rhtab-ajustes');if(panel)panel.style.display='block';
       aaRenderAjustes().catch(function(error){console.error('Falha ao abrir a aba de ajustes:',error);});return;
     }
@@ -4656,7 +4617,7 @@ window.aaRenderProfissionaisList=function(){
     if(parts[0]!=='painel')return;
     routing=true;originalTab('painel');routing=false;
     if(!rhAuthenticated)return;
-    const target={profissionais:'banco',usuarios:'permissoes',ajustes:'ajustes',operacoes:'operacoes',perfis:'perfis',config:'config',historico:'historico',registros:'registros',portal:'portal'}[parts[1]];
+    const target={profissionais:'banco',usuarios:'permissoes',ajustes:'ajustes',operacoes:'operacoes',perfis:'perfis',config:'config',historico:'historico',portal:'portal'}[parts[1]];
     if(target&&typeof window.aaSwitchRHTab==='function'){routing=true;window.aaSwitchRHTab(target);routing=false;}
   }
   window.addEventListener('hashchange',apply);
