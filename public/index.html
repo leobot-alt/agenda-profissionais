@@ -3731,6 +3731,7 @@ window.aaSwitchRHTab=function(tab){
   }
   const controler=document.getElementById('aa-rhtab-controler');if(controler)controler.style.display='none';
   aaOriginalSwitchRHTab(tab);
+  if(tab==='agendas'&&typeof window.aaLoadAdminData==='function')window.aaLoadAdminData();
 };
 
   window.aaOpenProfessionalFicha=function(id){
