@@ -916,8 +916,8 @@ const ADMIN_PASS = '';
   function isAdminProfile(profile){ const key=normalizePerfil(profile&&profile.perfil); return isGeneralProfile(profile) || normalizePermissionKeys((allPerfis[key]&&allPerfis[key].permissions)||[]).includes('usuarios_remover'); }
   function profilePermissions(profile){ const key=normalizePerfil(profile&&profile.perfil); if(isGeneralProfile(profile)) return PERMISSOES.map(p=>p.key); const configured=Array.isArray(profile&&profile.permissions)?profile.permissions:[]; const defaults=Array.isArray(allPerfis[key]&&allPerfis[key].permissions)?allPerfis[key].permissions:[]; return normalizePermissionKeys([...configured,...defaults]); }
   function recordOperacao(record){ if(record&&record.operacao) return normalizeOperacao(record.operacao); const p=allProfissionais.find(x=>record&&(x.id===record.profissionalId||normText(x.usuarioMedicina)===normText(record.usuario))); return normalizeOperacao(p&&p.operacao); }
-  function currentUserOperacao(){ return normalizeOperacao(rhCurrentProfile&&rhCurrentProfile.operacao); }
-  function aaCanSeeOperation(operation){ const op=normalizeOperacao(operation); return isGeneralProfile(rhCurrentProfile) || (!!currentUserOperacao() && currentUserOperacao()===op); }
+  function currentUserOperacao(){ const profile=(typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile)||null; return normalizeOperacao(profile&&profile.operacao); }
+  function aaCanSeeOperation(operation){ const op=normalizeOperacao(operation),profile=(typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile)||null; return isGeneralProfile(profile) || (!!currentUserOperacao() && currentUserOperacao()===op); }
   function filterByCurrentOperation(records){ return (records||[]).filter(record=>aaCanSeeOperation(recordOperacao(record))); }
 const LEGACY_PERMISSION_MAP = {
   dashboard:['dashboard_ver','dashboard_meta_ver','dashboard_meta_editar'],
