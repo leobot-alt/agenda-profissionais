@@ -3037,21 +3037,19 @@ async function syncAgendaDayConfirmations(subs){
   }catch(error){console.warn('Não foi possível sincronizar as conferências compartilhadas.',error);}
 }
 async function loadAllSubmissions(){dataLoadState.submissions=false;const anterior=allSubmissions;try{let subs=[];try{const result=await supabase.from('agendas').select('id,protocolo,profissional_id,submitted_by_auth_id,usuario,nome,status,operacao,bloco_agenda,especialidade,ano,periodo_meses,submitted_at,reviewed_at,dados,created_at,updated_at').order('submitted_at',{ascending:false});if(result.error)throw result.error;subs=(result.data||[]).map(row=>{const extra=row.dados&&typeof row.dados==='object'?row.dados:{};return {...extra,id:row.id,protocolo:row.protocolo||extra.protocolo,submittedByAuthId:row.submitted_by_auth_id||extra.submittedByAuthId||null,profissionalId:row.profissional_id||extra.profissionalId,usuario:row.usuario||extra.usuario,nome:row.nome||extra.nome,status:row.status||extra.status,operacao:row.operacao||extra.operacao,blocoAgenda:row.bloco_agenda||extra.blocoAgenda,especialidade:row.especialidade||extra.especialidade,ano:row.ano||extra.ano,periodoMeses:Array.isArray(row.periodo_meses)?row.periodo_meses:(extra.periodoMeses||[]),submittedAt:row.submitted_at||extra.submittedAt,reviewedAt:row.reviewed_at||extra.reviewedAt};});}catch(tableError){const res=await cloudGet('db:submissions',true);subs=res&&res.value?JSON.parse(res.value):[];if(!Array.isArray(subs))throw new Error('Dados de agendas estão inválidos no Supabase.');}allSubmissions=subs.sort((a,b)=>String(b.submittedAt||'').localeCompare(String(a.submittedAt||'')));await syncAgendaDayConfirmations(allSubmissions);dataLoadState.submissions=true;}catch(e){allSubmissions=anterior;dataLoadState.submissions=false;throw e;}}
-async function saveAllSubmissions(){if(!dataLoadState.submissions)throw new Error('As agendas ainda não foram carregadas com sucesso.');const currentAuthId=(typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile&&rhCurrentProfile.auth_user_id)||null;const rows=(allSubmissions||[]).filter(x=>x).map(x=>({id:String(x.id||x.protocolo||('AGENDA-'+Date.now()+Math.random())),protocolo:String(x.protocolo||''),submitted_by_auth_id:x.submittedByAuthId||currentAuthId,profissional_id:x.profissionalId||null,usuario:String(x.usuario||''),nome:String(x.nome||''),status:String(x.status||''),operacao:String(x.operacao||''),bloco_agenda:String(x.blocoAgenda||x.bloco||''),especialidade:String(x.especialidade||''),ano:String(x.ano||''),periodo_meses:Array.isArray(x.periodoMeses)?x.periodoMeses:[],submitted_at:x.submittedAt||new Date().toISOString(),reviewed_at:x.reviewedAt||null,dados:x,created_at:x.submittedAt||new Date().toISOString(),updated_at:x.updatedAt||new Date().toISOString()}));const result=await supabase.from('agendas').upsert(rows,{onConflict:'id'});if(result.error)throw result.error;const days=[];rows.forEach(row=>{const months=row.dados.computedByMonth&&typeof row.dados.computedByMonth==='object'?row.dados.computedByMonth:{};Object.entries(months).forEach(([month,value])=>(value.days||[]).forEach(day=>days.push({id:row.id+':'+month+':'+day.iso,agenda_id:row.id,mes:month,iso:day.iso,total:Number(day.total)||0,status:String(day.status||''),conferido:day.conferido===true,conferido_em:day.conferidoEm||null,conferido_por_auth_id:day.conferidoPorAuthId||null,conferido_por_nome:day.conferidoPorNome||day.conferidoPor||'',ajustado:day.ajustado===true,dados:day})));});if(days.length){const dr=await supabase.from('agenda_dias').upsert(days,{onConflict:'id'});if(dr.error)throw dr.error;}await storageSetRetry('db:submissions',JSON.stringify(allSubmissions),true);}
-window.aaLoadAdminData = async function(){
-  const wrap = document.getElementById('aa-admin-list-wrap');
-  wrap.innerHTML = '<div class="aa-loading">Carregando envios...</div>';
-  try{
-    await Promise.all([loadAllSubmissions(),loadProfissionais()]);
-    aaRenderAdminList();
-    if(window.aaUpdateAgendaTemplatePeriodOptions) window.aaUpdateAgendaTemplatePeriodOptions();
-    if(window.aaRefreshAgendaImportProfessionals) window.aaRefreshAgendaImportProfessionals();
-  } catch(e){
-    wrap.innerHTML = '<div class="aa-empty-state"><div class="aa-empty-icon">!</div>Não foi possível carregar os envios agora.</div>';
-    console.error(e);
-  }
-};
-
+async function saveAllSubmissions(){
+  if(!dataLoadState.submissions)throw new Error('As agendas ainda não foram carregadas com sucesso.');
+  const currentAuthId=(typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile&&rhCurrentProfile.auth_user_id)||null;
+  const rows=(allSubmissions||[]).filter(x=>x).map(x=>({id:String(x.id||x.protocolo||('AGENDA-'+Date.now()+Math.random())),protocolo:String(x.protocolo||''),submitted_by_auth_id:x.submittedByAuthId||currentAuthId,profissional_id:x.profissionalId||null,usuario:String(x.usuario||''),nome:String(x.nome||''),status:String(x.status||''),operacao:String(x.operacao||''),bloco_agenda:String(x.blocoAgenda||x.bloco||''),especialidade:String(x.especialidade||''),ano:String(x.ano||''),periodo_meses:Array.isArray(x.periodoMeses)?x.periodoMeses:[],submitted_at:x.submittedAt||new Date().toISOString(),reviewed_at:x.reviewedAt||null,dados:x,created_at:x.submittedAt||new Date().toISOString(),updated_at:x.updatedAt||new Date().toISOString()}));
+  const ids=rows.map(row=>row.id),existingIds=new Set();
+  if(ids.length){const lookup=await supabase.from('agendas').select('id').in('id',ids);if(lookup.error)throw lookup.error;(lookup.data||[]).forEach(row=>existingIds.add(String(row.id)));}
+  const existingRows=rows.filter(row=>existingIds.has(row.id)),newRows=rows.filter(row=>!existingIds.has(row.id));
+  for(const row of existingRows){const result=await supabase.from('agendas').update(row).eq('id',row.id);if(result.error)throw result.error;}
+  if(newRows.length){const result=await supabase.from('agendas').insert(newRows);if(result.error)throw result.error;}
+  const days=[];rows.forEach(row=>{const months=row.dados.computedByMonth&&typeof row.dados.computedByMonth==='object'?row.dados.computedByMonth:{};Object.entries(months).forEach(([month,value])=>(value.days||[]).forEach(day=>days.push({id:row.id+':'+month+':'+day.iso,agenda_id:row.id,mes:month,iso:day.iso,total:Number(day.total)||0,status:String(day.status||''),conferido:day.conferido===true,conferido_em:day.conferidoEm||null,conferido_por_auth_id:day.conferidoPorAuthId||null,conferido_por_nome:day.conferidoPorNome||day.conferidoPor||'',ajustado:day.ajustado===true,dados:day})));});
+  if(days.length){const dr=await supabase.from('agenda_dias').upsert(days,{onConflict:'id'});if(dr.error)throw dr.error;}
+  await storageSetRetry('db:submissions',JSON.stringify(allSubmissions),true);
+}
 // ---------- Dashboard e controles de acompanhamento ----------
 const DASHBOARD_META_KEY='config:dashboard_meta_horas';
 function dashboardProductivityData(periodSubs,ym){
