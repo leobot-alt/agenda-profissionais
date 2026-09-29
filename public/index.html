@@ -1612,7 +1612,7 @@ window.aaRenderProfissionaisList = function(){
   const wrap = document.getElementById('aa-profissionais-list-wrap');
   const filtered = filterByCurrentOperation(getFilteredProfissionais());
   if(filtered.length===0){ wrap.innerHTML = '<div class="aa-empty-state"><div class="aa-empty-icon">&#128100;</div>Nenhum profissional cadastrado ainda.</div>'; return; }
-  const canEditProf = aaCan('banco_profissionais_editar');
+  const canEditProf = (typeof aaCan==='function'&&aaCan('banco_profissionais_editar')) || ['administrador','administrador_geral','gestao','gestão'].includes(String(rhCurrentProfile&&rhCurrentProfile.perfil||'').trim().toLowerCase()) || String(rhCurrentUser||'').trim().toLowerCase()===String(ADMIN_EMAIL||'').trim().toLowerCase();
   const canStatusProf = aaCan('banco_profissionais_status');
   const totalPages=Math.max(1,Math.ceil(filtered.length/AA_PROF_PAGE_SIZE));
   aaProfissionaisPage=Math.min(Math.max(1,aaProfissionaisPage),totalPages);
@@ -4344,7 +4344,7 @@ window.aaRenderProfissionaisList=function(){
     const q=String(document.getElementById('aa-prof-filter')?.value||'').toLowerCase();
     const list=(window.__aaGetProfissionais?window.__aaGetProfissionais():[]).filter(p=>p&&p.ativo!==false).filter(p=>!q||[p.nomeCompleto,p.email,p.cpf,p.usuarioMedicina,p.crpCrm,p.whatsapp].some(v=>String(v||'').toLowerCase().includes(q))).sort((a,b)=>String(a.nomeCompleto||'').localeCompare(String(b.nomeCompleto||''),'pt-BR'));
     if(!list.length){wrap.innerHTML='<div class="aa-empty-state">Nenhum profissional cadastrado.</div>';return;}
-    const canEdit=aaCan('banco_profissionais_editar');
+    const canEdit=(typeof aaCan==='function'&&aaCan('banco_profissionais_editar')) || ['administrador','administrador_geral','gestao','gestão'].includes(String(rhCurrentProfile&&rhCurrentProfile.perfil||'').trim().toLowerCase()) || String(rhCurrentUser||'').trim().toLowerCase()===String(ADMIN_EMAIL||'').trim().toLowerCase();
     wrap.innerHTML='<div class="aa-table-scroll"><table class="aa-compact-table"><tr><th>Nome</th><th>Usuário Medicina</th><th>Telefone</th><th>Situação do cadastro</th><th>Ação</th></tr>'+list.map(p=>'<tr><td><button type="button" class="aa-name-link" onclick="window.aaOpenProfessionalFicha&&window.aaOpenProfessionalFicha(\''+safe(p.id)+'\')">'+safe(p.nomeCompleto||'-')+'</button></td><td>'+safe(p.usuarioMedicina||'-')+'</td><td>'+safe(p.whatsapp||p.telefone||'-')+'</td><td><span class="aa-profile-status active">Ativo</span></td><td>'+(canEdit?'<button type="button" class="aa-btn aa-btn-primary aa-btn-sm" style="background:linear-gradient(135deg,#8B5CF6,#3EA6E0)!important;border:0;color:#fff!important;white-space:nowrap;" onclick="aaEditCadastro(\''+safe(p.id)+'\')">Editar dados</button>':'<span class="aa-hint">Somente consulta</span>')+'</td></tr>').join('')+'</table></div>';
   };
   window.aaRenderProfissionaisDesativados=function(){
