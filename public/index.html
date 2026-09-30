@@ -3767,7 +3767,8 @@ window.aaSwitchRHTab=function(tab){
 };
 
   function aaPodeEditarCadastroProfissional(){
-    const perfil=String((typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile&&rhCurrentProfile.perfil)||'').trim().toLowerCase();
+    const perfilRaw=String((typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile&&rhCurrentProfile.perfil)||'').trim();
+    const perfil=typeof normalizePerfil==='function'?normalizePerfil(perfilRaw):perfilRaw.toLowerCase().replace(/[áàãâ]/g,'a').replace(/\s+/g,'_');
     const usuario=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase();
     return (typeof aaCan==='function'&&aaCan('banco_profissionais_editar')) || ['administrador','administrador_geral','gestao','gestão'].includes(perfil) || usuario===String((window.__AA_ADMIN_EMAIL||'adm@adm.com')).trim().toLowerCase();
   }
@@ -3790,7 +3791,7 @@ window.aaSwitchRHTab=function(tab){
       const fichaTabs=['Pessoais','Profissionais','Pagamento','Sistema'];
       const fichaPanels=fichaSections.map((html,index)=>'<div class="aa-ficha-panel '+(index===0?'active':'')+'" data-ficha-panel="'+index+'">'+html+'</div>').join('');
       const fichaTabButtons=fichaTabs.map((label,index)=>'<button type="button" class="aa-ficha-tab '+(index===0?'active':'')+'" data-ficha-tab="'+index+'">'+label+'</button>').join('');
-      m.innerHTML='<div class="aa-ficha-header"><div class="aa-ficha-identity"><div class="aa-ficha-avatar">'+safe(initials)+'</div><div><div class="aa-ficha-title">Ficha cadastral</div><div class="aa-ficha-name">'+safe(p.nomeCompleto||'Profissional')+'</div></div></div><span class="aa-status-badge">'+(p.ativo===false?'Inativo':'Ativo')+'</span></div><div class="aa-ficha-tabs">'+fichaTabButtons+'</div><div class="aa-ficha-body">'+fichaPanels+'</div><div class="aa-modal-actions"><button type="button" class="aa-btn aa-btn-ghost" onclick="aaCloseModal()">Fechar</button>'+ (aaPodeEditarCadastroProfissional()?'<button type="button" class="aa-btn aa-btn-primary" data-aa-profissional-id="'+safe(p.id)+'" onclick="aaEditCadastro(this.dataset.aaProfissionalId);aaCloseModal();">Editar cadastro</button>':'')+'</div>';
+      m.innerHTML='<div class="aa-ficha-header"><div class="aa-ficha-identity"><div class="aa-ficha-avatar">'+safe(initials)+'</div><div><div class="aa-ficha-title">Ficha cadastral</div><div class="aa-ficha-name">'+safe(p.nomeCompleto||'Profissional')+'</div></div></div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;"><span class="aa-status-badge">'+(p.ativo===false?'Inativo':'Ativo')+'</span>'+ (aaPodeEditarCadastroProfissional()?'<button type="button" class="aa-btn aa-btn-primary aa-btn-sm" style="background:#fff!important;color:#4B32A8!important;border:0!important;font-weight:900;" data-aa-profissional-id="'+safe(p.id)+'" onclick="aaEditCadastro(this.dataset.aaProfissionalId);aaCloseModal();">Editar cadastro</button>':'')+'</div></div><div class="aa-ficha-tabs">'+fichaTabButtons+'</div><div class="aa-ficha-body">'+fichaPanels+'</div><div class="aa-modal-actions"><button type="button" class="aa-btn aa-btn-ghost" onclick="aaCloseModal()">Fechar</button></div>';
       m.querySelectorAll('[data-ficha-tab]').forEach(tab=>tab.addEventListener('click',()=>{const index=tab.dataset.fichaTab;m.querySelectorAll('[data-ficha-tab]').forEach(x=>x.classList.toggle('active',x===tab));m.querySelectorAll('[data-ficha-panel]').forEach(x=>x.classList.toggle('active',x.dataset.fichaPanel===index));}));
       const backdrop=document.getElementById('aa-modal-backdrop');
       if(backdrop)backdrop.classList.add('open');
