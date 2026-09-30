@@ -912,7 +912,7 @@ const ADMIN_PASS = '';
   function normalizeBlocoKey(value,operation){ const raw=String(value||'').trim(); if(!raw)return ''; const clean=raw.replace(/^BLOCO\s*/i,'').trim(); const scopedBlocks=operation?operationBlocks(operation):[]; const blocks=scopedBlocks.length?scopedBlocks:Object.values(allOperacoes).flatMap(op=>operationBlocks(op.key)); const opBlock=blocks.find(b=>String(b.key).toLowerCase()===raw.toLowerCase()||String(b.nome).trim().toLowerCase()===raw.toLowerCase()); return opBlock?opBlock.key:(['A','B','C','D','E'].includes(clean.toUpperCase())?clean.toUpperCase():raw); }
   function operacaoLabel(value){ const op=normalizeOperacao(value),cfg=allOperacoes[op]; return cfg&&cfg.nome ? cfg.nome : (op ? 'Operação '+op : 'Sem operação'); }
   function blocoLabel(value,operation){ const key=normalizeBlocoKey(value,operation),cfg=operationBlocks(operation).find(b=>b.key===key); return cfg&&cfg.nome ? cfg.nome : (key ? (['A','B','C','D','E'].includes(key)?'Bloco '+key:key) : 'Bloco não informado'); }
-  function isGeneralProfile(profile){ return String(profile&&profile.username||'').trim().toLowerCase()===String(ADMIN_EMAIL||'').trim().toLowerCase(); }
+  function isGeneralProfile(profile){ return String(profile&&profile.username||'').trim().toLowerCase()===String((window.__AA_ADMIN_EMAIL || 'adm@adm.com')||'').trim().toLowerCase(); }
   function isAdminProfile(profile){ const key=normalizePerfil(profile&&profile.perfil); return isGeneralProfile(profile) || normalizePermissionKeys((allPerfis[key]&&allPerfis[key].permissions)||[]).includes('usuarios_remover'); }
   function profilePermissions(profile){ const key=normalizePerfil(profile&&profile.perfil); if(isGeneralProfile(profile)) return PERMISSOES.map(p=>p.key); const configured=Array.isArray(profile&&profile.permissions)?profile.permissions:[]; const defaults=Array.isArray(allPerfis[key]&&allPerfis[key].permissions)?allPerfis[key].permissions:[]; return normalizePermissionKeys([...configured,...defaults]); }
   function recordOperacao(record){ if(record&&record.operacao) return normalizeOperacao(record.operacao); const p=allProfissionais.find(x=>record&&(x.id===record.profissionalId||normText(x.usuarioMedicina)===normText(record.usuario))); return normalizeOperacao(p&&p.operacao); }
@@ -1135,7 +1135,7 @@ async function ensureRHProfile(email){
   const normalized=String(email||'').trim().toLowerCase();
   let profile=allRHUsers.find(x=>String(x.username||'').trim().toLowerCase()===normalized);
   if(!profile){
-    const principal=normalized===ADMIN_EMAIL;
+    const principal=normalized===(window.__AA_ADMIN_EMAIL || 'adm@adm.com');
     profile={id:'RHU-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),username:normalized,password:'',perfil:principal?'administrador_geral':'colaborador',operacao:'',permissions:principal?PERMISSOES.map(p=>p.key):[...PERFIL_DEFINICOES_PADRAO.colaborador.permissions],ativo:true,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
     allRHUsers.push(profile);
     await saveAllRHUsers();
@@ -1152,7 +1152,7 @@ window.aaToggleAtivoRHUser = async function(id, checked){
   if(!aaRequire('usuarios_status')) return;
   const u = allRHUsers.find(x=>x.id===id);
   if(!u) return;
-  if(String(u.username||'').toLowerCase()===ADMIN_EMAIL){ alert('O administrador principal não pode ser desativado.'); aaRenderPermissoes(); return; }
+  if(String(u.username||'').toLowerCase()===(window.__AA_ADMIN_EMAIL || 'adm@adm.com')){ alert('O administrador principal não pode ser desativado.'); aaRenderPermissoes(); return; }
   if(String(u.username||'').toLowerCase()===String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').toLowerCase() && !checked){ alert('Você não pode desativar o próprio acesso enquanto está conectado.'); aaRenderPermissoes(); return; }
   const before=u.ativo===false?'Desativado':'Ativo'; u.ativo = checked; u.updatedAt = new Date().toISOString();
   let persisted=false;
@@ -1607,12 +1607,12 @@ const AA_PROF_PAGE_SIZE=10;
 let aaProfissionaisPage=1;
 window.aaSetProfissionaisPage=function(page){aaProfissionaisPage=Math.max(1,Number(page)||1);window.aaRenderProfissionaisList();};
 window.aaShowDatabaseView=function(view){const ativos=view!=='desativados';document.getElementById('aa-db-view-ativos').hidden=!ativos;document.getElementById('aa-db-view-desativados').hidden=ativos;document.getElementById('aa-db-tab-ativos').classList.toggle('active',ativos);document.getElementById('aa-db-tab-desativados').classList.toggle('active',!ativos);if(!ativos)window.aaRenderProfissionaisDesativados();};
-	window.aaRenderProfissionaisDesativados=function(){const wrap=document.getElementById('aa-profissionais-desativados-wrap');if(!wrap)return;const items=allProfissionais.filter(p=>p.ativo===false).sort((a,b)=>String(a.nomeCompleto||'').localeCompare(String(b.nomeCompleto||''),'pt-BR',{sensitivity:'base'}));if(!items.length){wrap.innerHTML='<div class="aa-empty-state">Nenhum profissional desativado.</div>';return;}const canStatus=(typeof aaCan==='function'&&aaCan('banco_profissionais_status')) || ['administrador','administrador_geral','gestao','gestão'].includes(String((typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile&&rhCurrentProfile.perfil)||'').trim().toLowerCase()) || String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase()===String(ADMIN_EMAIL||'').trim().toLowerCase();let html='<div class="aa-table-scroll"><table class="aa-compact-table"><tr><th>Nome</th><th>Usuário</th><th>Especialidade</th><th>Operação</th><th>Ação</th></tr>';items.forEach(p=>{html+='<tr><td><button type="button" class="aa-name-link" onclick="aaEditCadastro(\''+aaHtmlSafe(p.id)+'\')">'+aaHtmlSafe(p.nomeCompleto||'-')+'</button></td><td>'+aaHtmlSafe(p.usuarioMedicina||'-')+'</td><td>'+aaHtmlSafe(especialidadeLabel(p.especialidade))+'</td><td>'+aaHtmlSafe(operacaoLabel(p.operacao)||'-')+'</td><td>'+(canStatus?'<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaToggleAtivoProf(\''+aaHtmlSafe(p.id)+'\',true)">Reativar</button>':'<span class="aa-hint">Somente consulta</span>')+'</td></tr>';});wrap.innerHTML=html+'</table></div>';};
+	window.aaRenderProfissionaisDesativados=function(){const wrap=document.getElementById('aa-profissionais-desativados-wrap');if(!wrap)return;const items=allProfissionais.filter(p=>p.ativo===false).sort((a,b)=>String(a.nomeCompleto||'').localeCompare(String(b.nomeCompleto||''),'pt-BR',{sensitivity:'base'}));if(!items.length){wrap.innerHTML='<div class="aa-empty-state">Nenhum profissional desativado.</div>';return;}const canStatus=(typeof aaCan==='function'&&aaCan('banco_profissionais_status')) || ['administrador','administrador_geral','gestao','gestão'].includes(String((typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile&&rhCurrentProfile.perfil)||'').trim().toLowerCase()) || String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase()===String((window.__AA_ADMIN_EMAIL || 'adm@adm.com')||'').trim().toLowerCase();let html='<div class="aa-table-scroll"><table class="aa-compact-table"><tr><th>Nome</th><th>Usuário</th><th>Especialidade</th><th>Operação</th><th>Ação</th></tr>';items.forEach(p=>{html+='<tr><td><button type="button" class="aa-name-link" onclick="aaEditCadastro(\''+aaHtmlSafe(p.id)+'\')">'+aaHtmlSafe(p.nomeCompleto||'-')+'</button></td><td>'+aaHtmlSafe(p.usuarioMedicina||'-')+'</td><td>'+aaHtmlSafe(especialidadeLabel(p.especialidade))+'</td><td>'+aaHtmlSafe(operacaoLabel(p.operacao)||'-')+'</td><td>'+(canStatus?'<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaToggleAtivoProf(\''+aaHtmlSafe(p.id)+'\',true)">Reativar</button>':'<span class="aa-hint">Somente consulta</span>')+'</td></tr>';});wrap.innerHTML=html+'</table></div>';};
 window.aaRenderProfissionaisList = function(){
   const wrap = document.getElementById('aa-profissionais-list-wrap');
   const filtered = filterByCurrentOperation(getFilteredProfissionais());
   if(filtered.length===0){ wrap.innerHTML = '<div class="aa-empty-state"><div class="aa-empty-icon">&#128100;</div>Nenhum profissional cadastrado ainda.</div>'; return; }
-	const canEditProf = (typeof aaCan==='function'&&aaCan('banco_profissionais_editar')) || ['administrador','administrador_geral','gestao','gestão'].includes(String((typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile&&rhCurrentProfile.perfil)||'').trim().toLowerCase()) || String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase()===String(ADMIN_EMAIL||'').trim().toLowerCase();
+	const canEditProf = (typeof aaCan==='function'&&aaCan('banco_profissionais_editar')) || ['administrador','administrador_geral','gestao','gestão'].includes(String((typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile&&rhCurrentProfile.perfil)||'').trim().toLowerCase()) || String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase()===String((window.__AA_ADMIN_EMAIL || 'adm@adm.com')||'').trim().toLowerCase();
   const canStatusProf = aaCan('banco_profissionais_status');
   const totalPages=Math.max(1,Math.ceil(filtered.length/AA_PROF_PAGE_SIZE));
   aaProfissionaisPage=Math.min(Math.max(1,aaProfissionaisPage),totalPages);
@@ -1936,7 +1936,7 @@ window.aaRHLogin = async function(){
   const {data,error}=await supabase.auth.signInWithPassword({email:u,password:p});
   if(error || !data.user){ err.textContent='E-mail ou senha incorretos.'; return; }
   try{
-    aaPermissionsReady=false; rhAuthenticated=true; rhCurrentUser=data.user.email; await loadOperacoes(); await loadPerfis(); await loadRHUsers(); const profile=await ensureRHProfile(data.user.email); rhCurrentProfile=profile; const isAdmin=isGeneralProfile(profile); if(String(data.user.email||'').toLowerCase()!==ADMIN_EMAIL && (profile.removido || profile.ativo===false || !perfilAtivo(profile.perfil))){ await supabase.auth.signOut(); aaPermissionsReady=false; rhAuthenticated=false; rhCurrentUser=null; rhCurrentProfile=null; err.textContent='Este usuário não possui mais acesso ao painel.'; return; } rhCurrentPermissions=profilePermissions(profile); aaPermissionsReady=true;
+    aaPermissionsReady=false; rhAuthenticated=true; rhCurrentUser=data.user.email; await loadOperacoes(); await loadPerfis(); await loadRHUsers(); const profile=await ensureRHProfile(data.user.email); rhCurrentProfile=profile; const isAdmin=isGeneralProfile(profile); if(String(data.user.email||'').toLowerCase()!==(window.__AA_ADMIN_EMAIL || 'adm@adm.com') && (profile.removido || profile.ativo===false || !perfilAtivo(profile.perfil))){ await supabase.auth.signOut(); aaPermissionsReady=false; rhAuthenticated=false; rhCurrentUser=null; rhCurrentProfile=null; err.textContent='Este usuário não possui mais acesso ao painel.'; return; } rhCurrentPermissions=profilePermissions(profile); aaPermissionsReady=true;
     aaScheduleAutoLogout();
     document.getElementById('aa-rh-login-card').style.display='none';
     document.getElementById('aa-rh-authed-content').style.display='block';
@@ -1954,7 +1954,7 @@ window.aaRHLogin = async function(){
   }
 };
 async function aaCheckCurrentUserAccess(){
-  if(!rhAuthenticated || !rhCurrentUser || String(rhCurrentUser).toLowerCase()===ADMIN_EMAIL) return true;
+  if(!rhAuthenticated || !rhCurrentUser || String(rhCurrentUser).toLowerCase()===(window.__AA_ADMIN_EMAIL || 'adm@adm.com')) return true;
   try{
     await loadRHUsers();
     const current=allRHUsers.find(u=>String(u.username||'').toLowerCase()===String(rhCurrentUser).toLowerCase());
@@ -1971,7 +1971,7 @@ async function aaCheckCurrentUserAccess(){
   }catch(e){ console.warn('Não foi possível conferir o status do usuário agora.',e); }
   return true;
 }
-function aaCan(permission){ const root=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').toLowerCase()===String(ADMIN_EMAIL||'').toLowerCase(); return rhAuthenticated && (root||rhCurrentPermissions.includes(permission)) && (!rhCurrentProfile || (rhCurrentProfile.ativo!==false && perfilAtivo(rhCurrentProfile.perfil))); }
+function aaCan(permission){ const root=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').toLowerCase()===String((window.__AA_ADMIN_EMAIL || 'adm@adm.com')||'').toLowerCase(); return rhAuthenticated && (root||rhCurrentPermissions.includes(permission)) && (!rhCurrentProfile || (rhCurrentProfile.ativo!==false && perfilAtivo(rhCurrentProfile.perfil))); }
 function aaCanAny(){ return [...arguments].some(permission=>aaCan(permission)); }
 function aaCanPerfilAction(action){ return aaCanAny('perfis_gerenciar','perfis_'+action); }
 function aaCanOperacoes(){ return aaCanAny('perfis_gerenciar','operacoes_gerenciar'); }
@@ -2027,7 +2027,7 @@ window.aaDeleteRHUser=async function(id){
   if(!aaIsAdministrator() || !aaCan('usuarios_remover')){ alert('Somente administradores podem remover usuários.'); return; }
   const user=allRHUsers.find(x=>x.id===id);
   if(!user || user.removido) return;
-  if(String(user.username||'').toLowerCase()===ADMIN_EMAIL){ alert('O usuário administrador principal não pode ser removido.'); return; }
+  if(String(user.username||'').toLowerCase()===(window.__AA_ADMIN_EMAIL || 'adm@adm.com')){ alert('O usuário administrador principal não pode ser removido.'); return; }
   if(String(user.username||'').toLowerCase()===String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').toLowerCase()){ alert('Você não pode remover o próprio usuário enquanto está conectado.'); return; }
   if(!await aaConfirm('Remover usuário','O usuário '+user.username+' perderá o acesso ao painel. Os registros históricos serão preservados. Continuar?')) return;
   const snapshot=JSON.parse(JSON.stringify(user));
@@ -2132,7 +2132,7 @@ window.aaSavePerfil=async function(key){
   if(!aaCanPerfilAction('editar')){alert('Você não tem permissão para editar perfis.');return;} const profile=allPerfis[key]; if(!profile)return; const old=[...(profile.permissions||[])]; const permissions=PERMISSOES.filter(p=>{const c=document.querySelector('[data-profile-perm="'+key+'"][data-perm-key="'+p.key+'"]');return c&&c.checked;}).map(p=>p.key); profile.permissions=permissions; try{await savePerfis();await aaLogChange('Alteração de perfil',profile.nome,'Permissões do perfil atualizadas.',undefined,old.join(', ')||'Nenhuma',permissions.join(', ')||'Nenhuma');aaCloseModal();aaRenderPerfis();aaToast('Perfil salvo com sucesso.','success');}catch(e){profile.permissions=old;alert('Não foi possível salvar o perfil agora.');console.error(e);}
 };
 window.aaSaveUserAccess=async function(id){
-  if(!aaCanAny('permissoes_gerenciar','usuarios_perfil_atribuir','usuarios_operacao_atribuir')){alert('Você não tem permissão para atribuir perfil ou operação.');return;} const u=allRHUsers.find(x=>x.id===id); if(!u)return; if(String(u.username||'').toLowerCase()===ADMIN_EMAIL){alert('O administrador geral principal não pode ser alterado.');return;}
+  if(!aaCanAny('permissoes_gerenciar','usuarios_perfil_atribuir','usuarios_operacao_atribuir')){alert('Você não tem permissão para atribuir perfil ou operação.');return;} const u=allRHUsers.find(x=>x.id===id); if(!u)return; if(String(u.username||'').toLowerCase()===(window.__AA_ADMIN_EMAIL || 'adm@adm.com')){alert('O administrador geral principal não pode ser alterado.');return;}
   const canAssignProfile=aaCanAny('permissoes_gerenciar','usuarios_perfil_atribuir'),canAssignOperation=aaCanAny('permissoes_gerenciar','usuarios_operacao_atribuir'),profileKey=canAssignProfile?(document.querySelector('[data-user-profile="'+id+'"]')?.value||'colaborador'):normalizePerfil(u.perfil); const previousProfileKey=normalizePerfil(u.perfil); if(profileKey!==previousProfileKey&&!perfilAtivo(profileKey)){alert('O perfil selecionado está desativado. Ative-o antes de atribuí-lo a um usuário.');return;} const operacao=canAssignOperation?normalizeOperacao(document.querySelector('[data-user-operation="'+id+'"]')?.value):normalizeOperacao(u.operacao); const old={perfil:u.perfil,operacao:u.operacao}; u.perfil=normalizePerfil(profileKey);u.operacao=operacao;u.permissions=profilePermissions(u);u.updatedAt=new Date().toISOString(); try{await saveAllRHUsers();await aaLogChange('Alteração de perfil e operação',u.username,'Perfil: '+perfilLabel(u.perfil)+'; Operação: '+operacaoLabel(u.operacao),undefined,'Perfil: '+perfilLabel(old.perfil)+'; Operação: '+operacaoLabel(old.operacao),'Perfil: '+perfilLabel(u.perfil)+'; Operação: '+operacaoLabel(u.operacao));if(String(u.username).toLowerCase()===String(rhCurrentUser).toLowerCase()){rhCurrentProfile=u;rhCurrentPermissions=profilePermissions(u);aaApplyRHPermissionsUI();}alert('Perfil e operação salvos para '+u.username+'.');aaToast('Perfil do usuário salvo com sucesso.','success');aaRenderPermissoes();}catch(e){u.perfil=old.perfil;u.operacao=old.operacao;u.permissions=profilePermissions(u);alert('Não foi possível salvar o acesso agora.');console.error(e);}
 };
 window.aaSwitchUsuariosView=function(view){
@@ -2168,7 +2168,7 @@ window.aaRenderPermissoes=function(){
   const canAssignProfile=aaCanAny('permissoes_gerenciar','usuarios_perfil_atribuir'),canAssignOperation=aaCanAny('permissoes_gerenciar','usuarios_operacao_atribuir'),canStatus=aaCan('usuarios_status');
   const users=allRHUsers.filter(u=>!u.removido),search=normText(document.getElementById('aa-permissoes-search')?.value||''),activeUsers=users.filter(u=>u.ativo!==false&&(!search||[u.username,u.nomeCompleto,u.cpf].some(value=>normText(value||'').includes(search)))),inactiveUsers=users.filter(u=>u.ativo===false);
   const userCard=function(u,inactive){
-    const principal=String(u.username||'').toLowerCase()===ADMIN_EMAIL;
+    const principal=String(u.username||'').toLowerCase()===(window.__AA_ADMIN_EMAIL || 'adm@adm.com');
     const currentProfileKey=normalizePerfil(u.perfil);
     const profileOptions=Object.entries(allPerfis).filter(([key,p])=>p.ativo!==false||key===currentProfileKey).map(([key,p])=>'<option value="'+aaHtmlSafe(key)+'" '+(currentProfileKey===key?'selected':'')+'>'+aaHtmlSafe(p.nome)+(p.ativo===false?' (desativado)':'')+'</option>').join('');
     const operationOptions='<option value="">Sem operação</option>'+Object.entries(allOperacoes).map(([key,op])=>'<option value="'+aaHtmlSafe(key)+'" '+(normalizeOperacao(u.operacao)===key?'selected':'')+'>'+aaHtmlSafe(op.nome)+'</option>').join('');
@@ -3661,7 +3661,7 @@ document.getElementById('aa-dash-trimestre').innerHTML = TRIMESTRES.map(t=>'<opt
 
   window.__aaGetProfissionais = function(){ return allProfissionais; };
   window.__aaSaveProfissionais = async function(){ await saveAllProfissionais(); };
-  window.__aaIsGeneralProfile = function(){ return isGeneralProfile(rhCurrentProfile) || String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase()===String(ADMIN_EMAIL||'').trim().toLowerCase(); };
+  window.__aaIsGeneralProfile = function(){ return isGeneralProfile(rhCurrentProfile) || String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase()===String((window.__AA_ADMIN_EMAIL || 'adm@adm.com')||'').trim().toLowerCase(); };
 
 })();
 updateDots(1);
@@ -3669,7 +3669,7 @@ loadCompanyHolidays().catch(function(e){ console.warn('Não foi possível carreg
 supabase.auth.getSession().then(async ({data})=>{
   if(!data.session){ try{window.localStorage?.removeItem('aa-rh-session-started-at');}catch(_e){} if(aaAutoLogoutTimer) clearTimeout(aaAutoLogoutTimer); return; }
   try{
-    aaPermissionsReady=false; rhAuthenticated=true; rhCurrentUser=data.session.user.email; await loadOperacoes(); await loadPerfis(); await loadRHUsers(); const profile=await ensureRHProfile(data.session.user.email); rhCurrentProfile=profile; const isPrincipal=String(data.session.user.email||'').toLowerCase()===ADMIN_EMAIL;
+    aaPermissionsReady=false; rhAuthenticated=true; rhCurrentUser=data.session.user.email; await loadOperacoes(); await loadPerfis(); await loadRHUsers(); const profile=await ensureRHProfile(data.session.user.email); rhCurrentProfile=profile; const isPrincipal=String(data.session.user.email||'').toLowerCase()===(window.__AA_ADMIN_EMAIL || 'adm@adm.com');
     if(!isPrincipal && (profile.removido || profile.ativo===false || !perfilAtivo(profile.perfil))){ await supabase.auth.signOut(); aaPermissionsReady=false; rhAuthenticated=false; rhCurrentUser=null; rhCurrentProfile=null; return; }
     rhCurrentPermissions=profilePermissions(profile); aaPermissionsReady=true;
     aaScheduleAutoLogout();
@@ -4344,7 +4344,7 @@ window.aaRenderProfissionaisList=function(){
     const q=String(document.getElementById('aa-prof-filter')?.value||'').toLowerCase();
     const list=(window.__aaGetProfissionais?window.__aaGetProfissionais():[]).filter(p=>p&&p.ativo!==false).filter(p=>!q||[p.nomeCompleto,p.email,p.cpf,p.usuarioMedicina,p.crpCrm,p.whatsapp].some(v=>String(v||'').toLowerCase().includes(q))).sort((a,b)=>String(a.nomeCompleto||'').localeCompare(String(b.nomeCompleto||''),'pt-BR'));
     if(!list.length){wrap.innerHTML='<div class="aa-empty-state">Nenhum profissional cadastrado.</div>';return;}
-	    const canEdit=(typeof aaCan==='function'&&aaCan('banco_profissionais_editar')) || ['administrador','administrador_geral','gestao','gestão'].includes(String((typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile&&rhCurrentProfile.perfil)||'').trim().toLowerCase()) || String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase()===String(ADMIN_EMAIL||'').trim().toLowerCase();
+	    const canEdit=(typeof aaCan==='function'&&aaCan('banco_profissionais_editar')) || ['administrador','administrador_geral','gestao','gestão'].includes(String((typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile&&rhCurrentProfile.perfil)||'').trim().toLowerCase()) || String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase()===String((window.__AA_ADMIN_EMAIL || 'adm@adm.com')||'').trim().toLowerCase();
     wrap.innerHTML='<div class="aa-table-scroll"><table class="aa-compact-table"><tr><th>Nome</th><th>Usuário Medicina</th><th>Telefone</th><th>Situação do cadastro</th><th>Ação</th></tr>'+list.map(p=>'<tr><td><button type="button" class="aa-name-link" onclick="window.aaOpenProfessionalFicha&&window.aaOpenProfessionalFicha(\''+safe(p.id)+'\')">'+safe(p.nomeCompleto||'-')+'</button></td><td>'+safe(p.usuarioMedicina||'-')+'</td><td>'+safe(p.whatsapp||p.telefone||'-')+'</td><td><span class="aa-profile-status active">Ativo</span></td><td>'+(canEdit?'<button type="button" class="aa-btn aa-btn-primary aa-btn-sm" style="background:linear-gradient(135deg,#8B5CF6,#3EA6E0)!important;border:0;color:#fff!important;white-space:nowrap;" onclick="aaEditCadastro(\''+safe(p.id)+'\')">Editar dados</button>':'<span class="aa-hint">Somente consulta</span>')+'</td></tr>').join('')+'</table></div>';
   };
   window.aaRenderProfissionaisDesativados=function(){
