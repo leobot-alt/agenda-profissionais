@@ -3743,6 +3743,12 @@ window.aaSwitchControlerTab=function(tab){
   if(tab==='historico')Promise.all([loadHistorico(),loadRHUsers()]).then(()=>aaRenderHistorico());
   if(tab==='agendas2')window.aaLoadAdminData().then(()=>aaRenderAdminList2()).catch(function(e){const el=document.getElementById('aa-admin-list-wrap-2');if(el)el.innerHTML='<div class="aa-error-msg">Não foi possível carregar as agendas desativadas agora.</div>';console.error(e);});
 };
+window.aaLoadAdminData=async function(){
+  await Promise.all([loadOperacoes(),loadProfissionais(),loadAllSubmissions()]);
+  if(document.getElementById('aa-admin-list-wrap'))aaRenderAdminList(false,'aa-admin-list-wrap',false);
+  if(document.getElementById('aa-admin-list-wrap-2'))aaRenderAdminList2();
+  return allSubmissions;
+};
 const aaOriginalFirstAllowedRHTab=aaFirstAllowedRHTab;  aaFirstAllowedRHTab=function(){const existing=['dashboard','agendas','banco','rda'].find(tab=>aaCan(RH_TAB_PERMISSION[tab]));return existing|| (aaControlerAllowed()?'controler':null);};
 const aaOriginalApplyRHPermissionsUI=aaApplyRHPermissionsUI;
 aaApplyRHPermissionsUI=function(){ aaOriginalApplyRHPermissionsUI(); const btn=document.querySelector('[data-rhtab="controler"]'); if(btn)btn.style.display=aaControlerAllowed()?'':'none'; };
