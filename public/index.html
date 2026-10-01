@@ -3914,10 +3914,12 @@ const aaOriginalRenderDashboard=window.aaRenderDashboard;window.aaRenderDashboar
   async function saveAjusteMotivos(){await storageSetRetry(AA_AJUSTE_MOTIVOS_KEY,JSON.stringify(allAjusteMotivos),true);}
   function aaEditorHTML(value){
     const raw=String(value||''),decoder=document.createElement('textarea');
-    // Alguns registros antigos salvaram o conteúdo do editor já escapado
-    // (&lt;div&gt;...&lt;/div&gt;). Decodifique somente quando houver uma tag
-    // permitida escapada, evitando alterar textos comuns com &amp;.
-    const source=/&lt;\/?(?:div|br|p|strong|b|i|em|u)\b[^&]*&gt;/i.test(raw)?(decoder.innerHTML=raw,decoder.value):raw;
+    // Alguns registros antigos foram escapados mais de uma vez
+    // (&lt;div&gt; ou &amp;lt;div&amp;gt;). Desfazemos até três camadas somente
+    // quando o conteúdo contém uma tag de formatação escapada.
+    const hasEscapedTag=/(?:&(?:amp;)*lt;)\/?(?:div|br|p|strong|b|i|em|u)\b[\s\S]*?(?:&(?:amp;)*gt;)/i.test(raw);
+    let source=raw;
+    if(hasEscapedTag){for(let i=0;i<3;i++){decoder.innerHTML=source;const decoded=decoder.value;if(decoded===source)break;source=decoded;}}
     const box=document.createElement('div');box.innerHTML=source;
     const allowed=['B','STRONG','I','EM','U','BR','P','DIV'];
     box.querySelectorAll('*').forEach(el=>{if(!allowed.includes(el.tagName)){el.replaceWith(document.createTextNode(el.textContent||''));}else{[...el.attributes].forEach(attr=>el.removeAttribute(attr));}});
