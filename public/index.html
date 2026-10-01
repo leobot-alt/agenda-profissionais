@@ -1996,7 +1996,7 @@ function aaIsAdministrator(){
 function aaApplyRHPermissionsUI(){
   document.querySelectorAll('[data-rhtab]').forEach(btn=>{
     const tab = btn.dataset.rhtab;
-    const allowed = aaCan(RH_TAB_PERMISSION[tab]);
+    const allowed = tab==='controller' ? !!rhAuthenticated : aaCan(RH_TAB_PERMISSION[tab]);
     btn.style.display = allowed ? '' : 'none';
   });
   document.querySelectorAll('[data-permission-action]').forEach(el=>{
