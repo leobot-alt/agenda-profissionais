@@ -478,7 +478,7 @@
           <button class="aa-tab" data-rhtab="banco" onclick="aaSwitchRHTab('banco')">Banco de Dados</button>
           <button class="aa-tab" data-rhtab="ajustes" onclick="aaSwitchRHTab('ajustes')">Ajuste de Agenda</button>
           <button class="aa-tab" data-rhtab="portal" onclick="aaSwitchRHTab('portal')">Portal</button>
-          <button class="aa-tab" data-rhtab="controler" onclick="aaSwitchRHTab('controler')">Administração</button>
+          <button class="aa-tab" data-rhtab="controler" onclick="aaSwitchRHTab('controler')">Controller</button>
         </div>
         <main id="aa-rh-page-mount" aria-live="polite"></main>
         <div id="aa-rh-page-cache" aria-hidden="true"></div>
@@ -755,14 +755,19 @@
               <div><h2 style="margin:0;">Administração</h2></div>
             </div>
             <div class="aa-tabs aa-controler-tabs" style="margin-bottom:18px;">
-              <button class="aa-tab active" data-controlertab="permissoes" onclick="aaSwitchControlerTab('permissoes')">Usuários e permissões</button>
+              <button class="aa-tab active" data-controlertab="cadastro" onclick="aaSwitchControlerTab('cadastro')">Cadastro de colaboradores</button>
+              <button class="aa-tab" data-controlertab="paginas" onclick="aaSwitchControlerTab('paginas')">Minhas subpáginas</button>
+              <button class="aa-tab" data-controlertab="permissoes" onclick="aaSwitchControlerTab('permissoes')">Usuários e permissões</button>
               <button class="aa-tab" data-controlertab="operacoes" onclick="aaSwitchControlerTab('operacoes')">Operações</button>
               <button class="aa-tab" data-controlertab="perfis" onclick="aaSwitchControlerTab('perfis')">Perfis</button>
               <button class="aa-tab" data-controlertab="config" onclick="aaSwitchControlerTab('config')">Configurações de horário</button>
               <button class="aa-tab" data-controlertab="historico" onclick="aaSwitchControlerTab('historico')">Histórico</button>
               <button class="aa-tab" data-controlertab="agendas2" onclick="aaSwitchControlerTab('agendas2')">Agendas desativadas</button>
             </div>
-            <div id="aa-controler-body"></div>
+            <div id="aa-controler-body">
+              <div id="aa-controler-cadastro-panel" style="display:none;"></div>
+              <div id="aa-controler-paginas-panel" style="display:none;"></div>
+            </div>
           </div>
         </div>
         <div style="text-align:right; margin-top:14px; padding:0 4px 4px;"><button class="aa-btn aa-btn-ghost aa-btn-sm" onclick="aaRHLogout()">Sair do painel RH</button></div>
@@ -3707,6 +3712,30 @@ function aaToast(message,type){
 window.aaToast=aaToast;
 function aaFindProfessionalForSubmission(s){ return allProfissionais.find(p=>p.id===s.profissionalId||normText(p.usuarioMedicina)===normText(s.usuario)); }
 function aaControlerAllowed(){ return isGeneralProfile(rhCurrentProfile)||aaCan('agendas_desativadas_ver')||aaCan('usuarios_ver')||aaCan('historico_ver')||aaCanAny('config_ver','config_nacionais_ver','config_nacionais_editar','config_domingo_editar','config_fechamentos_ver','config_fechamentos_adicionar','config_fechamentos_remover','permissoes_gerenciar','perfis_gerenciar','perfis_criar','perfis_editar','perfis_status','perfis_excluir','operacoes_gerenciar'); }
+const AA_CONTROLLER_PAGES_KEY='controller:subpages';
+let aaControllerPages=[];
+async function aaLoadControllerPages(){
+  try{const res=await cloudGet(AA_CONTROLLER_PAGES_KEY,true),parsed=res&&res.value?JSON.parse(res.value):[];aaControllerPages=Array.isArray(parsed)?parsed.filter(page=>page&&page.id&&String(page.nome||'').trim()):[];}
+  catch(error){aaControllerPages=[];console.warn('Não foi possível carregar as subpáginas do Controller.',error);}
+  return aaControllerPages;
+}
+async function aaSaveControllerPages(){await storageSetRetry(AA_CONTROLLER_PAGES_KEY,JSON.stringify(aaControllerPages),true);}
+function aaRenderControllerPages(){
+  const panel=document.getElementById('aa-controler-paginas-panel');if(!panel)return;
+  const cards=aaControllerPages.map(page=>'<article class="aa-card" style="margin:0 0 10px;background:#fff;border:1px solid var(--line);"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;"><div><h3 style="margin:0 0 4px;color:var(--primary-dark);">'+aaHtmlSafe(page.nome)+'</h3><p class="aa-hint" style="margin:0;white-space:pre-wrap;">'+aaHtmlSafe(page.conteudo||'Subpágina criada no Controller.')+'</p></div><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaExcluirControllerPage(\''+aaHtmlSafe(page.id)+'\')">Excluir</button></div></article>').join('');
+  panel.innerHTML='<div class="aa-card" style="margin:0;background:#FAF9FD;"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;"><div><h2 style="margin:0 0 4px;">Minhas subpáginas</h2><p class="aa-hint" style="margin:0;">Crie manualmente cada subpágina e defina o nome e a descrição que aparecerão no Controller.</p></div></div><form onsubmit="aaCriarControllerPage(event)" style="margin-top:14px;"><div class="aa-field-row" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr);"><div class="aa-field"><label>Nome da subpágina</label><input id="aa-controller-page-name" maxlength="80" required placeholder="Ex.: Cadastro de colaboradores"></div><div class="aa-field"><label>Descrição ou conteúdo inicial</label><input id="aa-controller-page-content" maxlength="500" placeholder="Explique a finalidade desta subpágina (opcional)"></div></div><div class="aa-modal-actions" style="justify-content:flex-end;margin-top:10px;"><button class="aa-btn aa-btn-primary" type="submit">Criar subpágina</button></div></form><div style="margin-top:18px;">'+(cards||'<div class="aa-empty-state">Nenhuma subpágina personalizada criada.</div>')+'</div></div>';
+}
+window.aaCriarControllerPage=async function(event){
+  if(event)event.preventDefault();if(!aaControlerAllowed())return;
+  const name=String(document.getElementById('aa-controller-page-name')?.value||'').trim(),content=String(document.getElementById('aa-controller-page-content')?.value||'').trim();if(!name){alert('Informe o nome da subpágina.');return;}
+  if(aaControllerPages.some(page=>normText(page.nome)===normText(name))){alert('Já existe uma subpágina com esse nome.');return;}
+  const page={id:'controller-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),nome:name,conteudo:content,criadaEm:new Date().toISOString(),criadaPor:rhCurrentUser||'Sistema'};aaControllerPages.push(page);
+  try{await aaSaveControllerPages();aaRenderControllerPages();aaLogChange('Criação de subpágina do Controller',name,'Subpágina criada por '+(rhCurrentUser||'Sistema'));aaToast('Subpágina criada com sucesso.','success');}catch(error){aaControllerPages=aaControllerPages.filter(item=>item.id!==page.id);alert('Não foi possível criar a subpágina agora.');console.error(error);}
+};
+window.aaExcluirControllerPage=async function(id){
+  if(!aaControlerAllowed())return;const page=aaControllerPages.find(item=>String(item.id)===String(id));if(!page)return;if(!window.confirm('Excluir a subpágina “'+page.nome+'”?'))return;const previous=aaControllerPages.slice();aaControllerPages=aaControllerPages.filter(item=>String(item.id)!==String(id));
+  try{await aaSaveControllerPages();aaRenderControllerPages();aaLogChange('Exclusão de subpágina do Controller',page.nome,'Subpágina excluída por '+(rhCurrentUser||'Sistema'));aaToast('Subpágina excluída.','success');}catch(error){aaControllerPages=previous;aaRenderControllerPages();alert('Não foi possível excluir a subpágina agora.');console.error(error);}
+};
 function aaControlerPanelFor(tab){ return tab==='permissoes'?'aa-rhtab-permissoes':tab==='operacoes'?'aa-rhtab-operacoes':tab==='perfis'?'aa-rhtab-perfis':tab==='config'?'aa-rhtab-config':tab==='historico'?'aa-rhtab-historico':tab==='agendas2'?'aa-rhtab-agendas2':null; }
 function aaEnsureControlerSources(){
   const body=document.getElementById('aa-controler-body'); if(!body)return null;
@@ -3714,7 +3743,7 @@ function aaEnsureControlerSources(){
   return body;
 }
 function aaControlerCadastroHTML(){
-  return '<div class="aa-card" style="margin:0;background:#FAF9FD;"><h2>Cadastro de usuário</h2><div id="aa-controler-user-list"></div></div>';
+  return '<div class="aa-card" style="margin:0;background:#FAF9FD;"><h2>Cadastro de colaboradores</h2><p class="aa-hint">Consulte os colaboradores cadastrados e edite o acesso quando tiver permissão.</p><div id="aa-controler-user-list"></div></div>';
 }
 function aaRenderControlerCadastro(){
   const panel=document.getElementById('aa-controler-cadastro-panel'); if(!panel)return;
@@ -3735,7 +3764,9 @@ window.aaSwitchControlerTab=function(tab){
   if(!aaControlerAllowed())return;
   const body=aaEnsureControlerSources(); if(!body)return;
   document.querySelectorAll('[data-controlertab]').forEach(btn=>btn.classList.toggle('active',btn.dataset.controlertab===tab));
-  ['permissoes','operacoes','perfis','config','historico','agendas2'].forEach(key=>{const node=document.getElementById(aaControlerPanelFor(key));if(node)node.style.display=key===tab?'block':'none';});
+  ['cadastro','paginas','permissoes','operacoes','perfis','config','historico','agendas2'].forEach(key=>{const node=key==='cadastro'?document.getElementById('aa-controler-cadastro-panel'):key==='paginas'?document.getElementById('aa-controler-paginas-panel'):document.getElementById(aaControlerPanelFor(key));if(node)node.style.display=key===tab?'block':'none';});
+  if(tab==='cadastro')Promise.all([loadRHUsers(),loadPerfis(),loadOperacoes()]).then(()=>aaRenderControlerCadastro());
+  if(tab==='paginas')aaLoadControllerPages().then(()=>aaRenderControllerPages());
   if(tab==='permissoes')Promise.all([loadRHUsers(),loadPerfis(),loadOperacoes()]).then(()=>aaRenderPermissoes());
   if(tab==='operacoes')Promise.all([loadOperacoes(),loadRHUsers(),loadProfissionais(),loadAllSubmissions()]).then(()=>aaRenderOperacoes());
   if(tab==='perfis')Promise.all([loadPerfis(),loadOperacoes()]).then(()=>{aaRenderPerfis();});
@@ -3759,7 +3790,7 @@ window.aaSwitchRHTab=function(tab){
     document.querySelectorAll('[data-rhtab]').forEach(t=>t.classList.toggle('active',t.dataset.rhtab==='controler'));
     ['dashboard','agendas','agendas2','banco','rda','historico','config','portal','ajustes'].forEach(key=>{const el=document.getElementById('aa-rhtab-'+key);if(el)el.style.display='none';});
     const panel=document.getElementById('aa-rhtab-controler');if(panel)panel.style.display='block';
-    aaEnsureControlerSources();aaSwitchControlerTab('permissoes');return;
+    aaEnsureControlerSources();aaSwitchControlerTab('cadastro');return;
   }
   const controler=document.getElementById('aa-rhtab-controler');if(controler)controler.style.display='none';
   aaOriginalSwitchRHTab(tab);
