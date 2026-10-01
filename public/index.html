@@ -3912,7 +3912,17 @@ const aaOriginalRenderDashboard=window.aaRenderDashboard;window.aaRenderDashboar
     ajusteMotivosLoaded=true;return allAjusteMotivos;
   }
   async function saveAjusteMotivos(){await storageSetRetry(AA_AJUSTE_MOTIVOS_KEY,JSON.stringify(allAjusteMotivos),true);}
-  function aaEditorHTML(value){const raw=String(value||''),box=document.createElement('div');box.innerHTML=raw;const allowed=['B','STRONG','I','EM','U','BR','P','DIV'];box.querySelectorAll('*').forEach(el=>{if(!allowed.includes(el.tagName)){el.replaceWith(document.createTextNode(el.textContent||''));}else{[...el.attributes].forEach(attr=>el.removeAttribute(attr));}});return box.innerHTML;}
+  function aaEditorHTML(value){
+    const raw=String(value||''),decoder=document.createElement('textarea');
+    // Alguns registros antigos salvaram o conteúdo do editor já escapado
+    // (&lt;div&gt;...&lt;/div&gt;). Decodifique somente quando houver uma tag
+    // permitida escapada, evitando alterar textos comuns com &amp;.
+    const source=/&lt;\/?(?:div|br|p|strong|b|i|em|u)\b[^&]*&gt;/i.test(raw)?(decoder.innerHTML=raw,decoder.value):raw;
+    const box=document.createElement('div');box.innerHTML=source;
+    const allowed=['B','STRONG','I','EM','U','BR','P','DIV'];
+    box.querySelectorAll('*').forEach(el=>{if(!allowed.includes(el.tagName)){el.replaceWith(document.createTextNode(el.textContent||''));}else{[...el.attributes].forEach(attr=>el.removeAttribute(attr));}});
+    return box.innerHTML;
+  }
   function aaEditorText(value){const box=document.createElement('div');box.innerHTML=aaEditorHTML(value);return String(box.textContent||'').trim();}
   window.aaSincronizarEditor=function(editorId,textareaId){const editor=document.getElementById(editorId),textarea=document.getElementById(textareaId);if(editor&&textarea)textarea.value=aaEditorHTML(editor.innerHTML);};
   window.aaFormatarTexto=function(command,editorId){const editor=document.getElementById(editorId);if(!editor)return;editor.focus();document.execCommand(command,false,null);aaSincronizarEditor(editorId,editorId.replace(/-editor$/,''));};
