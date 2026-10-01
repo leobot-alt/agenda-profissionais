@@ -479,6 +479,7 @@
           <button class="aa-tab" data-rhtab="ajustes" onclick="aaSwitchRHTab('ajustes')">Ajuste de Agenda</button>
           <button class="aa-tab" data-rhtab="portal" onclick="aaSwitchRHTab('portal')">Portal</button>
           <button class="aa-tab" data-rhtab="controler" onclick="aaSwitchRHTab('controler')">Administração</button>
+          <button class="aa-tab" data-rhtab="controller" onclick="aaSwitchRHTab('controller')">Controller</button>
         </div>
         <main id="aa-rh-page-mount" aria-live="polite"></main>
         <div id="aa-rh-page-cache" aria-hidden="true"></div>
@@ -763,6 +764,17 @@
               <button class="aa-tab" data-controlertab="agendas2" onclick="aaSwitchControlerTab('agendas2')">Agendas desativadas</button>
             </div>
             <div id="aa-controler-body"></div>
+          </div>
+        </div>
+        <div class="aa-rh-subpanel" id="aa-rhtab-controller" style="display:none;">
+          <div class="aa-card">
+            <div class="aa-lookup-head"><div><h2 style="margin:0;">Controller</h2><p class="aa-hint" style="margin:4px 0 0;">Crie e organize subpáginas independentes para os colaboradores.</p></div></div>
+            <div class="aa-tabs aa-controller-tabs" style="margin:18px 0;">
+              <button class="aa-tab active" type="button" data-controller-view="cadastro" onclick="aaControllerSwitchView('cadastro')">Cadastro de colaboradores</button>
+              <button class="aa-tab" type="button" data-controller-view="subpaginas" onclick="aaControllerSwitchView('subpaginas')">Criar subpágina</button>
+            </div>
+            <div id="aa-controller-view-cadastro"></div>
+            <div id="aa-controller-view-subpaginas" style="display:none;"></div>
           </div>
         </div>
         <div style="text-align:right; margin-top:14px; padding:0 4px 4px;"><button class="aa-btn aa-btn-ghost aa-btn-sm" onclick="aaRHLogout()">Sair do painel RH</button></div>
@@ -4779,5 +4791,32 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 </style><style id="aa-adjust-title-medicine-styles">
 .aa-adjust-title-medicine{display:inline-block;margin-left:8px;color:#58708F;font-size:.72em;font-weight:800;white-space:nowrap;vertical-align:middle}
 @media(max-width:650px){.aa-adjust-title-medicine{display:block;margin:4px 0 0;font-size:.82em}}
-</style></body>
+</style>
+<script>
+(function(){
+  const CONTROLLER_PAGES_KEY='controller:independent-subpages';
+  let controllerPages=[];
+  function controllerAllowed(){try{return typeof aaControlerAllowed==='function'&&aaControlerAllowed();}catch(e){return false;}}
+  function controllerPageText(value){return typeof aaHtmlSafe==='function'?aaHtmlSafe(value==null?'':String(value)):String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  async function loadControllerPages(){try{const res=await cloudGet(CONTROLLER_PAGES_KEY,true);const parsed=res&&res.value?JSON.parse(res.value):[];controllerPages=Array.isArray(parsed)?parsed.filter(p=>p&&p.id&&String(p.nome||'').trim()):[];}catch(e){controllerPages=[];console.warn('Não foi possível carregar as subpáginas do Controller.',e);}return controllerPages;}
+  async function saveControllerPages(){await storageSetRetry(CONTROLLER_PAGES_KEY,JSON.stringify(controllerPages),true);}
+  function renderControllerCadastro(){
+    const out=document.getElementById('aa-controller-view-cadastro');if(!out)return;
+    const users=(Array.isArray(allRHUsers)?allRHUsers:[]).filter(u=>!u.removido);
+    out.innerHTML=users.length?'<div class="aa-table-scroll"><table class="aa-compact-table"><thead><tr><th>Colaborador</th><th>E-mail</th><th>Perfil</th><th>Operação</th><th>Status</th></tr></thead><tbody>'+users.map(u=>'<tr><td><b>'+controllerPageText(u.nomeCompleto||u.username||'-')+'</b></td><td>'+controllerPageText(u.username||'-')+'</td><td>'+controllerPageText(typeof perfilLabel==='function'?perfilLabel(u.perfil):u.perfil||'-')+'</td><td>'+controllerPageText(typeof operacaoLabel==='function'?operacaoLabel(u.operacao):u.operacao||'-')+'</td><td>'+controllerPageText(u.ativo===false?'Inativo':'Ativo')+'</td></tr>').join('')+'</tbody></table></div>':'<div class="aa-empty-state">Nenhum colaborador cadastrado.</div>';
+  }
+  function renderControllerPages(){
+    const out=document.getElementById('aa-controller-view-subpaginas');if(!out)return;
+    const list=controllerPages.map(p=>'<article class="aa-card" style="margin:0 0 10px;background:#FAF9FD;"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;"><div><h3 style="margin:0 0 5px;color:var(--primary-dark);">'+controllerPageText(p.nome)+'</h3><p class="aa-hint" style="margin:0;white-space:pre-wrap;">'+controllerPageText(p.descricao||'Subpágina criada no Controller.')+'</p></div><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeletePage(\''+controllerPageText(p.id)+'\')">Excluir</button></div></article>').join('');
+    out.innerHTML='<form onsubmit="aaControllerCreatePage(event)" class="aa-card" style="margin:0 0 16px;background:#FAF9FD;"><h3 style="margin-top:0;">Nova subpágina</h3><p class="aa-hint">Você pode criar manualmente cada subpágina e definir o nome dela.</p><div class="aa-field-row" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr);"><div class="aa-field"><label>Nome da subpágina</label><input id="aa-controller-new-name" maxlength="80" required placeholder="Ex.: Cadastro de colaboradores"></div><div class="aa-field"><label>Descrição</label><input id="aa-controller-new-description" maxlength="500" placeholder="Finalidade desta subpágina (opcional)"></div></div><div class="aa-modal-actions" style="justify-content:flex-end;"><button type="submit" class="aa-btn aa-btn-primary">Criar subpágina</button></div></form>'+(list||'<div class="aa-empty-state">Nenhuma subpágina personalizada criada.</div>');
+  }
+  window.aaControllerSwitchView=async function(view){if(!controllerAllowed())return;document.querySelectorAll('[data-controller-view]').forEach(b=>b.classList.toggle('active',b.dataset.controllerView===view));const cadastro=document.getElementById('aa-controller-view-cadastro'),pages=document.getElementById('aa-controller-view-subpaginas');if(cadastro)cadastro.style.display=view==='cadastro'?'block':'none';if(pages)pages.style.display=view==='subpaginas'?'block':'none';if(view==='cadastro'){await Promise.all([loadRHUsers(),loadPerfis(),loadOperacoes()]);renderControllerCadastro();}else{await loadControllerPages();renderControllerPages();}};
+  window.aaControllerCreatePage=async function(event){if(event)event.preventDefault();if(!controllerAllowed())return;const name=String(document.getElementById('aa-controller-new-name')?.value||'').trim(),description=String(document.getElementById('aa-controller-new-description')?.value||'').trim();if(!name)return;if(controllerPages.some(p=>String(p.nome).toLowerCase()===name.toLowerCase()))return alert('Já existe uma subpágina com esse nome.');const page={id:'controller-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),nome:name,descricao:description,criadaEm:new Date().toISOString()};controllerPages.push(page);try{await saveControllerPages();renderControllerPages();if(typeof aaToast==='function')aaToast('Subpágina criada com sucesso.','success');}catch(e){controllerPages=controllerPages.filter(p=>p.id!==page.id);alert('Não foi possível criar a subpágina agora.');console.error(e);}};
+  window.aaControllerDeletePage=async function(id){if(!controllerAllowed())return;const page=controllerPages.find(p=>String(p.id)===String(id));if(!page||!confirm('Excluir a subpágina “'+page.nome+'”?'))return;const old=controllerPages.slice();controllerPages=controllerPages.filter(p=>String(p.id)!==String(id));try{await saveControllerPages();renderControllerPages();if(typeof aaToast==='function')aaToast('Subpágina excluída.','success');}catch(e){controllerPages=old;renderControllerPages();alert('Não foi possível excluir a subpágina agora.');console.error(e);}};
+  const oldSwitch=window.aaSwitchRHTab;
+  window.aaSwitchRHTab=function(tab){if(tab==='controller'){if(!controllerAllowed())return;document.querySelectorAll('[data-rhtab]').forEach(b=>b.classList.toggle('active',b.dataset.rhtab==='controller'));document.querySelectorAll('#aa-rh-authed-content .aa-rh-subpanel').forEach(p=>p.style.display='none');const panel=document.getElementById('aa-rhtab-controller');if(panel)panel.style.display='block';window.aaControllerSwitchView('cadastro');return;}const panel=document.getElementById('aa-rhtab-controller');if(panel)panel.style.display='none';return oldSwitch(tab);};
+  const oldApply=window.aaApplyRHPermissionsUI||function(){};window.aaApplyRHPermissionsUI=function(){oldApply();const button=document.querySelector('[data-rhtab="controller"]');if(button)button.style.display=controllerAllowed()?'':'none';};
+  const oldFirst=window.aaFirstAllowedRHTab; if(typeof oldFirst==='function'){window.aaFirstAllowedRHTab=function(){return oldFirst()||(controllerAllowed()?'controller':null);};}
+})();
+</script></body>
 </html>
