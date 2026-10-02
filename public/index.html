@@ -4805,7 +4805,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   function controllerAllowed(){
     try{
       const profile=(typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile)||null;
-      const email=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||profile?.username||'').trim();
+      const visibleSessionEmail=String(document.getElementById('aa-rh-session-email')?.textContent||'').trim();
+      const email=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||profile?.username||visibleSessionEmail||'').trim();
       if(!email||profile?.ativo===false||profile?.removido===true)return false;
       return true;
     }catch(e){return false;}
