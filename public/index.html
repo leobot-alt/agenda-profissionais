@@ -4806,13 +4806,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     try{
       const profile=(typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile)||null;
       const email=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||profile?.username||'').trim();
-      const authenticated=typeof rhAuthenticated!=='undefined'&&rhAuthenticated===true;
-      if(!authenticated||!email||profile?.ativo===false||profile?.removido===true)return false;
-      const role=typeof normalizePerfil==='function'?normalizePerfil(profile.perfil):String(profile.perfil||'').trim().toLowerCase();
-      const configured=Array.isArray(profile.permissions)&&profile.permissions.includes('controller_ver');
-      const activeRole=['colaborador','administrador','administrador_geral','gestao'].includes(role);
-      const sessionPermission=typeof aaCan==='function'&&(aaCan('controller_ver')||aaCan('usuarios_ver')||aaCan('permissoes_gerenciar'));
-      return !!(sessionPermission||configured||activeRole||String(email).toLowerCase()===String((window.__AA_ADMIN_EMAIL||'adm@adm.com')).toLowerCase());
+      if(!email||profile?.ativo===false||profile?.removido===true)return false;
+      return true;
     }catch(e){return false;}
   }
   function controllerPageText(value){return typeof aaHtmlSafe==='function'?aaHtmlSafe(value==null?'':String(value)):String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
