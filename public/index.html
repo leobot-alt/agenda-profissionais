@@ -4796,7 +4796,13 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 (function(){
   const CONTROLLER_PAGES_KEY='controller:independent-subpages',CONTROLLER_COLLABORATORS_KEY='controller:collaborators';
   let controllerPages=[],controllerCollaborators=[];
-  function controllerAllowed(){try{return typeof rhAuthenticated!=='undefined'&&rhAuthenticated===true; }catch(e){return false;}}
+  function controllerAllowed(){
+    try{
+      const authPanel=document.getElementById('aa-rh-authed-content');
+      const loginCard=document.getElementById('aa-rh-login-card');
+      return !!(authPanel && getComputedStyle(authPanel).display!=='none' && (!loginCard || getComputedStyle(loginCard).display==='none'));
+    }catch(e){return false;}
+  }
   function controllerPageText(value){return typeof aaHtmlSafe==='function'?aaHtmlSafe(value==null?'':String(value)):String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   async function loadControllerPages(){try{const res=await cloudGet(CONTROLLER_PAGES_KEY,true);const parsed=res&&res.value?JSON.parse(res.value):[];controllerPages=Array.isArray(parsed)?parsed.filter(p=>p&&p.id&&String(p.nome||'').trim()):[];}catch(e){controllerPages=[];console.warn('Não foi possível carregar as subpáginas do Controller.',e);}return controllerPages;}
   async function saveControllerPages(){await storageSetRetry(CONTROLLER_PAGES_KEY,JSON.stringify(controllerPages),true);}
