@@ -744,7 +744,7 @@
             </div>
             <div id="aa-portal-view-panorama" style="display:none;margin-top:18px;">
               <section id="aa-portal-panorama" data-escala-admin style="display:block;margin-top:0;">
-                <div class="aa-scale-section-heading"><div><h3>Panorama da equipe</h3><p class="aa-hint">Visualize as folgas de toda a equipe por mês.</p></div><div class="aa-field-row" style="margin:0;align-items:end"><div class="aa-field"><label>Mês do panorama</label><input type="month" id="aa-panorama-mes" onchange="aaPortalLoadPanorama()"></div><div class="aa-field"><label>Buscar profissional</label><input type="search" id="aa-panorama-busca" placeholder="Nome..." oninput="aaPortalFiltrarPanorama()"></div><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaPortalExportarPanorama()">CSV</button><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaPortalExportarPanoramaExcel()">Excel</button><button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" onclick="window.print()">Imprimir</button></div></div>
+                <div class="aa-scale-section-heading"><div><h3>Panorama da equipe</h3><p class="aa-hint">Visualize os sábados escalados para trabalho, as folgas lançadas e o aceite da escala por mês.</p></div><div class="aa-field-row" style="margin:0;align-items:end"><div class="aa-field"><label>Mês do panorama</label><input type="month" id="aa-panorama-mes" onchange="aaPortalLoadPanorama()"></div><div class="aa-field"><label>Buscar profissional</label><input type="search" id="aa-panorama-busca" placeholder="Nome..." oninput="aaPortalFiltrarPanorama()"></div><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaPortalExportarPanorama()">CSV</button><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaPortalExportarPanoramaExcel()">Excel</button><button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" onclick="window.print()">Imprimir</button></div></div>
                 <div id="aa-panorama-content"><div class="aa-scale-empty">Selecione o mês para carregar o panorama.</div></div>
               </section>
             </div>
@@ -4730,7 +4730,50 @@ document.addEventListener('input',e=>{if(e.target.closest('#aa-portal-view-escal
 window.aaPortalTogglePanorama=async function(){if(!canPanorama())return alert('Você não possui permissão para visualizar o panorama da equipe.');const box=document.getElementById('aa-portal-panorama');if(!box)return;const opening=box.style.display==='none'||!box.style.display;box.style.display=opening?'block':'none';if(opening)await window.aaPortalLoadPanorama();};
 window.aaPortalFiltrarPanorama=function(){const q=String(document.getElementById('aa-panorama-busca')?.value||'').trim().toLowerCase();document.querySelectorAll('#aa-panorama-content tbody tr').forEach(tr=>tr.style.display=tr.textContent.toLowerCase().includes(q)?'':'none');};window.aaPortalExportarPanorama=function(){const table=document.querySelector('#aa-panorama-content table');if(!table)return alert('Não há dados do panorama para exportar.');const rows=[...table.querySelectorAll('tr')].map(tr=>[...tr.children].map(c=>'"'+String(c.innerText).replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+rows],{type:'text/csv;charset=utf-8;'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='panorama-'+(document.getElementById('aa-panorama-mes')?.value||mes())+'.csv';a.click();URL.revokeObjectURL(a.href);};
 window.aaPortalExportarPanoramaExcel=function(){const table=document.querySelector('#aa-panorama-content table');if(!table)return alert('Não há dados do panorama para exportar.');if(typeof XLSX==='undefined')return alert('Exportação Excel indisponível.');const wb=XLSX.utils.table_to_book(table,{sheet:'Panorama'});XLSX.writeFile(wb,'panorama-'+(document.getElementById('aa-panorama-mes')?.value||mes())+'.xlsx');};
-window.aaPortalLoadPanorama=async function(){const box=document.getElementById('aa-portal-panorama'),out=document.getElementById('aa-panorama-content');if(!box||!out||!canPanorama()){if(box)box.style.display='none';return;}const month=document.getElementById('aa-panorama-mes')?.value||mes();out.innerHTML='<div class="aa-scale-empty">Carregando folgas...</div>';const result=await portalState().client.from('escalas_mensais').select('id,usuario_auth_id,usuario_nome,usuario_email,dias').eq('mes',month).limit(200);if(result.error){out.innerHTML='<div class="aa-scale-empty">Não foi possível carregar as folgas.</div>';return;}const scales=result.data||[],ids=scales.map(s=>s.id).filter(Boolean);let accepts=[];if(ids.length){const ares=await portalState().client.from('escala_aceites').select('escala_id,usuario_auth_id,aceito_em,aceite').in('escala_id',ids).limit(500);if(!ares.error)accepts=ares.data||[];}const acceptedByScale=new Map(accepts.filter(a=>a.aceito!==false&&a.aceito_em).map(a=>[String(a.escala_id),a]));const esc=v=>String(v??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));const rows=scales.map(scale=>{const folgas=(Array.isArray(scale.dias)?scale.dias:[]).filter(d=>String(d.tipo||'').trim().toLowerCase()==='folga').map(d=>dateBR(d.data)+(d.observacao?' — '+esc(d.observacao):''));const accepted=acceptedByScale.get(String(scale.id));return folgas.length?{nome:scale.usuario_nome||scale.usuario_email||uname(scale.usuario_auth_id),folgas,aceite:accepted?new Date(accepted.aceito_em).toLocaleString('pt-BR'):'Pendente'}:null;}).filter(Boolean);const count=document.getElementById('aa-panorama-count');if(count)count.textContent=`${rows.length} profissional(is) com folga`;out.innerHTML=rows.length?`<div class="aa-scale-grid-wrap"><table class="aa-scale-grid"><thead><tr><th>Profissional</th><th>Datas de folga</th><th>Aceite da escala</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(r.nome)}</b></td><td>${r.folgas.join('<br>')}</td><td><span class="aa-panorama-acceptance ${r.aceite==='Pendente'?'pending':'confirmed'}">${r.aceite==='Pendente'?'Pendente':'Confirmada em '+esc(r.aceite)}</span></td></tr>`).join('')}</tbody></table></div>`:'<div class="aa-scale-empty aa-no-scale-message"><strong>ESCALA NÃO LANÇADA</strong><span>Não existe escala lançada para este mês.</span></div>';};
+window.aaPortalLoadPanorama=async function(){
+  const box=document.getElementById('aa-portal-panorama'),out=document.getElementById('aa-panorama-content');
+  if(!box||!out||!canPanorama()){if(box)box.style.display='none';return;}
+  const month=document.getElementById('aa-panorama-mes')?.value||mes();
+  out.innerHTML='<div class="aa-scale-empty">Carregando panorama da equipe...</div>';
+  const result=await portalState().client.from('escalas_mensais').select('id,usuario_auth_id,usuario_nome,usuario_email,dias').eq('mes',month).limit(200);
+  if(result.error){out.innerHTML='<div class="aa-scale-empty">Não foi possível carregar o panorama.</div>';return;}
+  const scales=result.data||[],ids=scales.map(scale=>scale.id).filter(Boolean);
+  let accepts=[];
+  if(ids.length){
+    const ares=await portalState().client.from('escala_aceites').select('escala_id,usuario_auth_id,aceito_em,aceite').in('escala_id',ids).limit(500);
+    if(!ares.error)accepts=ares.data||[];
+  }
+  const acceptedByScale=new Map(accepts.filter(accept=>accept.aceito!==false&&accept.aceito_em).map(accept=>[String(accept.escala_id),accept]));
+  const esc=value=>String(value??'').replace(/[&<>]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[char]));
+  const rows=scales.map(scale=>{
+    const days=Array.isArray(scale.dias)?scale.dias:[];
+    const sabados=days.filter(day=>{
+      const type=String(day.tipo||'').trim().toLowerCase(),date=String(day.data||''),parsed=new Date(date+'T00:00:00');
+      return type==='trabalho'&&!Number.isNaN(parsed.getTime())&&parsed.getDay()===6;
+    }).map(day=>{
+      const hours=[day.entrada,day.saida].filter(value=>String(value||'').trim()).map(esc);
+      return esc(dateBR(day.data))+(hours.length?' — '+hours.join('–'):'');
+    });
+    const folgas=days.filter(day=>String(day.tipo||'').trim().toLowerCase()==='folga').map(day=>esc(dateBR(day.data))+(day.observacao?' — '+esc(day.observacao):''));
+    if(!sabados.length&&!folgas.length)return null;
+    const accepted=acceptedByScale.get(String(scale.id));
+    return {nome:scale.usuario_nome||scale.usuario_email||uname(scale.usuario_auth_id),sabados,folgas,aceite:accepted?new Date(accepted.aceito_em).toLocaleString('pt-BR'):'Pendente'};
+  }).filter(Boolean);
+  const count=document.getElementById('aa-panorama-count');
+  if(count){
+    const saturdayPeople=rows.filter(row=>row.sabados.length).length,folgaPeople=rows.filter(row=>row.folgas.length).length;
+    count.textContent=`${rows.length} profissional(is) — ${saturdayPeople} com sábado(s), ${folgaPeople} com folga(s)`;
+  }
+  if(!scales.length){
+    out.innerHTML='<div class="aa-scale-empty aa-no-scale-message"><strong>ESCALA NÃO LANÇADA</strong><span>Não existe escala lançada para este mês.</span></div>';
+    return;
+  }
+  if(!rows.length){
+    out.innerHTML='<div class="aa-scale-empty">Não há sábados escalados para trabalho nem folgas lançadas neste mês.</div>';
+    return;
+  }
+  out.innerHTML=`<div class="aa-scale-grid-wrap"><table class="aa-scale-grid"><thead><tr><th>Profissional</th><th>Sábados escalados para trabalho</th><th>Datas de folga</th><th>Aceite da escala</th></tr></thead><tbody>${rows.map(row=>`<tr><td><b>${esc(row.nome)}</b></td><td>${row.sabados.length?row.sabados.join('<br>'):'—'}</td><td>${row.folgas.length?row.folgas.join('<br>'):'—'}</td><td><span class="aa-panorama-acceptance ${row.aceite==='Pendente'?'pending':'confirmed'}">${row.aceite==='Pendente'?'Pendente':'Confirmada em '+esc(row.aceite)}</span></td></tr>`).join('')}</tbody></table></div>`;
+};
 async function portalAuthUserId(){
   const auth=await portalState().client.auth.getUser();
   return String(auth.data?.user?.id||uid()||'');
