@@ -4803,11 +4803,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   const controllerDb=window.__aaSupabaseClient;
   let controllerPages=[];
   function controllerAllowed(){
-    try{
-      const authPanel=document.getElementById('aa-rh-authed-content');
-      const loginCard=document.getElementById('aa-rh-login-card');
-      return !!(authPanel && getComputedStyle(authPanel).display!=='none' && (!loginCard || getComputedStyle(loginCard).display==='none') && typeof aaCan==='function' && aaCan('controller_ver'));
-    }catch(e){return false;}
+    try{return !!(typeof aaCan==='function' && aaCan('controller_ver'));}
+    catch(e){return false;}
   }
   function controllerPageText(value){return typeof aaHtmlSafe==='function'?aaHtmlSafe(value==null?'':String(value)):String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   async function loadControllerPages(){try{if(!controllerDb?.from)throw new Error('Cliente Supabase indisponível.');const result=await controllerDb.from('controller_subpages').select('id,nome,descricao,criada_em').order('criada_em',{ascending:true});if(result.error)throw result.error;controllerPages=(result.data||[]).map(p=>({id:p.id,nome:p.nome,descricao:p.descricao||'',criadaEm:p.criada_em}));}catch(e){controllerPages=[];console.warn('Não foi possível carregar as subpáginas do Controller.',e);}return controllerPages;}
