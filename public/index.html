@@ -767,13 +767,10 @@
           </div>
         </div>
         <div class="aa-rh-subpanel" id="aa-rhtab-controller" style="display:none;">
-          <div class="aa-card">
-            <div class="aa-lookup-head"><div><h2 style="margin:0;">Controller</h2><p class="aa-hint" style="margin:4px 0 0;">Crie e organize subpáginas independentes para os colaboradores.</p></div></div>
-            <div class="aa-tabs aa-controller-tabs" style="margin:18px 0;">
-              <button class="aa-tab active" type="button" data-controller-view="subpaginas">Subpáginas de conferência</button>
-            </div>
+          <section class="aa-controller-root">
+            <header class="aa-controller-root-header"><div><span class="aa-controller-overline">CONTROLE OPERACIONAL</span><h1>Controller</h1><p>Organize a importação e a conferência dos atendimentos da equipe.</p></div></header>
             <div id="aa-controller-view-subpaginas"></div>
-          </div>
+          </section>
         </div>
         <div style="text-align:right; margin-top:14px; padding:0 4px 4px;"><button class="aa-btn aa-btn-ghost aa-btn-sm" onclick="aaRHLogout()">Sair do painel RH</button></div>
       </div>
@@ -894,11 +891,11 @@ const ADMIN_PASS = '';
     {key:'operacoes_gerenciar', label:'Operações — criar, editar e excluir operações', group:'Administração / Operações', kind:'Administrar', description:'Permite administrar operações e seus blocos, incluindo nomes, vínculos e exclusões.'},
     {key:'usuarios_status', label:'Usuários — ativar ou desativar acesso', group:'Administração / Usuários', kind:'Status', description:'Permite bloquear ou liberar o acesso de usuários do RH.'},
     {key:'usuarios_remover', label:'Usuários — remover acesso interno', group:'Administração', kind:'Excluir', description:'Permite remover o registro interno de um usuário.'},
-    {key:'controller_ver',label:'Controller — acessar subpáginas e atendimentos',group:'Controller',kind:'Visualizar',description:'Permite acessar as subpáginas autorizadas e consultar os atendimentos.'},
-    {key:'controller_dashboard_ver',label:'Controller — visualizar dashboard',group:'Controller',kind:'Visualizar',description:'Permite consultar indicadores e registros de acompanhamento por período, colaborador, operação e subpágina.'},
+    {key:'controller_ver',label:'Controller — acessar acompanhamentos e atendimentos',group:'Controller',kind:'Visualizar',description:'Permite acessar as áreas de acompanhamento autorizadas e consultar os atendimentos.'},
+    {key:'controller_dashboard_ver',label:'Controller — visualizar painel de acompanhamento',group:'Controller',kind:'Visualizar',description:'Permite consultar indicadores e acompanhamentos por período e colaborador.'},
     {key:'controller_status_atual_editar',label:'Controller — alterar Status atual',group:'Controller',kind:'Editar',description:'Permite aplicar ou atualizar o Status atual de um atendimento.'},
     {key:'controller_importar',label:'Controller — importar planilhas',group:'Controller',kind:'Criar',description:'Permite importar planilhas e acrescentar atendimentos sem apagar o histórico.'},
-    {key:'controller_subpaginas_gerenciar',label:'Controller — criar e excluir subpáginas',group:'Controller',kind:'Administrar',description:'Permite criar, excluir e administrar subpáginas de colaboradores.'},
+    {key:'controller_subpaginas_gerenciar',label:'Controller — gerenciar áreas por colaborador',group:'Controller',kind:'Administrar',description:'Permite criar, excluir e organizar as áreas de acompanhamento dos colaboradores.'},
     {key:'controller_registros_criar',label:'Controller — cadastrar atendimento manual',group:'Controller',kind:'Criar',description:'Permite cadastrar um atendimento manualmente.'},
     {key:'controller_registros_excluir',label:'Controller — excluir atendimento',group:'Controller',kind:'Excluir',description:'Permite excluir registros de atendimento.'},
     {key:'portal_escala_ver',label:'Portal — visualizar escala mensal',group:'Portal / Escala',kind:'Visualizar',description:'Permite consultar escalas autorizadas.'},
@@ -4841,8 +4838,107 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 @media(max-width:650px){.aa-adjust-title-medicine{display:block;margin:4px 0 0;font-size:.82em}}
 </style>
 <style id="aa-controller-dashboard-styles">
-.aa-controller-dashboard{display:grid;gap:14px}.aa-controller-dashboard-header{display:flex;align-items:flex-end;justify-content:space-between;gap:22px;margin:0;background:linear-gradient(130deg,#F2F7FF 0%,#FAF9FD 100%);border-color:#DCE5F1}.aa-controller-dashboard-header h2{margin:3px 0 4px!important;font-size:23px!important}.aa-controller-dashboard-header .aa-hint{margin:0!important}.aa-controller-dashboard-kicker{font-size:10px;letter-spacing:.14em;font-weight:900;color:#55739D}.aa-controller-dashboard-period{display:grid;grid-template-columns:repeat(2,minmax(145px,1fr));gap:10px;min-width:310px}.aa-controller-dashboard-period .aa-field{margin:0}.aa-controller-dashboard-filter-card,.aa-controller-dashboard-table-card,.aa-controller-dashboard-details{margin:0;background:#fff}.aa-controller-dashboard-filters{display:grid;grid-template-columns:minmax(200px,1fr) auto;gap:12px;align-items:end}.aa-controller-dashboard-filters .aa-field{margin:0}.aa-controller-dashboard-filter-meta{color:var(--ink-soft);font-size:12px;font-weight:700;padding:10px 0;white-space:nowrap}.aa-controller-dashboard-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.aa-controller-dashboard-stat{display:flex;flex-direction:column;gap:7px;min-width:0;padding:17px 18px;background:#fff;border:1px solid var(--line);border-top:4px solid #B36FEF;border-radius:13px;box-shadow:0 5px 15px rgba(75,50,168,.05)}.aa-controller-dashboard-stat small{color:var(--ink-soft);font-size:12px;font-weight:800}.aa-controller-dashboard-stat strong{color:var(--primary-dark);font-size:29px;line-height:1.1}.aa-controller-dashboard-summary-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;max-width:760px}.aa-controller-dashboard-table-card h3,.aa-controller-dashboard-details h3{margin:0 0 12px;color:var(--primary-dark)}.aa-controller-dashboard-table-card:nth-child(3){grid-column:1/-1}.aa-controller-dashboard-detail-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.aa-controller-dashboard-detail-heading .aa-hint{margin:0 0 12px}.aa-controller-dashboard-detail-table{min-width:1050px}.aa-controller-dashboard-detail-table td{vertical-align:top}.aa-controller-dashboard-status{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:900;white-space:nowrap}.aa-controller-dashboard-status.pendente{background:#FBF0D9;color:#956B00}.aa-controller-dashboard-status.em_andamento{background:#E8EEFF;color:#365CCB}.aa-controller-dashboard-status.finalizado{background:#E3F6EE;color:#157456}.aa-controller-dashboard-raw-status{display:block;margin-top:4px;color:var(--ink-soft);font-size:10px;white-space:nowrap}@media(max-width:760px){.aa-controller-dashboard-header{align-items:stretch;flex-direction:column}.aa-controller-dashboard-period{min-width:0}.aa-controller-dashboard-filters{grid-template-columns:1fr}.aa-controller-dashboard-filter-meta{padding:0}.aa-controller-dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.aa-controller-dashboard-summary-grid{grid-template-columns:1fr}.aa-controller-dashboard-table-card:nth-child(3){grid-column:auto}}
-</style>
+.aa-controller-root{display:grid;gap:14px;min-width:0}
+.aa-controller-root-header{padding:3px 2px 6px}
+.aa-controller-root-header h1{margin:4px 0 0;color:#223752;font-size:23px;letter-spacing:-.025em}
+.aa-controller-root-header p{margin:5px 0 0;color:#69778B;font-size:13px;line-height:1.5}
+.aa-controller-nav{display:flex;gap:5px;width:max-content;max-width:100%;margin:0 0 18px;padding:5px;border:1px solid #E3E7EE;border-radius:14px;background:#F2F4F8}
+.aa-controller-tab{min-height:42px;padding:10px 16px;border:0;border-radius:10px;background:transparent;color:#626D7D;font:inherit;font-size:13px;font-weight:700;line-height:1.2;cursor:pointer;transition:background .16s ease,color .16s ease,box-shadow .16s ease}
+.aa-controller-tab:hover{color:#253B5B;background:rgba(255,255,255,.65)}
+.aa-controller-tab.active{background:#fff;color:#243B5B;box-shadow:0 2px 7px rgba(25,43,72,.10)}
+.aa-controller-workspace,.aa-controller-dashboard{display:grid;gap:16px;min-width:0}
+.aa-controller-import-card,.aa-controller-management-form,.aa-controller-pages-section,.aa-controller-detail-header,.aa-controller-records-card,.aa-controller-dashboard-header,.aa-controller-dashboard-filter-card,.aa-controller-dashboard-table-card{margin:0!important;border:1px solid #E3E8EF!important;border-radius:16px!important;background:#fff!important;box-shadow:0 5px 18px rgba(30,48,78,.045)!important}
+.aa-controller-import-card{padding:22px 24px!important;border-left:4px solid #4F7DBA!important}
+.aa-controller-card-heading,.aa-controller-section-heading{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.aa-controller-card-heading h2,.aa-controller-section-heading h2,.aa-controller-management-form h3{margin:3px 0 0!important;color:#223752;font-size:19px!important;letter-spacing:-.02em}
+.aa-controller-overline{display:block;color:#77849A;font-size:10px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
+.aa-controller-step{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:#EDF3FA;color:#3F6595;font-size:12px;font-weight:850}
+.aa-controller-card-description,.aa-controller-section-heading p,.aa-controller-management-form p,.aa-controller-dashboard-title p,.aa-controller-detail-title p{margin:6px 0 0!important;color:#69778B;font-size:13px;line-height:1.55}
+.aa-controller-import-grid{display:grid;grid-template-columns:minmax(170px,.8fr) minmax(240px,1.35fr) auto;gap:14px;align-items:end;margin-top:18px}
+.aa-controller-import-grid .aa-field,.aa-controller-management-fields .aa-field,.aa-controller-detail-controls .aa-field,.aa-controller-dashboard-period .aa-field,.aa-controller-dashboard-filters .aa-field{min-width:0;margin:0}
+.aa-controller-import-grid .aa-field label,.aa-controller-management-fields .aa-field label,.aa-controller-detail-controls .aa-field label,.aa-controller-dashboard .aa-field label{margin-bottom:6px;color:#536176;font-size:11px;font-weight:800;letter-spacing:.035em;text-transform:uppercase}
+.aa-controller-import-grid input,.aa-controller-management-fields input,.aa-controller-detail-controls input,.aa-controller-dashboard input,.aa-controller-dashboard select{min-height:43px;border:1px solid #D8E0EA;border-radius:10px;background:#FBFCFE;box-shadow:none}
+.aa-controller-import-grid input:focus,.aa-controller-management-fields input:focus,.aa-controller-detail-controls input:focus,.aa-controller-dashboard input:focus,.aa-controller-dashboard select:focus{outline:3px solid rgba(67,112,170,.14);border-color:#7696BE}
+.aa-controller-form-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px}
+.aa-controller-management{overflow:hidden;border:1px solid #E3E8EF;border-radius:15px;background:#fff;box-shadow:0 3px 12px rgba(30,48,78,.035)}
+.aa-controller-management>summary{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:62px;padding:13px 18px;list-style:none;cursor:pointer}
+.aa-controller-management>summary::-webkit-details-marker{display:none}
+.aa-controller-management>summary strong{display:block;color:#344760;font-size:14px}
+.aa-controller-management>summary small{display:block;margin-top:3px;color:#77849A;font-size:12px}
+.aa-controller-management-icon{position:relative;width:28px;height:28px;border:1px solid #E0E5ED;border-radius:9px;background:#F8FAFC}
+.aa-controller-management-icon:before,.aa-controller-management-icon:after{position:absolute;top:13px;left:8px;width:10px;height:2px;background:#607089;content:""}
+.aa-controller-management-icon:after{transform:rotate(90deg);transition:transform .16s ease}
+.aa-controller-management[open] .aa-controller-management-icon:after{transform:rotate(0)}
+.aa-controller-management-form{display:grid;gap:14px;padding:19px 22px!important;border:0!important;border-top:1px solid #EBEFF4!important;border-radius:0!important;box-shadow:none!important}
+.aa-controller-management-form h3{font-size:16px!important}
+.aa-controller-management-fields{display:grid;grid-template-columns:minmax(200px,1fr) minmax(240px,1.5fr);gap:14px}
+.aa-controller-pages-section{display:grid;gap:14px;padding:21px 23px!important}
+.aa-controller-section-heading{align-items:flex-start}
+.aa-controller-count-pill,.aa-controller-pending-hint{flex:0 0 auto;padding:7px 11px;border:1px solid #E1E7EF;border-radius:999px;background:#F7F9FC;color:#596A80;font-size:11px;font-weight:800;white-space:nowrap}
+.aa-controller-collaborator-list{display:grid;gap:10px}
+.aa-controller-collaborator-card{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:15px 16px;border:1px solid #E5EAF1;border-radius:13px;background:#FCFDFE;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease}
+.aa-controller-collaborator-card:hover{transform:translateY(-1px);border-color:#C9D5E4;box-shadow:0 5px 14px rgba(30,48,78,.06)}
+.aa-controller-collaborator-main{display:flex;align-items:center;gap:12px;min-width:0}
+.aa-controller-avatar{display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border-radius:12px;background:#EEF3FA;color:#3F6595;font-size:15px;font-weight:850}
+.aa-controller-collaborator-copy{min-width:0}
+.aa-controller-collaborator-copy h3{margin:0 0 4px;color:#263B58;font-size:15px}
+.aa-controller-collaborator-copy p{margin:0;color:#718096;font-size:12px;line-height:1.45;white-space:pre-wrap}
+.aa-controller-page-actions{display:flex;flex:0 0 auto;flex-wrap:wrap;gap:8px}
+.aa-controller-empty{display:grid;gap:5px;padding:26px 16px;border:1px dashed #D5DDE7;border-radius:12px;background:#FAFBFD;text-align:center;color:#6F7E91;font-size:13px}
+.aa-controller-empty strong{color:#394D67;font-size:14px}
+.aa-controller-detail-header{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:20px 23px!important}
+.aa-controller-detail-title{display:grid;gap:15px;min-width:0}
+.aa-controller-detail-title h2{margin:3px 0 0!important;color:#223752;font-size:22px!important;letter-spacing:-.02em}
+.aa-controller-detail-controls{display:flex;align-items:end;gap:12px}
+.aa-controller-detail-controls .aa-field{min-width:190px}
+.aa-controller-records-card{display:grid;gap:16px;padding:21px 23px!important}
+.aa-controller-records-card>.aa-controller-section-heading{align-items:center}
+.aa-controller-record-scroll{border-color:#E4E9F0;border-radius:12px}
+.aa-controller-record-table{min-width:1120px}
+.aa-controller-record-table th{background:#F5F7FA;color:#596A80;font-size:10px;white-space:nowrap}
+.aa-controller-record-table td{padding:12px 11px;border-color:#E9EDF2;color:#40516A;font-size:12px}
+.aa-controller-record-table tbody tr:nth-child(even) td{background:#FBFCFD}
+.aa-controller-record-table tbody tr:hover td{background:#F3F7FB}
+.aa-controller-record-table select{min-width:140px;min-height:38px;border:1px solid #D7DFE9;border-radius:9px;background:#fff;color:#354963}
+.aa-controller-professional-cell strong{color:#2D425F;font-size:13px}
+.aa-controller-note-editor{display:flex;align-items:flex-start;gap:7px;min-width:230px}
+.aa-controller-note-input{width:100%;min-width:145px;min-height:42px;resize:vertical;border:1px solid #D9E1EB;border-radius:9px;padding:8px 9px;background:#fff;color:#384B64;font:inherit;font-size:12px;line-height:1.4}
+.aa-controller-note-input:focus{outline:3px solid rgba(67,112,170,.14);border-color:#7696BE}
+.aa-controller-note-save{padding:8px 11px!important;white-space:nowrap}
+.aa-controller-dashboard-header{display:grid;grid-template-columns:minmax(240px,1fr) minmax(330px,420px);align-items:center;gap:24px;padding:23px 25px!important}
+.aa-controller-dashboard-title h1{margin:4px 0 0;color:#223752;font-size:24px;letter-spacing:-.025em}
+.aa-controller-dashboard-period{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.aa-controller-dashboard-filter-card{padding:16px 20px!important}
+.aa-controller-dashboard-filters{display:grid;grid-template-columns:minmax(220px,360px) auto;align-items:end;gap:15px}
+.aa-controller-dashboard-filter-meta{padding:10px 0;color:#77849A;font-size:12px;font-weight:700}
+.aa-controller-dashboard-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.aa-controller-dashboard-stat{display:flex;flex-direction:column;justify-content:center;gap:8px;min-width:0;min-height:105px;padding:16px 18px;border:1px solid #E3E8EF;border-top:3px solid #7D6AAF;border-radius:14px;background:#fff;box-shadow:0 4px 13px rgba(30,48,78,.035)}
+.aa-controller-dashboard-stat small{color:#6F7D91;font-size:11px;font-weight:800;letter-spacing:.03em}
+.aa-controller-dashboard-stat strong{color:#263B58;font-size:28px;line-height:1.05}
+.aa-controller-dashboard-stat--pendente{border-top-color:#D29B30}.aa-controller-dashboard-stat--pendente strong{color:#926600}
+.aa-controller-dashboard-stat--em_andamento{border-top-color:#4A79C7}.aa-controller-dashboard-stat--em_andamento strong{color:#345F9F}
+.aa-controller-dashboard-stat--finalizado{border-top-color:#29926A}.aa-controller-dashboard-stat--finalizado strong{color:#217450}
+.aa-controller-dashboard-stat--total{border-top-color:#7561AB}
+.aa-controller-dashboard-table-card{display:grid;gap:15px;max-width:920px;width:100%;margin:0 auto!important;padding:21px 23px!important}
+.aa-controller-dashboard-table-scroll{border-color:#E4E9F0}
+.aa-controller-dashboard-table{min-width:0}
+.aa-controller-dashboard-table th{background:#F5F7FA;color:#596A80}
+.aa-controller-dashboard-table td{color:#40516A}
+@media(max-width:900px){.aa-controller-dashboard-header{grid-template-columns:1fr}.aa-controller-dashboard-period{max-width:520px;width:100%}.aa-controller-detail-header{align-items:flex-start;flex-direction:column}.aa-controller-detail-controls{width:100%;justify-content:space-between}}
+@media(max-width:760px){
+  .aa-controller-nav{display:flex;width:100%;overflow-x:auto}.aa-controller-tab{flex:1 0 auto;padding:10px 11px;font-size:12px}
+  .aa-controller-import-card,.aa-controller-pages-section,.aa-controller-records-card,.aa-controller-dashboard-header,.aa-controller-dashboard-table-card{padding:17px!important}
+  .aa-controller-import-grid,.aa-controller-management-fields{grid-template-columns:1fr}.aa-controller-form-actions{justify-content:flex-start}
+  .aa-controller-collaborator-card{align-items:flex-start;flex-direction:column}.aa-controller-page-actions{width:100%}.aa-controller-page-actions .aa-btn{flex:1}
+  .aa-controller-detail-controls{align-items:stretch;flex-direction:column}.aa-controller-detail-controls .aa-field{min-width:0;width:100%}
+  .aa-controller-dashboard-period{grid-template-columns:1fr 1fr}.aa-controller-dashboard-filters{grid-template-columns:1fr}.aa-controller-dashboard-filter-meta{padding:0}
+  .aa-controller-dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.aa-controller-dashboard-stat{min-height:88px;padding:13px}.aa-controller-dashboard-stat strong{font-size:24px}
+  .aa-controller-section-heading{align-items:flex-start;flex-direction:column}.aa-controller-count-pill,.aa-controller-pending-hint{align-self:flex-start}
+  .aa-controller-record-scroll{overflow:visible;border:0}.aa-controller-record-table{display:block;min-width:0;width:100%}.aa-controller-record-table thead{display:none}.aa-controller-record-table tbody{display:grid;gap:11px}.aa-controller-record-table tbody tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:hidden;border:1px solid #E2E8EF;border-radius:12px;background:#fff;box-shadow:0 3px 9px rgba(30,48,78,.04)}
+  .aa-controller-record-table tbody td{display:grid;align-content:start;gap:5px;min-width:0;padding:10px;border:0!important;background:#fff!important;font-size:12px}.aa-controller-record-table tbody td:before{color:#758399;content:attr(data-label);font-size:9px;font-weight:850;letter-spacing:.045em;text-transform:uppercase}.aa-controller-record-table tbody td:nth-child(1),.aa-controller-record-table tbody td:nth-child(6),.aa-controller-record-table tbody td:nth-child(7){grid-column:1/-1}.aa-controller-record-table tbody td:nth-child(7){display:flex;justify-content:flex-end;border-top:1px solid #EDF0F4!important}.aa-controller-record-table select{width:100%;min-width:0}.aa-controller-note-editor{min-width:0}.aa-controller-note-input{min-width:0}
+}
+@media(max-width:420px){.aa-controller-dashboard-period{grid-template-columns:1fr}.aa-controller-record-table tbody tr{grid-template-columns:1fr 1fr}}
+</style></style>
 <script>
 (function(){
   function controllerCan(permission){return typeof window.__aaCanPermission==='function'&&window.__aaCanPermission(permission);}
@@ -4859,7 +4955,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     }catch(e){return false;}
   }
   function controllerPageText(value){return typeof aaHtmlSafe==='function'?aaHtmlSafe(value==null?'':String(value)):String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-  async function loadControllerPages(){try{if(!controllerDb?.from)throw new Error('Cliente Supabase indisponível.');const result=await controllerDb.from('controller_subpages').select('id,nome,descricao,criada_em').order('criada_em',{ascending:true});if(result.error)throw result.error;controllerPages=(result.data||[]).map(p=>({id:p.id,nome:p.nome,descricao:p.descricao||'',criadaEm:p.criada_em}));}catch(e){controllerPages=[];console.warn('Não foi possível carregar as subpáginas do Controller.',e);}return controllerPages;}
+  async function loadControllerPages(){try{if(!controllerDb?.from)throw new Error('Cliente Supabase indisponível.');const result=await controllerDb.from('controller_subpages').select('id,nome,descricao,criada_em').order('criada_em',{ascending:true});if(result.error)throw result.error;controllerPages=(result.data||[]).map(p=>({id:p.id,nome:p.nome,descricao:p.descricao||'',criadaEm:p.criada_em}));}catch(e){controllerPages=[];console.warn('Não foi possível carregar as áreas de acompanhamento do Controller.',e);}return controllerPages;}
   async function saveControllerPages(){const rows=controllerPages.map(p=>({id:String(p.id),nome:String(p.nome||'').trim(),descricao:String(p.descricao||''),criada_em:p.criadaEm||new Date().toISOString()}));if(rows.length){const result=await controllerDb.from('controller_subpages').upsert(rows,{onConflict:'id'});if(result.error)throw result.error;}}
   let controllerActivePageId='';
   let controllerView='subpaginas';
@@ -4881,24 +4977,32 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   function controllerRenderDayDate(value){return String(value||'').split('-').reverse().join('/');}
   window.aaControllerDownloadTemplate=function(){if(!window.XLSX)return alert('A biblioteca da planilha ainda não foi carregada.');const book=XLSX.utils.book_new();const pages=controllerPages.length?controllerPages:[{nome:'NOME DO RESPONSAVEL'}];pages.forEach(page=>{const rows=[['Agenda','Hora','Status','Observação']];const ws=XLSX.utils.aoa_to_sheet(rows);XLSX.utils.book_append_sheet(book,ws,String(page.nome||'Responsavel').slice(0,31));});XLSX.writeFile(book,'modelo-conferencia-atendimentos.xlsx');};
   function renderControllerPageDetail(){
-    const out=document.getElementById('aa-controller-view-subpaginas'),page=controllerPages.find(x=>String(x.id)===String(controllerActivePageId));if(!out||!page)return;
+    const out=document.getElementById('aa-controller-view-subpaginas'),page=controllerPages.find(item=>String(item.id)===String(controllerActivePageId));if(!out||!page)return;
     const canEdit=controllerCan('controller_status_atual_editar');
     const priority={pendente:0,em_andamento:1,finalizado:2};
     const orderedRecords=controllerPageRecords.map((record,index)=>({record,index})).sort((a,b)=>{
       const statusDiff=(priority[controllerDashboardWorkflowStatus(a.record)]??1)-(priority[controllerDashboardWorkflowStatus(b.record)]??1);
       return statusDiff||a.index-b.index;
     }).map(entry=>entry.record);
-    const rows=orderedRecords.map(r=>{
-      const id=controllerPageText(r.id);
+    const rows=orderedRecords.map(record=>{
+      const id=controllerPageText(record.id);
       const note=canEdit
-        ?'<div style="display:flex;gap:6px;align-items:flex-start;min-width:210px;"><textarea id="aa-controller-record-note-'+id+'" rows="2" maxlength="500" style="width:100%;min-width:150px;resize:vertical;">'+controllerPageText(r.observacao||'')+'</textarea><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerUpdateRecordNote(\''+id+'\')">Salvar</button></div>'
-        :controllerPageText(r.observacao||'-');
-      return '<tr><td>'+controllerPageText(r.profissional)+'</td><td>'+controllerPageText(String(r.hora_atendimento||'').slice(0,5))+'</td><td>'+controllerPageText(controllerStatusLabel(r.status_original||'pendente'))+'</td><td><select data-controller-record-status="'+id+'" '+(canEdit?'':'disabled')+' onchange="aaControllerUpdateRecordStatus(\''+id+'\',this.value)">'+controllerStatusOptions(r.status)+'</select></td><td>'+controllerPageText(controllerDashboardDateTime(r.atualizado_em))+'</td><td>'+note+'</td><td><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeleteRecord(\''+id+'\')">Excluir</button></td></tr>';
+        ?`<div class="aa-controller-note-editor"><textarea class="aa-controller-note-input" id="aa-controller-record-note-${id}" rows="2" maxlength="500" aria-label="Observação do atendimento" placeholder="Adicionar observação">${controllerPageText(record.observacao||'')}</textarea><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm aa-controller-note-save" onclick="aaControllerUpdateRecordNote('${id}')">Salvar</button></div>`
+        :controllerPageText(record.observacao||'—');
+      return `<tr><td data-label="Agenda / profissional" class="aa-controller-professional-cell"><strong>${controllerPageText(record.profissional)}</strong></td><td data-label="Hora">${controllerPageText(String(record.hora_atendimento||'').slice(0,5))}</td><td data-label="Status da planilha">${controllerPageText(controllerStatusLabel(record.status_original||'pendente'))}</td><td data-label="Status atual"><select data-controller-record-status="${id}" ${canEdit?'':'disabled'} onchange="aaControllerUpdateRecordStatus('${id}',this.value)">${controllerStatusOptions(record.status)}</select></td><td data-label="Última alteração">${controllerPageText(controllerDashboardDateTime(record.atualizado_em))}</td><td data-label="Observação">${note}</td><td data-label="Ação"><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeleteRecord('${id}')">Excluir</button></td></tr>`;
     }).join('');
-    out.innerHTML='<div class="aa-card" style="margin:0 0 14px;background:#FAF9FD;"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;"><div><button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" onclick="aaControllerBackToPages()">← Voltar para subpáginas</button><h2 style="margin:14px 0 4px;color:var(--primary-dark);">'+controllerPageText(page.nome)+'</h2><p class="aa-hint" style="margin:0;">Conferência do dia '+controllerRenderDayDate(controllerSelectedDay)+'.</p></div><span class="aa-badge">'+controllerPageRecords.length+' atendimento(s)</span></div><div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-top:15px;"><div class="aa-field" style="margin:0;"><label>Consultar outro dia</label><input id="aa-controller-consult-day" type="date" value="'+controllerSelectedDay+'" onchange="aaControllerChangeDay(this.value)"></div></div></div><div class="aa-card" style="margin:0;background:#fff;"><h3 style="margin-top:0;">Atendimentos do dia</h3>'+(rows?'<div class="aa-table-scroll"><table class="aa-compact-table"><thead><tr><th>Agenda / profissional</th><th>Hora</th><th>Status da planilha</th><th>Status atual</th><th>Última alteração</th><th>Observação</th><th>Ação</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="aa-empty-state">Nenhum atendimento cadastrado neste dia.</div>')+'</div>';
-    if(!controllerCan('controller_registros_excluir'))out.querySelectorAll('.aa-btn-danger').forEach(btn=>btn.style.display='none');
+    out.innerHTML=controllerViewNav()+`<section class="aa-controller-workspace">
+      <header class="aa-card aa-controller-detail-header">
+        <div class="aa-controller-detail-title"><button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" onclick="aaControllerBackToPages()">← Voltar aos colaboradores</button><div><span class="aa-controller-overline">ACOMPANHAMENTO DO COLABORADOR</span><h2>${controllerPageText(page.nome)}</h2><p>Atendimentos de ${controllerRenderDayDate(controllerSelectedDay)}. Os pendentes aparecem primeiro.</p></div></div>
+        <div class="aa-controller-detail-controls"><span class="aa-controller-count-pill">${controllerPageRecords.length} atendimento(s)</span><div class="aa-field"><label for="aa-controller-consult-day">Consultar outro dia</label><input id="aa-controller-consult-day" type="date" value="${controllerPageText(controllerSelectedDay)}" onchange="aaControllerChangeDay(this.value)"></div></div>
+      </header>
+      <section class="aa-card aa-controller-records-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">AGENDA DO DIA</span><h2>Atendimentos para acompanhar</h2><p>Atualize o status e, quando necessário, ajuste a observação do atendimento.</p></div><span class="aa-controller-pending-hint">Pendentes primeiro</span></header>
+        ${rows?`<div class="aa-table-scroll aa-controller-record-scroll"><table class="aa-compact-table aa-controller-record-table"><thead><tr><th>Agenda / profissional</th><th>Hora</th><th>Status da planilha</th><th>Status atual</th><th>Última alteração</th><th>Observação</th><th>Ação</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<div class="aa-controller-empty"><strong>Nenhum atendimento neste dia</strong><span>Quando a planilha do dia for importada, os atendimentos aparecerão aqui.</span></div>'}
+      </section>
+    </section>`;
+    if(!controllerCan('controller_registros_excluir'))out.querySelectorAll('.aa-btn-danger').forEach(button=>button.style.display='none');
   }
-  window.aaControllerOpenPage=async function(id,day){if(!controllerAllowed())return;controllerView='subpaginas';controllerActivePageId=String(id);controllerSelectedDay=day||controllerToday();try{await loadControllerPageRecords(id,controllerSelectedDay);renderControllerPageDetail();}catch(e){alert('Não foi possível carregar os atendimentos desta subpágina: '+(e?.message||''));console.error(e);}};
+  window.aaControllerOpenPage=async function(id,day){if(!controllerAllowed())return;controllerView='subpaginas';controllerActivePageId=String(id);controllerSelectedDay=day||controllerToday();try{await loadControllerPageRecords(id,controllerSelectedDay);renderControllerPageDetail();}catch(e){alert('Não foi possível carregar os atendimentos desta área: '+(e?.message||''));console.error(e);}};
   window.aaControllerChangeDay=async function(day){if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!controllerActivePageId)return;await window.aaControllerOpenPage(controllerActivePageId,day);};
   window.aaControllerBackToPages=function(){controllerActivePageId='';controllerView='subpaginas';renderControllerPages();};
   window.aaControllerCreateRecord=async function(event){
@@ -4953,10 +5057,10 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
         if(!kAgenda||!kHora){errors.push('Aba "'+sheetName+'": use as colunas Agenda e Hora.');continue;}
         rows.forEach((row,i)=>{const profissional=String(row[kAgenda]||'').trim(),hora=controllerImportTime(row[kHora]);if(!profissional&&!hora)return;if(!profissional||!hora){errors.push('Aba "'+sheetName+'", linha '+(i+2)+': Agenda ou Hora vazia.');return;}records.push({id:'record-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)+'-'+records.length,page_id:page.id,operador:page.nome,profissional,data_atendimento:importDay,hora_atendimento:hora,status:'pendente',status_original:String(kStatus?row[kStatus]||'':'').trim(),criado_por:creatorId,observacao:String(kNote?row[kNote]||'':'').trim(),criado_em:new Date().toISOString(),atualizado_em:new Date().toISOString()});});
       }
-      if(!records.length){renderControllerPages();return alert('Nenhum atendimento válido foi encontrado.'+(createdPages.length?'\nSubpáginas criadas: '+createdPages.join(', '):'')+(errors.length?'\n'+errors.slice(0,6).join('\n'):''));}
+      if(!records.length){renderControllerPages();return alert('Nenhum atendimento válido foi encontrado.'+(createdPages.length?'\nÁreas de acompanhamento criadas: '+createdPages.join(', '):'')+(errors.length?'\n'+errors.slice(0,6).join('\n'):''));}
       const result=await controllerDb.from('controller_page_records').insert(records);if(result.error)throw result.error;
       let msg='Importados '+records.length+' atendimento(s) para o dia '+controllerRenderDayDate(importDay)+'.';
-      if(createdPages.length)msg+='\nSubpágina(s) criada(s) automaticamente: '+createdPages.join(', ')+'.';
+      if(createdPages.length)msg+='\nÁrea(s) de acompanhamento criada(s) automaticamente: '+createdPages.join(', ')+'.';
       if(errors.length)msg+='\nAvisos: '+errors.length;
       alert(msg);
       const input=document.getElementById('aa-controller-import-file');if(input)input.value='';renderControllerPages();
@@ -4964,11 +5068,35 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   };
   function renderControllerPages(){
     const out=document.getElementById('aa-controller-view-subpaginas');if(!out)return;
-    const list=controllerPages.map(p=>'<article class="aa-card" style="margin:0 0 10px;background:#FAF9FD;"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;"><div><h3 style="margin:0 0 5px;color:var(--primary-dark);">'+controllerPageText(p.nome)+'</h3><p class="aa-hint" style="margin:0;white-space:pre-wrap;">'+controllerPageText(p.descricao||'Página de conferência do colaborador.')+'</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaControllerOpenPage(\''+controllerPageText(p.id)+'\')">Abrir página</button><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeletePage(\''+controllerPageText(p.id)+'\')">Excluir</button></div></div></article>').join('');
-    out.innerHTML=controllerViewNav()+'<form onsubmit="aaControllerImportPlanilha(event)" class="aa-card" style="margin:0 0 16px;background:#F2F7FF;"><h3 style="margin-top:0;">Importar agenda do dia</h3><p class="aa-hint">A planilha deve ter uma aba por responsável, com o mesmo nome da subpágina. Em cada aba, use exatamente: Agenda, Hora, Status, Observação.</p><div class="aa-field-row" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:end;"><div class="aa-field"><label>Dia dos atendimentos</label><input id="aa-controller-import-day" type="date" value="'+controllerToday()+'" required></div><div class="aa-field"><label>Planilha Excel ou CSV</label><input id="aa-controller-import-file" type="file" accept=".xlsx,.xls,.csv" required></div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button type="button" class="aa-btn aa-btn-secondary" onclick="aaControllerDownloadTemplate()">Baixar modelo</button><button type="submit" class="aa-btn aa-btn-primary">Importar dia</button></div></div></form>'+
-    '<form onsubmit="aaControllerCreatePage(event)" class="aa-card" style="margin:0 0 16px;background:#FAF9FD;"><h3 style="margin-top:0;">Nova subpágina de conferência</h3><p class="aa-hint">Crie uma página com o nome do colaborador responsável pela conferência.</p><div class="aa-field-row" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr);"><div class="aa-field"><label>Nome do colaborador</label><input id="aa-controller-new-name" maxlength="80" required placeholder="Ex.: Maria da Silva"></div><div class="aa-field"><label>Descrição</label><input id="aa-controller-new-description" maxlength="500" placeholder="Ex.: Conferências do turno da manhã"></div></div><div class="aa-modal-actions" style="justify-content:flex-end;"><button type="submit" class="aa-btn aa-btn-primary">Criar página</button></div></form>'+(list||'<div class="aa-empty-state">Nenhuma página de conferência criada.</div>');
+    const list=controllerPages.map(page=>`<article class="aa-controller-collaborator-card"><div class="aa-controller-collaborator-main"><span class="aa-controller-avatar" aria-hidden="true">${controllerPageText(String(page.nome||'?').trim().charAt(0).toLocaleUpperCase('pt-BR'))}</span><div class="aa-controller-collaborator-copy"><h3>${controllerPageText(page.nome)}</h3><p>${controllerPageText(page.descricao||'Acompanhamentos atribuídos a este colaborador.')}</p></div></div><div class="aa-controller-page-actions"><button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaControllerOpenPage('${controllerPageText(page.id)}')">Abrir acompanhamento</button><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeletePage('${controllerPageText(page.id)}')">Excluir</button></div></article>`).join('');
+    out.innerHTML=controllerViewNav()+`<section class="aa-controller-workspace">
+      <form onsubmit="aaControllerImportPlanilha(event)" class="aa-card aa-controller-import-card">
+        <div class="aa-controller-card-heading"><div><span class="aa-controller-overline">ROTINA DO DIA</span><h2>Importar atendimentos</h2></div><span class="aa-controller-step">01</span></div>
+        <p class="aa-controller-card-description">Envie a planilha preenchida para distribuir os atendimentos nas áreas de acompanhamento dos colaboradores. Cada aba deve ter o mesmo nome do colaborador e as colunas: Agenda, Hora, Status e Observação.</p>
+        <div class="aa-controller-import-grid">
+          <div class="aa-field"><label for="aa-controller-import-day">Dia dos atendimentos</label><input id="aa-controller-import-day" type="date" value="${controllerToday()}" required></div>
+          <div class="aa-field"><label for="aa-controller-import-file">Planilha Excel ou CSV</label><input id="aa-controller-import-file" type="file" accept=".xlsx,.xls,.csv" required></div>
+          <div class="aa-controller-form-actions"><button type="button" class="aa-btn aa-btn-secondary" onclick="aaControllerDownloadTemplate()">Baixar modelo</button><button type="submit" class="aa-btn aa-btn-primary">Importar dia</button></div>
+        </div>
+      </form>
+      <details class="aa-controller-management">
+        <summary><span><strong>Gerenciar colaboradores</strong><small>Adicionar uma área de acompanhamento</small></span><span class="aa-controller-management-icon" aria-hidden="true"></span></summary>
+        <form onsubmit="aaControllerCreatePage(event)" class="aa-controller-management-form">
+          <div><span class="aa-controller-overline">CADASTRO</span><h3>Adicionar colaborador</h3><p>Crie uma área de acompanhamento com o nome que será usado na aba correspondente da planilha.</p></div>
+          <div class="aa-controller-management-fields">
+            <div class="aa-field"><label for="aa-controller-new-name">Nome do colaborador</label><input id="aa-controller-new-name" maxlength="80" required placeholder="Ex.: Maria da Silva"></div>
+            <div class="aa-field"><label for="aa-controller-new-description">Descrição <span>(opcional)</span></label><input id="aa-controller-new-description" maxlength="500" placeholder="Ex.: Conferências do turno da manhã"></div>
+          </div>
+          <div class="aa-controller-form-actions"><button type="submit" class="aa-btn aa-btn-primary">Adicionar colaborador</button></div>
+        </form>
+      </details>
+      <section class="aa-controller-pages-section">
+        <header class="aa-controller-section-heading"><div><span class="aa-controller-overline">ÁREAS DE TRABALHO</span><h2>Colaboradores</h2><p>Abra o nome desejado para conferir e atualizar os atendimentos do dia.</p></div><span class="aa-controller-count-pill">${controllerPages.length} colaborador(es)</span></header>
+        <div class="aa-controller-collaborator-list">${list||'<div class="aa-controller-empty"><strong>Nenhum colaborador cadastrado</strong><span>Use “Gerenciar colaboradores” para criar a primeira área de acompanhamento.</span></div>'}</div>
+      </section>
+    </section>`;
     const importForm=out.querySelector('form[onsubmit^="aaControllerImportPlanilha"]');if(importForm)importForm.style.display=controllerCan('controller_importar')?'':'none';
-    const pageForm=out.querySelector('form[onsubmit^="aaControllerCreatePage"]');if(pageForm)pageForm.style.display=controllerCan('controller_subpaginas_gerenciar')?'':'none';
+    const management=out.querySelector('.aa-controller-management');if(management)management.style.display=controllerCan('controller_subpaginas_gerenciar')?'':'none';
     if(!controllerCan('controller_subpaginas_gerenciar'))out.querySelectorAll('.aa-btn-danger').forEach(btn=>btn.style.display='none');
   }
   async function loadControllerDashboardRecords(from,to){
@@ -4988,7 +5116,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   }
   function controllerViewNav(){
     const dashboardAllowed=controllerCan('controller_dashboard_ver');
-    return '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px;"><button type="button" class="aa-btn '+(controllerView==='subpaginas'?'aa-btn-primary':'aa-btn-ghost')+'" onclick="aaControllerSwitchView(\'subpaginas\')">Subpáginas</button>'+(dashboardAllowed?'<button type="button" class="aa-btn '+(controllerView==='dashboard'?'aa-btn-primary':'aa-btn-ghost')+'" onclick="aaControllerSwitchView(\'dashboard\')">Dashboard do Controller</button>':'')+'</div>';
+    return '<nav class="aa-controller-nav" aria-label="Navegação do acompanhamento"><button type="button" class="aa-controller-tab '+(controllerView==='subpaginas'?'active':'')+'" aria-current="'+(controllerView==='subpaginas'?'page':'false')+'" onclick="aaControllerSwitchView(\'subpaginas\')">Acompanhamento por colaborador</button>'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='dashboard'?'active':'')+'" aria-current="'+(controllerView==='dashboard'?'page':'false')+'" onclick="aaControllerSwitchView(\'dashboard\')">Painel de acompanhamento</button>':'')+'</nav>';
   }
   function controllerDashboardPage(record){
     return controllerPages.find(page=>String(page.id)===String(record?.page_id||''))||null;
@@ -5028,10 +5156,15 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
       collaborators.get(owner.key).total++;
     });
     const collaboratorRows=[...collaborators.values()].sort((a,b)=>b.total-a.total||a.name.localeCompare(b.name,'pt-BR'));
-    const statusCard=(key,title,color)=>'<article class="aa-controller-dashboard-stat"><small>'+title+'</small><strong style="color:'+color+';">'+(statusCounts[key]||0)+'</strong></article>';
-    const collaboratorTable=collaboratorRows.length?collaboratorRows.map(row=>'<tr><td>'+controllerPageText(row.name)+'</td><td>'+row.total+'</td></tr>').join(''):'<tr><td colspan="2">Nenhum acompanhamento no período.</td></tr>';
+    const statusCard=(key,title)=>`<article class="aa-controller-dashboard-stat aa-controller-dashboard-stat--${key}"><small>${title}</small><strong>${statusCounts[key]||0}</strong></article>`;
+    const collaboratorTable=collaboratorRows.length?collaboratorRows.map(row=>`<tr><td><strong>${controllerPageText(row.name)}</strong></td><td>${row.total}</td></tr>`).join(''):'<tr><td colspan="2">Nenhum acompanhamento no período.</td></tr>';
     const collaboratorSelect=[...collaboratorOptions.entries()].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR')).map(([key,name])=>'<option value="'+controllerPageText(key)+'" '+(controllerDashboardCollaboratorFilter===key?'selected':'')+'>'+controllerPageText(name)+'</option>').join('');
-    out.innerHTML=controllerViewNav()+`<section class="aa-controller-dashboard"><header class="aa-card aa-controller-dashboard-header"><div><span class="aa-controller-dashboard-kicker">VISÃO GERENCIAL</span><h2>Dashboard do Controller</h2><p class="aa-hint">Acompanhamentos por colaborador (nome da subpágina), filtrados pela data do atendimento.</p></div><div class="aa-controller-dashboard-period"><div class="aa-field"><label for="aa-controller-dashboard-from">Data inicial</label><input id="aa-controller-dashboard-from" type="date" value="${controllerPageText(controllerDashboardFrom)}" onchange="aaControllerChangeDashboardPeriod()"></div><div class="aa-field"><label for="aa-controller-dashboard-to">Data final</label><input id="aa-controller-dashboard-to" type="date" value="${controllerPageText(controllerDashboardTo)}" onchange="aaControllerChangeDashboardPeriod()"></div></div></header><div class="aa-card aa-controller-dashboard-filter-card"><div class="aa-controller-dashboard-filters"><div class="aa-field"><label for="aa-controller-dashboard-collaborator">Colaborador</label><select id="aa-controller-dashboard-collaborator" onchange="aaControllerFilterDashboard()"><option value="">Todos os colaboradores</option>${collaboratorSelect}</select></div><div class="aa-controller-dashboard-filter-meta">${records.length} de ${source.length} registro(s) no recorte selecionado</div></div></div><div class="aa-controller-dashboard-stats"><article class="aa-controller-dashboard-stat"><small>Total de registros</small><strong>${records.length}</strong></article>${statusCard('pendente','Pendentes','#956B00')}${statusCard('em_andamento','Em andamento','#365CCB')}${statusCard('finalizado','Finalizados','#157456')}</div><div class="aa-controller-dashboard-summary-grid"><section class="aa-card aa-controller-dashboard-table-card"><h3>Quantidade por colaborador</h3><div class="aa-table-scroll"><table class="aa-compact-table"><thead><tr><th>Colaborador</th><th>Registros</th></tr></thead><tbody>${collaboratorTable}</tbody></table></div></section></div></section>`;
+    out.innerHTML=controllerViewNav()+`<section class="aa-controller-dashboard">
+      <header class="aa-card aa-controller-dashboard-header"><div class="aa-controller-dashboard-title"><span class="aa-controller-overline">VISÃO DA EQUIPE</span><h1>Painel de acompanhamento</h1><p>Volume de atendimentos por colaborador e andamento do trabalho no período.</p></div><div class="aa-controller-dashboard-period"><div class="aa-field"><label for="aa-controller-dashboard-from">Data inicial</label><input id="aa-controller-dashboard-from" type="date" value="${controllerPageText(controllerDashboardFrom)}" onchange="aaControllerChangeDashboardPeriod()"></div><div class="aa-field"><label for="aa-controller-dashboard-to">Data final</label><input id="aa-controller-dashboard-to" type="date" value="${controllerPageText(controllerDashboardTo)}" onchange="aaControllerChangeDashboardPeriod()"></div></div></header>
+      <section class="aa-card aa-controller-dashboard-filter-card"><div class="aa-controller-dashboard-filters"><div class="aa-field"><label for="aa-controller-dashboard-collaborator">Colaborador</label><select id="aa-controller-dashboard-collaborator" onchange="aaControllerFilterDashboard()"><option value="">Todos os colaboradores</option>${collaboratorSelect}</select></div><div class="aa-controller-dashboard-filter-meta">${records.length} de ${source.length} atendimentos</div></div></section>
+      <section class="aa-controller-dashboard-stats"><article class="aa-controller-dashboard-stat aa-controller-dashboard-stat--total"><small>Total de atendimentos</small><strong>${records.length}</strong></article>${statusCard('pendente','Pendentes')}${statusCard('em_andamento','Em andamento')}${statusCard('finalizado','Finalizados')}</section>
+      <section class="aa-card aa-controller-dashboard-table-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">DISTRIBUIÇÃO DA EQUIPE</span><h2>Atendimentos por colaborador</h2><p>Os nomes correspondem às áreas de acompanhamento configuradas no portal.</p></div></header><div class="aa-table-scroll aa-controller-dashboard-table-scroll"><table class="aa-compact-table aa-controller-dashboard-table"><thead><tr><th>Colaborador</th><th>Atendimentos</th></tr></thead><tbody>${collaboratorTable}</tbody></table></div></section>
+    </section>`;
   }
   window.aaControllerFilterDashboard=function(){
     if(!controllerAllowed()||!controllerCan('controller_dashboard_ver'))return;
@@ -5039,22 +5172,22 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     renderControllerDashboard();
   };
   window.aaControllerChangeDashboardPeriod=async function(){
-    if(!controllerAllowed()||!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para visualizar a dashboard.');return;}
+    if(!controllerAllowed()||!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para visualizar o painel de acompanhamento.');return;}
     const from=String(document.getElementById('aa-controller-dashboard-from')?.value||''),to=String(document.getElementById('aa-controller-dashboard-to')?.value||'');
     if(from&&to&&from>to){alert('A data inicial deve ser anterior ou igual à data final.');renderControllerDashboard();return;}
     controllerDashboardFrom=from;controllerDashboardTo=to;
     const out=document.getElementById('aa-controller-view-subpaginas');if(out)out.innerHTML=controllerViewNav()+'<div class="aa-card">Carregando acompanhamentos...</div>';
     try{controllerDashboardRecords=await loadControllerDashboardRecords(from,to);renderControllerDashboard();}
-    catch(e){if(out)out.innerHTML=controllerViewNav()+'<div class="aa-error-msg">Não foi possível carregar a dashboard. Tente novamente.</div>';console.error('Erro ao carregar registros da dashboard do Controller.',e);}
+    catch(e){if(out)out.innerHTML=controllerViewNav()+'<div class="aa-error-msg">Não foi possível carregar o painel de acompanhamento. Tente novamente.</div>';console.error('Erro ao carregar registros da dashboard do Controller.',e);}
   };
   window.aaControllerSwitchView=async function(view){
     if(!controllerAllowed())return;
-    if(view==='dashboard'&&!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para visualizar a dashboard.');return;}
+    if(view==='dashboard'&&!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para visualizar o painel de acompanhamento.');return;}
     controllerView=view==='dashboard'?'dashboard':'subpaginas';
     await loadControllerPages();
     if(controllerView==='dashboard'){
       try{controllerDashboardRecords=await loadControllerDashboardRecords(controllerDashboardFrom,controllerDashboardTo);renderControllerDashboard();}
-      catch(e){const out=document.getElementById('aa-controller-view-subpaginas');if(out)out.innerHTML=controllerViewNav()+'<div class="aa-error-msg">Não foi possível carregar a dashboard. Tente novamente.</div>';console.error('Erro ao abrir a dashboard do Controller.',e);}
+      catch(e){const out=document.getElementById('aa-controller-view-subpaginas');if(out)out.innerHTML=controllerViewNav()+'<div class="aa-error-msg">Não foi possível carregar o painel de acompanhamento. Tente novamente.</div>';console.error('Erro ao abrir a dashboard do Controller.',e);}
     }else renderControllerPages();
   };
   window.aaControllerOpen=function(){
@@ -5064,8 +5197,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const panel=document.getElementById('aa-rhtab-controller');if(panel)panel.style.display='block';
     window.aaControllerSwitchView('subpaginas');
   };
-  window.aaControllerCreatePage=async function(event){if(event)event.preventDefault();if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para criar subpáginas.');return;}const name=String(document.getElementById('aa-controller-new-name')?.value||'').trim(),description=String(document.getElementById('aa-controller-new-description')?.value||'').trim();if(!name)return;if(controllerPages.some(p=>String(p.nome).toLowerCase()===name.toLowerCase()))return alert('Já existe uma subpágina com esse nome.');const page={id:'controller-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),nome:name,descricao:description,criadaEm:new Date().toISOString()};try{const result=await controllerDb.from('controller_subpages').insert({id:page.id,nome:page.nome,descricao:page.descricao,criada_em:page.criadaEm});if(result.error)throw result.error;controllerPages.push(page);renderControllerPages();if(typeof aaToast==='function')aaToast('Subpágina criada com sucesso.','success');}catch(e){alert('Não foi possível criar a subpágina agora: '+(e?.message||'verifique sua sessão e tente novamente.'));console.error('Erro ao criar subpágina do Controller:',e);}};
-  window.aaControllerDeletePage=async function(id){if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para excluir subpáginas.');return;}const page=controllerPages.find(p=>String(p.id)===String(id));if(!page||!confirm('Excluir a subpágina “'+page.nome+'”?'))return;const old=controllerPages.slice();controllerPages=controllerPages.filter(p=>String(p.id)!==String(id));try{const result=await controllerDb.from('controller_subpages').delete().eq('id',String(id));if(result.error)throw result.error;renderControllerPages();if(typeof aaToast==='function')aaToast('Subpágina excluída.','success');}catch(e){controllerPages=old;renderControllerPages();alert('Não foi possível excluir a subpágina agora.');console.error(e);}};
+  window.aaControllerCreatePage=async function(event){if(event)event.preventDefault();if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para gerenciar áreas de acompanhamento.');return;}const name=String(document.getElementById('aa-controller-new-name')?.value||'').trim(),description=String(document.getElementById('aa-controller-new-description')?.value||'').trim();if(!name)return;if(controllerPages.some(p=>String(p.nome).toLowerCase()===name.toLowerCase()))return alert('Já existe um acompanhamento cadastrado para este colaborador.');const page={id:'controller-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),nome:name,descricao:description,criadaEm:new Date().toISOString()};try{const result=await controllerDb.from('controller_subpages').insert({id:page.id,nome:page.nome,descricao:page.descricao,criada_em:page.criadaEm});if(result.error)throw result.error;controllerPages.push(page);renderControllerPages();if(typeof aaToast==='function')aaToast('Área de acompanhamento criada com sucesso.','success');}catch(e){alert('Não foi possível adicionar o colaborador agora: '+(e?.message||'verifique sua sessão e tente novamente.'));console.error('Erro ao adicionar colaborador ao Controller:',e);}};
+  window.aaControllerDeletePage=async function(id){if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para gerenciar áreas de acompanhamento.');return;}const page=controllerPages.find(p=>String(p.id)===String(id));if(!page||!confirm('Excluir a área de acompanhamento “'+page.nome+'”?'))return;const old=controllerPages.slice();controllerPages=controllerPages.filter(p=>String(p.id)!==String(id));try{const result=await controllerDb.from('controller_subpages').delete().eq('id',String(id));if(result.error)throw result.error;renderControllerPages();if(typeof aaToast==='function')aaToast('Área de acompanhamento excluída.','success');}catch(e){controllerPages=old;renderControllerPages();alert('Não foi possível excluir a área de acompanhamento agora.');console.error(e);}};
   const oldSwitch=window.aaSwitchRHTab;
   window.aaSwitchRHTab=function(tab){if(tab==='controller'){window.aaControllerOpen();return;}const panel=document.getElementById('aa-rhtab-controller');if(panel)panel.style.display='none';return oldSwitch(tab);};
   const oldApply=window.aaApplyRHPermissionsUI||function(){};window.aaApplyRHPermissionsUI=function(){oldApply();const button=document.querySelector('[data-rhtab="controller"]');if(button)button.style.display=controllerAllowed()?'':'none';};
