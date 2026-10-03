@@ -895,7 +895,7 @@ const ADMIN_PASS = '';
     {key:'controller_dashboard_ver',label:'Controller — visualizar painel de acompanhamento',group:'Controller',kind:'Visualizar',description:'Permite consultar indicadores e acompanhamentos por período e colaborador.'},
     {key:'controller_status_atual_editar',label:'Controller — alterar Status atual',group:'Controller',kind:'Editar',description:'Permite aplicar ou atualizar o Status atual de um atendimento.'},
     {key:'controller_importar',label:'Controller — importar planilhas',group:'Controller',kind:'Criar',description:'Permite importar planilhas e acrescentar atendimentos sem apagar o histórico.'},
-    {key:'controller_subpaginas_gerenciar',label:'Controller — gerenciar áreas por colaborador',group:'Controller',kind:'Administrar',description:'Permite criar, excluir e organizar as áreas de acompanhamento dos colaboradores.'},
+    {key:'controller_subpaginas_gerenciar',label:'Controller — gerenciar áreas e status',group:'Controller',kind:'Administrar',description:'Permite gerenciar áreas de acompanhamento e configurar os status disponíveis aos colaboradores.'},
     {key:'controller_registros_criar',label:'Controller — cadastrar atendimento manual',group:'Controller',kind:'Criar',description:'Permite cadastrar um atendimento manualmente.'},
     {key:'controller_registros_excluir',label:'Controller — excluir atendimento',group:'Controller',kind:'Excluir',description:'Permite excluir registros de atendimento.'},
     {key:'portal_escala_ver',label:'Portal — visualizar escala mensal',group:'Portal / Escala',kind:'Visualizar',description:'Permite consultar escalas autorizadas.'},
@@ -4871,7 +4871,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 .aa-controller-management[open] .aa-controller-management-icon:after{transform:rotate(0)}
 .aa-controller-management-form{display:grid;gap:14px;padding:19px 22px!important;border:0!important;border-top:1px solid #EBEFF4!important;border-radius:0!important;box-shadow:none!important}
 .aa-controller-management-form h3{font-size:16px!important}
-.aa-controller-management-fields{display:grid;grid-template-columns:minmax(200px,1fr) minmax(240px,1.5fr);gap:14px}
+.aa-controller-management-fields{display:grid;grid-template-columns:minmax(180px,1fr) minmax(150px,.65fr) minmax(220px,1.4fr);gap:14px}
 .aa-controller-pages-section{display:grid;gap:14px;padding:21px 23px!important}
 .aa-controller-section-heading{align-items:flex-start}
 .aa-controller-count-pill,.aa-controller-pending-hint{flex:0 0 auto;padding:7px 11px;border:1px solid #E1E7EF;border-radius:999px;background:#F7F9FC;color:#596A80;font-size:11px;font-weight:800;white-space:nowrap}
@@ -4939,6 +4939,9 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 }
 @media(max-width:420px){.aa-controller-dashboard-period{grid-template-columns:1fr}.aa-controller-record-table tbody tr{grid-template-columns:1fr 1fr}}
 </style></style>
+<style id="aa-controller-dashboard-enhancements">
+.aa-controller-dashboard-distributions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;min-width:0}.aa-controller-dashboard-wide{max-width:none;width:100%}.aa-controller-dashboard-wide-table{min-width:760px}.aa-controller-dashboard-bars{display:grid;gap:13px}.aa-controller-dashboard-bar-row{display:grid;gap:6px}.aa-controller-dashboard-bar-meta{display:flex;justify-content:space-between;align-items:baseline;gap:12px;color:#334861;font-size:12px}.aa-controller-dashboard-bar-meta strong{overflow-wrap:anywhere}.aa-controller-dashboard-bar-meta span{flex:none;color:#738198;font-variant-numeric:tabular-nums}.aa-controller-dashboard-bar-track,.aa-controller-hour-meter{display:block;height:8px;overflow:hidden;border-radius:999px;background:#EDF1F6}.aa-controller-dashboard-bar-track i,.aa-controller-hour-meter i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#4F7DBA,#7E68C2)}.aa-controller-dashboard-empty{padding:16px;border:1px dashed #D8E0EA;border-radius:10px;color:#718096;font-size:12px;text-align:center}.aa-controller-dashboard-stat-name{font-size:17px!important;line-height:1.25!important;overflow-wrap:anywhere}.aa-controller-hour-total{display:inline-block;min-width:24px;font-weight:800}.aa-controller-hour-meter{display:inline-block;width:72px;height:6px;margin-left:7px;vertical-align:middle}.aa-controller-status-settings{min-width:0}.aa-controller-status-settings-card{max-width:900px;margin:0 auto!important;padding:24px!important}.aa-controller-status-settings-card h1{margin:5px 0 0;color:#223752;font-size:23px}.aa-controller-status-settings-card>p{max-width:760px;margin:8px 0 18px;color:#69778B;font-size:13px;line-height:1.55}.aa-controller-status-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.aa-controller-status-choice{display:flex;align-items:center;gap:12px;min-height:66px;padding:12px 14px;border:1px solid #E0E6EE;border-radius:11px;background:#FBFCFE;cursor:pointer}.aa-controller-status-choice:has(input:checked){border-color:#9CB5D3;background:#F3F7FC}.aa-controller-status-choice input{width:18px;height:18px;flex:none;accent-color:#4F7DBA}.aa-controller-status-choice span{display:grid;gap:2px}.aa-controller-status-choice strong{color:#334861;font-size:13px}.aa-controller-status-choice small{color:#758399;font-size:11px}.aa-controller-status-actions{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:18px;padding-top:16px;border-top:1px solid #E8EDF3}.aa-controller-status-actions>span{color:#718096;font-size:11px;line-height:1.45}.aa-controller-settings-warning{margin:12px 0;padding:11px 13px;border:1px solid #F0D69A;border-radius:9px;background:#FFF9E9;color:#805E0C;font-size:12px;line-height:1.5}@media(max-width:760px){.aa-controller-dashboard-distributions{grid-template-columns:1fr}.aa-controller-status-settings-card{padding:17px!important}.aa-controller-status-choice-grid{grid-template-columns:1fr}.aa-controller-status-actions{align-items:stretch;flex-direction:column}.aa-controller-status-actions .aa-btn{width:100%}}
+</style>
 <script>
 (function(){
   function controllerCan(permission){return typeof window.__aaCanPermission==='function'&&window.__aaCanPermission(permission);}
@@ -4955,7 +4958,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     }catch(e){return false;}
   }
   function controllerPageText(value){return typeof aaHtmlSafe==='function'?aaHtmlSafe(value==null?'':String(value)):String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-  async function loadControllerPages(){try{if(!controllerDb?.from)throw new Error('Cliente Supabase indisponível.');const result=await controllerDb.from('controller_subpages').select('id,nome,descricao,criada_em').order('criada_em',{ascending:true});if(result.error)throw result.error;controllerPages=(result.data||[]).map(p=>({id:p.id,nome:p.nome,descricao:p.descricao||'',criadaEm:p.criada_em}));}catch(e){controllerPages=[];console.warn('Não foi possível carregar as áreas de acompanhamento do Controller.',e);}return controllerPages;}
+  async function loadControllerPages(){try{if(!controllerDb?.from)throw new Error('Cliente Supabase indisponível.');const result=await controllerDb.from('controller_subpages').select('id,nome,descricao,criada_em,turno').order('criada_em',{ascending:true});if(result.error)throw result.error;controllerPages=(result.data||[]).map(p=>({id:p.id,nome:p.nome,descricao:p.descricao||'',turno:p.turno||'',criadaEm:p.criada_em}));}catch(e){controllerPages=[];console.warn('Não foi possível carregar as áreas de acompanhamento do Controller.',e);}return controllerPages;}
   async function saveControllerPages(){const rows=controllerPages.map(p=>({id:String(p.id),nome:String(p.nome||'').trim(),descricao:String(p.descricao||''),criada_em:p.criadaEm||new Date().toISOString()}));if(rows.length){const result=await controllerDb.from('controller_subpages').upsert(rows,{onConflict:'id'});if(result.error)throw result.error;}}
   let controllerActivePageId='';
   let controllerView='subpaginas';
@@ -4966,10 +4969,42 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   let controllerDashboardTo=new Date().toISOString().slice(0,10);
   let controllerDashboardCollaboratorFilter='';
   const CONTROLLER_RECORD_STATUSES=[['pendente','Pendente'],['atendido','Atendido'],['falta','Falta'],['pro_faltou','Profissional faltou'],['cancelado','Cancelado'],['remanejado','Remanejado'],['ajuste_necessario','Ajuste necessário']];
+  const CONTROLLER_DEFAULT_STATUS_CATEGORIES={pendente:'pendente',atendido:'finalizado',falta:'finalizado',pro_faltou:'finalizado',cancelado:'finalizado',remanejado:'finalizado',ajuste_necessario:'em_andamento'};
+  let controllerStatusDefinitions=CONTROLLER_RECORD_STATUSES.map(([status_code,label],index)=>({status_code,label,active:true,category:CONTROLLER_DEFAULT_STATUS_CATEGORIES[status_code]||'em_andamento',sort_order:(index+1)*10}));
+  let controllerEnabledStatuses=controllerStatusDefinitions.map(item=>item.status_code);
+  let controllerStatusConfigLoaded=false;
   const controllerToday=()=>new Date().toISOString().slice(0,10);
+  async function loadControllerStatusConfig(force){
+    if(controllerStatusConfigLoaded&&!force)return controllerEnabledStatuses;
+    try{
+      const result=await controllerDb.from('controller_status_options').select('status_code,label,active,category,sort_order').order('sort_order',{ascending:true});
+      if(result.error)throw result.error;
+      const loaded=(result.data||[]).map(row=>({status_code:String(row.status_code||''),label:String(row.label||row.status_code||''),active:row.active!==false,category:String(row.category||'em_andamento'),sort_order:Number(row.sort_order)||0})).filter(row=>row.status_code&&row.label);
+      if(!loaded.length)throw new Error('Não há opções de status cadastradas.');
+      controllerStatusDefinitions=loaded;
+      controllerEnabledStatuses=loaded.filter(row=>row.active).map(row=>row.status_code);
+      if(!controllerEnabledStatuses.includes('pendente'))controllerEnabledStatuses.unshift('pendente');
+      controllerStatusConfigLoaded=true;
+    }catch(error){
+      controllerStatusDefinitions=CONTROLLER_RECORD_STATUSES.map(([status_code,label],index)=>({status_code,label,active:true,category:CONTROLLER_DEFAULT_STATUS_CATEGORIES[status_code]||'em_andamento',sort_order:(index+1)*10}));
+      controllerEnabledStatuses=controllerStatusDefinitions.map(item=>item.status_code);
+      controllerStatusConfigLoaded=false;
+      console.warn('Não foi possível carregar a configuração de status do Controller.',error);
+    }
+    return controllerEnabledStatuses;
+  }
   async function loadControllerPageRecords(pageId,day){controllerSelectedDay=day||controllerSelectedDay||controllerToday();const result=await controllerDb.from('controller_page_records').select('id,page_id,operador,profissional,data_atendimento,hora_atendimento,status,status_original,observacao,criado_em,atualizado_em').eq('page_id',String(pageId)).eq('data_atendimento',controllerSelectedDay).order('hora_atendimento',{ascending:true});if(result.error)throw result.error;controllerPageRecords=result.data||[];return controllerPageRecords;}
-  function controllerStatusOptions(selected){return CONTROLLER_RECORD_STATUSES.map(x=>'<option value="'+x[0]+'" '+(x[0]===selected?'selected':'')+'>'+x[1]+'</option>').join('');}
-  function controllerStatusLabel(value){const raw=String(value==null?'':value).trim();const found=CONTROLLER_RECORD_STATUSES.find(x=>x[0]===raw);return found?found[1]:(raw||'Pendente');}
+  function controllerStatusOptions(selected){
+    const current=String(selected||'pendente');
+    const active=controllerStatusDefinitions.filter(item=>controllerEnabledStatuses.includes(item.status_code));
+    const options=active.map(item=>'<option value="'+controllerPageText(item.status_code)+'" '+(item.status_code===current?'selected':'')+'>'+controllerPageText(item.label)+'</option>');
+    if(!controllerEnabledStatuses.includes(current)){
+      const old=controllerStatusDefinitions.find(item=>item.status_code===current);
+      options.unshift('<option value="'+controllerPageText(current)+'" selected disabled>'+controllerPageText(old?old.label:current)+' (indisponível)</option>');
+    }
+    return options.join('');
+  }
+  function controllerStatusLabel(value){const raw=String(value==null?'':value).trim();const found=controllerStatusDefinitions.find(item=>item.status_code===raw);return found?found.label:(raw||'Pendente');}
   function controllerImportHeader(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'');}
   function controllerImportStatus(value){const v=controllerImportHeader(value);if(v.includes('atendido')||v.includes('realizado'))return 'atendido';if(v.includes('proffaltou')||v.includes('profissionalfaltou'))return 'pro_faltou';if(v.includes('falta'))return 'falta';if(v.includes('cancel'))return 'cancelado';if(v.includes('remanej'))return 'remanejado';if(v.includes('ajuste'))return 'ajuste_necessario';return 'pendente';}
   function controllerImportTime(value){if(value instanceof Date&&!isNaN(value))return value.toTimeString().slice(0,5);if(typeof value==='number'&&isFinite(value)){const fraction=value%1;const total=Math.round(fraction*24*60);return String(Math.floor(total/60)%24).padStart(2,'0')+':'+String(total%60).padStart(2,'0');}const v=String(value||'').trim().replace('.',':');const m=v.match(/(\d{1,2}):(\d{2})/);return m?m[1].padStart(2,'0')+':'+m[2]:'';}
@@ -4979,9 +5014,9 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   function renderControllerPageDetail(){
     const out=document.getElementById('aa-controller-view-subpaginas'),page=controllerPages.find(item=>String(item.id)===String(controllerActivePageId));if(!out||!page)return;
     const canEdit=controllerCan('controller_status_atual_editar');
-    const priority={pendente:0,em_andamento:1,finalizado:2};
+    const priority=new Map(controllerEnabledStatuses.map((status,index)=>[status,index]));
     const orderedRecords=controllerPageRecords.map((record,index)=>({record,index})).sort((a,b)=>{
-      const statusDiff=(priority[controllerDashboardWorkflowStatus(a.record)]??1)-(priority[controllerDashboardWorkflowStatus(b.record)]??1);
+      const statusDiff=(priority.get(String(a.record.status||'pendente'))??999)-(priority.get(String(b.record.status||'pendente'))??999);
       return statusDiff||a.index-b.index;
     }).map(entry=>entry.record);
     const rows=orderedRecords.map(record=>{
@@ -5002,7 +5037,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     </section>`;
     if(!controllerCan('controller_registros_excluir'))out.querySelectorAll('.aa-btn-danger').forEach(button=>button.style.display='none');
   }
-  window.aaControllerOpenPage=async function(id,day){if(!controllerAllowed())return;controllerView='subpaginas';controllerActivePageId=String(id);controllerSelectedDay=day||controllerToday();try{await loadControllerPageRecords(id,controllerSelectedDay);renderControllerPageDetail();}catch(e){alert('Não foi possível carregar os atendimentos desta área: '+(e?.message||''));console.error(e);}};
+  window.aaControllerOpenPage=async function(id,day){if(!controllerAllowed())return;controllerView='subpaginas';controllerActivePageId=String(id);controllerSelectedDay=day||controllerToday();try{await loadControllerStatusConfig();await loadControllerPageRecords(id,controllerSelectedDay);renderControllerPageDetail();}catch(e){alert('Não foi possível carregar os atendimentos desta área: '+(e?.message||''));console.error(e);}};
   window.aaControllerChangeDay=async function(day){if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!controllerActivePageId)return;await window.aaControllerOpenPage(controllerActivePageId,day);};
   window.aaControllerBackToPages=function(){controllerActivePageId='';controllerView='subpaginas';renderControllerPages();};
   window.aaControllerCreateRecord=async function(event){
@@ -5023,6 +5058,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   };
   window.aaControllerUpdateRecordStatus=async function(id,status){
     if(!controllerAllowed()||!controllerCan('controller_status_atual_editar')){alert('Você não tem permissão para alterar o Status atual.');return;}
+    await loadControllerStatusConfig();
+    if(!controllerEnabledStatuses.includes(String(status))){alert('Este status não está habilitado para os colaboradores.');await loadControllerPageRecords(controllerActivePageId,controllerSelectedDay);renderControllerPageDetail();return;}
     const result=await controllerDb.from('controller_page_records').update({status,atualizado_em:new Date().toISOString()}).eq('id',String(id));
     if(result.error){alert('Não foi possível atualizar o status: '+result.error.message);return;}
     await loadControllerPageRecords(controllerActivePageId,controllerSelectedDay);renderControllerPageDetail();
@@ -5068,7 +5105,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   };
   function renderControllerPages(){
     const out=document.getElementById('aa-controller-view-subpaginas');if(!out)return;
-    const list=controllerPages.map(page=>`<article class="aa-controller-collaborator-card"><div class="aa-controller-collaborator-main"><span class="aa-controller-avatar" aria-hidden="true">${controllerPageText(String(page.nome||'?').trim().charAt(0).toLocaleUpperCase('pt-BR'))}</span><div class="aa-controller-collaborator-copy"><h3>${controllerPageText(page.nome)}</h3><p>${controllerPageText(page.descricao||'Acompanhamentos atribuídos a este colaborador.')}</p></div></div><div class="aa-controller-page-actions"><button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaControllerOpenPage('${controllerPageText(page.id)}')">Abrir acompanhamento</button><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeletePage('${controllerPageText(page.id)}')">Excluir</button></div></article>`).join('');
+    const list=controllerPages.map(page=>`<article class="aa-controller-collaborator-card"><div class="aa-controller-collaborator-main"><span class="aa-controller-avatar" aria-hidden="true">${controllerPageText(String(page.nome||'?').trim().charAt(0).toLocaleUpperCase('pt-BR'))}</span><div class="aa-controller-collaborator-copy"><h3>${controllerPageText(page.nome)}</h3><p>${controllerPageText(page.descricao||'Acompanhamentos atribuídos a este colaborador.')}</p><p><strong>Turno:</strong> ${controllerPageText(page.turno||'Não informado')}</p></div></div><div class="aa-controller-page-actions">${controllerCan('controller_subpaginas_gerenciar')?`<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerEditShift('${controllerPageText(page.id)}')">Editar turno</button>`:''}<button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaControllerOpenPage('${controllerPageText(page.id)}')">Abrir acompanhamento</button><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeletePage('${controllerPageText(page.id)}')">Excluir</button></div></article>`).join('');
     out.innerHTML=controllerViewNav()+`<section class="aa-controller-workspace">
       <form onsubmit="aaControllerImportPlanilha(event)" class="aa-card aa-controller-import-card">
         <div class="aa-controller-card-heading"><div><span class="aa-controller-overline">ROTINA DO DIA</span><h2>Importar atendimentos</h2></div><span class="aa-controller-step">01</span></div>
@@ -5085,7 +5122,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
           <div><span class="aa-controller-overline">CADASTRO</span><h3>Adicionar colaborador</h3><p>Crie uma área de acompanhamento com o nome que será usado na aba correspondente da planilha.</p></div>
           <div class="aa-controller-management-fields">
             <div class="aa-field"><label for="aa-controller-new-name">Nome do colaborador</label><input id="aa-controller-new-name" maxlength="80" required placeholder="Ex.: Maria da Silva"></div>
-            <div class="aa-field"><label for="aa-controller-new-description">Descrição <span>(opcional)</span></label><input id="aa-controller-new-description" maxlength="500" placeholder="Ex.: Conferências do turno da manhã"></div>
+            <div class="aa-field"><label for="aa-controller-new-shift">Turno <span>(opcional)</span></label><input id="aa-controller-new-shift" maxlength="60" placeholder="Ex.: 07h, 14h (apoio)"></div>
+            <div class="aa-field"><label for="aa-controller-new-description">Descrição <span>(opcional)</span></label><input id="aa-controller-new-description" maxlength="500" placeholder="Ex.: Conferências da equipe"></div>
           </div>
           <div class="aa-controller-form-actions"><button type="submit" class="aa-btn aa-btn-primary">Adicionar colaborador</button></div>
         </form>
@@ -5115,8 +5153,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     return records;
   }
   function controllerViewNav(){
-    const dashboardAllowed=controllerCan('controller_dashboard_ver');
-    return '<nav class="aa-controller-nav" aria-label="Navegação do acompanhamento"><button type="button" class="aa-controller-tab '+(controllerView==='subpaginas'?'active':'')+'" aria-current="'+(controllerView==='subpaginas'?'page':'false')+'" onclick="aaControllerSwitchView(\'subpaginas\')">Acompanhamento por colaborador</button>'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='dashboard'?'active':'')+'" aria-current="'+(controllerView==='dashboard'?'page':'false')+'" onclick="aaControllerSwitchView(\'dashboard\')">Painel de acompanhamento</button>':'')+'</nav>';
+    const dashboardAllowed=controllerCan('controller_dashboard_ver'),settingsAllowed=controllerCan('controller_subpaginas_gerenciar');
+    return '<nav class="aa-controller-nav" aria-label="Navegação do acompanhamento"><button type="button" class="aa-controller-tab '+(controllerView==='subpaginas'?'active':'')+'" aria-current="'+(controllerView==='subpaginas'?'page':'false')+'" onclick="aaControllerSwitchView(\'subpaginas\')">Acompanhamento por colaborador</button>'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='dashboard'?'active':'')+'" aria-current="'+(controllerView==='dashboard'?'page':'false')+'" onclick="aaControllerSwitchView(\'dashboard\')">Painel de acompanhamento</button>':'')+(settingsAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='status'?'active':'')+'" aria-current="'+(controllerView==='status'?'page':'false')+'" onclick="aaControllerSwitchView(\'status\')">Status disponíveis</button>':'')+'</nav>';
   }
   function controllerDashboardPage(record){
     return controllerPages.find(page=>String(page.id)===String(record?.page_id||''))||null;
@@ -5124,7 +5162,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   function controllerDashboardOwner(record){
     const page=controllerDashboardPage(record);
     const name=String(page?.nome||record?.operador||'Não identificado').trim();
-    return {key:record?.page_id?'page:'+String(record.page_id):'name:'+name.toLocaleLowerCase('pt-BR'),name};
+    return {key:record?.page_id?'page:'+String(record.page_id):'name:'+name.toLocaleLowerCase('pt-BR'),name,turno:String(page?.turno||'').trim()||'Sem turno cadastrado'};
   }
   function controllerDashboardWorkflowStatus(record){
     const status=controllerImportHeader(record?.status||'pendente');
@@ -5140,6 +5178,17 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const date=new Date(value);
     return Number.isNaN(date.getTime())?'—':date.toLocaleString('pt-BR');
   }
+  function controllerDashboardStatusClass(value){
+    const key=controllerImportHeader(value);
+    if(key.includes('agendad'))return 'agendado';
+    if(key.includes('disponivel')||key.includes('semagendamento'))return 'disponivel';
+    if(key.includes('reserv'))return 'reservado';
+    return 'outros';
+  }
+  function controllerDashboardBarMarkup(values,total){
+    if(!values.length)return '<div class="aa-controller-dashboard-empty">Sem dados para o período selecionado.</div>';
+    return values.map(item=>{const percent=total?item.count*100/total:0,width=item.count?Math.max(2,percent):0;return '<div class="aa-controller-dashboard-bar-row"><div class="aa-controller-dashboard-bar-meta"><strong>'+controllerPageText(item.label)+'</strong><span>'+item.count+' · '+percent.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%</span></div><div class="aa-controller-dashboard-bar-track"><i style="width:'+width.toFixed(2)+'%"></i></div></div>';}).join('');
+  }
   function renderControllerDashboard(){
     const out=document.getElementById('aa-controller-view-subpaginas');
     if(!out)return;
@@ -5147,25 +5196,79 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const collaboratorOptions=new Map();
     source.forEach(record=>{const owner=controllerDashboardOwner(record);collaboratorOptions.set(owner.key,owner.name);});
     const records=source.filter(record=>!controllerDashboardCollaboratorFilter||controllerDashboardOwner(record).key===controllerDashboardCollaboratorFilter);
-    const statusCounts={pendente:0,em_andamento:0,finalizado:0};
-    const collaborators=new Map();
+    const collaborators=new Map(),hours=new Map(),shifts=new Map(),sourceStatusCounts=new Map(),currentStatusCounts=new Map();
+    const currentStatusKeys=[...controllerEnabledStatuses];
     records.forEach(record=>{
-      const status=controllerDashboardWorkflowStatus(record),owner=controllerDashboardOwner(record);
-      statusCounts[status]=(statusCounts[status]||0)+1;
-      if(!collaborators.has(owner.key))collaborators.set(owner.key,{name:owner.name,total:0});
-      collaborators.get(owner.key).total++;
+      const owner=controllerDashboardOwner(record),status=String(record.status||'pendente'),rawSource=String(record.status_original||'').trim();
+      if(!currentStatusKeys.includes(status))currentStatusKeys.push(status);
+      if(!currentStatusCounts.has(status))currentStatusCounts.set(status,0);
+      currentStatusCounts.set(status,currentStatusCounts.get(status)+1);
+      const sourceLabel=rawSource?rawSource.toLocaleUpperCase('pt-BR'):'Sem status na planilha';
+      const sourceKey=controllerImportHeader(rawSource)||'semstatus';
+      if(!sourceStatusCounts.has(sourceKey))sourceStatusCounts.set(sourceKey,{label:sourceLabel,count:0});
+      sourceStatusCounts.get(sourceKey).count++;
+      if(!collaborators.has(owner.key))collaborators.set(owner.key,{name:owner.name,total:0,statuses:new Map()});
+      const collaborator=collaborators.get(owner.key);collaborator.total++;collaborator.statuses.set(status,(collaborator.statuses.get(status)||0)+1);collaborator.turno=owner.turno;
+      if(!shifts.has(owner.turno))shifts.set(owner.turno,{turno:owner.turno,total:0,collaborators:new Set()});
+      const shift=shifts.get(owner.turno);shift.total++;shift.collaborators.add(owner.key);
+      const hour=String(record.hora_atendimento||'').slice(0,5)||'Sem horário';
+      if(!hours.has(hour))hours.set(hour,{total:0,classes:{agendado:0,disponivel:0,reservado:0,outros:0}});
+      const hourRow=hours.get(hour);hourRow.total++;hourRow.classes[controllerDashboardStatusClass(rawSource)]++;
     });
     const collaboratorRows=[...collaborators.values()].sort((a,b)=>b.total-a.total||a.name.localeCompare(b.name,'pt-BR'));
-    const statusCard=(key,title)=>`<article class="aa-controller-dashboard-stat aa-controller-dashboard-stat--${key}"><small>${title}</small><strong>${statusCounts[key]||0}</strong></article>`;
-    const collaboratorTable=collaboratorRows.length?collaboratorRows.map(row=>`<tr><td><strong>${controllerPageText(row.name)}</strong></td><td>${row.total}</td></tr>`).join(''):'<tr><td colspan="2">Nenhum acompanhamento no período.</td></tr>';
+    const shiftRows=[...shifts.values()].sort((a,b)=>b.total-a.total||a.turno.localeCompare(b.turno,'pt-BR'));
+    const statusLabels=new Map(controllerStatusDefinitions.map(item=>[item.status_code,item.label]));
+    const statusKeys=[...currentStatusKeys];
+    const statusHeader=statusKeys.map(key=>'<th>'+controllerPageText(statusLabels.get(key)||key)+'</th>').join('');
+    const collaboratorTable=collaboratorRows.length?collaboratorRows.map(row=>'<tr><td><strong>'+controllerPageText(row.name)+'</strong></td><td>'+controllerPageText(row.turno||'Sem turno cadastrado')+'</td><td>'+row.total+'</td><td>'+((records.length?row.total*100/records.length:0).toLocaleString('pt-BR',{maximumFractionDigits:1}))+'%</td>'+statusKeys.map(key=>'<td>'+((row.statuses.get(key)||0).toLocaleString('pt-BR'))+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+(4+statusKeys.length)+'">Nenhum acompanhamento no período.</td></tr>';
+    const shiftTable=shiftRows.length?shiftRows.map(row=>'<tr><td><strong>'+controllerPageText(row.turno)+'</strong></td><td>'+row.collaborators.size+'</td><td>'+row.total+'</td><td>'+((row.collaborators.size?row.total/row.collaborators.size:0).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}))+'</td></tr>').join(''):'<tr><td colspan="4">Nenhum turno com atendimentos neste período.</td></tr>';
     const collaboratorSelect=[...collaboratorOptions.entries()].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR')).map(([key,name])=>'<option value="'+controllerPageText(key)+'" '+(controllerDashboardCollaboratorFilter===key?'selected':'')+'>'+controllerPageText(name)+'</option>').join('');
+    const activeCollaborators=collaboratorRows.length,averageLoad=activeCollaborators?records.length/activeCollaborators:0,maxLoad=collaboratorRows[0]||null,minLoad=collaboratorRows.length?collaboratorRows.reduce((min,row)=>row.total<min.total?row:min,collaboratorRows[0]):null;
+    const sourceStatusRows=[...sourceStatusCounts.values()].sort((a,b)=>b.count-a.count||a.label.localeCompare(b.label,'pt-BR'));
+    const currentStatusRows=statusKeys.map(key=>({label:statusLabels.get(key)||key,count:currentStatusCounts.get(key)||0}));
+    const hourRows=[...hours.entries()].sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'));
+    const maxHourCount=Math.max(1,...hourRows.map(entry=>entry[1].total));
+    const hourlyTable=hourRows.length?hourRows.map(([hour,row])=>'<tr><td><strong>'+controllerPageText(hour)+'</strong></td><td><span class="aa-controller-hour-total">'+row.total+'</span><span class="aa-controller-hour-meter"><i style="width:'+Math.max(2,row.total*100/maxHourCount).toFixed(2)+'%"></i></span></td><td>'+row.classes.agendado+'</td><td>'+row.classes.disponivel+'</td><td>'+row.classes.reservado+'</td><td>'+row.classes.outros+'</td></tr>').join(''):'<tr><td colspan="6">Nenhum atendimento no período.</td></tr>';
     out.innerHTML=controllerViewNav()+`<section class="aa-controller-dashboard">
-      <header class="aa-card aa-controller-dashboard-header"><div class="aa-controller-dashboard-title"><span class="aa-controller-overline">VISÃO DA EQUIPE</span><h1>Painel de acompanhamento</h1><p>Volume de atendimentos por colaborador e andamento do trabalho no período.</p></div><div class="aa-controller-dashboard-period"><div class="aa-field"><label for="aa-controller-dashboard-from">Data inicial</label><input id="aa-controller-dashboard-from" type="date" value="${controllerPageText(controllerDashboardFrom)}" onchange="aaControllerChangeDashboardPeriod()"></div><div class="aa-field"><label for="aa-controller-dashboard-to">Data final</label><input id="aa-controller-dashboard-to" type="date" value="${controllerPageText(controllerDashboardTo)}" onchange="aaControllerChangeDashboardPeriod()"></div></div></header>
-      <section class="aa-card aa-controller-dashboard-filter-card"><div class="aa-controller-dashboard-filters"><div class="aa-field"><label for="aa-controller-dashboard-collaborator">Colaborador</label><select id="aa-controller-dashboard-collaborator" onchange="aaControllerFilterDashboard()"><option value="">Todos os colaboradores</option>${collaboratorSelect}</select></div><div class="aa-controller-dashboard-filter-meta">${records.length} de ${source.length} atendimentos</div></div></section>
-      <section class="aa-controller-dashboard-stats"><article class="aa-controller-dashboard-stat aa-controller-dashboard-stat--total"><small>Total de atendimentos</small><strong>${records.length}</strong></article>${statusCard('pendente','Pendentes')}${statusCard('em_andamento','Em andamento')}${statusCard('finalizado','Finalizados')}</section>
-      <section class="aa-card aa-controller-dashboard-table-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">DISTRIBUIÇÃO DA EQUIPE</span><h2>Atendimentos por colaborador</h2><p>Os nomes correspondem às áreas de acompanhamento configuradas no portal.</p></div></header><div class="aa-table-scroll aa-controller-dashboard-table-scroll"><table class="aa-compact-table aa-controller-dashboard-table"><thead><tr><th>Colaborador</th><th>Atendimentos</th></tr></thead><tbody>${collaboratorTable}</tbody></table></div></section>
+      <header class="aa-card aa-controller-dashboard-header"><div class="aa-controller-dashboard-title"><span class="aa-controller-overline">VISÃO DA EQUIPE</span><h1>Painel de acompanhamento</h1><p>Distribuição dos atendimentos, status da planilha e andamento no Controller.</p></div><div class="aa-controller-dashboard-period"><div class="aa-field"><label for="aa-controller-dashboard-from">Data inicial</label><input id="aa-controller-dashboard-from" type="date" value="${controllerPageText(controllerDashboardFrom)}" onchange="aaControllerChangeDashboardPeriod()"></div><div class="aa-field"><label for="aa-controller-dashboard-to">Data final</label><input id="aa-controller-dashboard-to" type="date" value="${controllerPageText(controllerDashboardTo)}" onchange="aaControllerChangeDashboardPeriod()"></div></div></header>
+      <section class="aa-card aa-controller-dashboard-filter-card"><div class="aa-controller-dashboard-filters"><div class="aa-field"><label for="aa-controller-dashboard-collaborator">Colaborador</label><select id="aa-controller-dashboard-collaborator" onchange="aaControllerFilterDashboard()"><option value="">Todos os colaboradores</option>${collaboratorSelect}</select></div><div class="aa-controller-dashboard-filter-meta">${records.length} de ${source.length} atendimentos no filtro</div></div></section>
+      <section class="aa-controller-dashboard-stats">
+        <article class="aa-controller-dashboard-stat aa-controller-dashboard-stat--total"><small>Total de atendimentos</small><strong>${records.length}</strong></article>
+        <article class="aa-controller-dashboard-stat"><small>Colaboradores com atendimentos</small><strong>${activeCollaborators}</strong></article>
+        <article class="aa-controller-dashboard-stat"><small>Média por colaborador</small><strong>${averageLoad.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></article>
+        <article class="aa-controller-dashboard-stat aa-controller-dashboard-stat--pendente"><small>Maior volume individual</small><strong class="aa-controller-dashboard-stat-name">${maxLoad?controllerPageText(maxLoad.name)+' · '+maxLoad.total:'—'}</strong></article>
+        <article class="aa-controller-dashboard-stat aa-controller-dashboard-stat--finalizado"><small>Menor volume individual</small><strong class="aa-controller-dashboard-stat-name">${minLoad?controllerPageText(minLoad.name)+' · '+minLoad.total:'—'}</strong></article>
+        <article class="aa-controller-dashboard-stat aa-controller-dashboard-stat--em_andamento"><small>Diferença entre maior e menor</small><strong>${maxLoad&&minLoad?maxLoad.total-minLoad.total:'—'}</strong></article>
+      </section>
+      <section class="aa-controller-dashboard-distributions">
+        <article class="aa-card aa-controller-dashboard-table-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">ORIGEM DA IMPORTAÇÃO</span><h2>Status da planilha</h2><p>Distribuição dos rótulos que vieram na planilha importada.</p></div></header><div class="aa-controller-dashboard-bars">${controllerDashboardBarMarkup(sourceStatusRows,records.length)}</div></article>
+        <article class="aa-card aa-controller-dashboard-table-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">ACOMPANHAMENTO</span><h2>Status atual</h2><p>Distribuição pelos status aplicados pela equipe no Controller.</p></div></header><div class="aa-controller-dashboard-bars">${controllerDashboardBarMarkup(currentStatusRows,records.length)}</div></article>
+      </section>
+      <section class="aa-card aa-controller-dashboard-table-card aa-controller-dashboard-wide"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">CARGA DA EQUIPE</span><h2>Atendimentos por colaborador</h2><p>Volume, participação no total e distribuição pelos status atuais.</p></div></header><div class="aa-table-scroll aa-controller-dashboard-table-scroll"><table class="aa-compact-table aa-controller-dashboard-table aa-controller-dashboard-wide-table"><thead><tr><th>Colaborador</th><th>Turno</th><th>Total</th><th>% do total</th>${statusHeader}</tr></thead><tbody>${collaboratorTable}</tbody></table></div></section>
+      <section class="aa-controller-dashboard-distributions"><article class="aa-card aa-controller-dashboard-table-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">DISTRIBUIÇÃO POR TURNO</span><h2>Carga por turno</h2><p>Use “Editar turno” na lista de colaboradores para preencher ou corrigir essa informação.</p></div></header><div class="aa-table-scroll aa-controller-dashboard-table-scroll"><table class="aa-compact-table aa-controller-dashboard-table"><thead><tr><th>Turno</th><th>Colaboradores</th><th>Atendimentos</th><th>Média por colaborador</th></tr></thead><tbody>${shiftTable}</tbody></table></div></article><article class="aa-card aa-controller-dashboard-table-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">DISTRIBUIÇÃO POR HORÁRIO</span><h2>Atendimentos ao longo do dia</h2><p>Agrupado pelo horário da agenda e pelos rótulos originais da planilha.</p></div></header><div class="aa-table-scroll aa-controller-dashboard-table-scroll"><table class="aa-compact-table aa-controller-dashboard-table"><thead><tr><th>Horário</th><th>Total</th><th>Agendado</th><th>Disponível / sem agendamento</th><th>Reservado</th><th>Outros / sem status</th></tr></thead><tbody>${hourlyTable}</tbody></table></div></article></section>
     </section>`;
   }
+  function renderControllerStatusSettings(){
+    const out=document.getElementById('aa-controller-view-subpaginas');
+    if(!out||!controllerCan('controller_subpaginas_gerenciar'))return;
+    const warning=controllerStatusConfigLoaded?'':'<div class="aa-controller-settings-warning">Não foi possível carregar as opções do banco. Os sete status padrão estão sendo exibidos; verifique o acesso ao Supabase antes de salvar.</div>';
+    const options=controllerStatusDefinitions.map(item=>{const fixed=item.status_code==='pendente';return '<label class="aa-controller-status-choice"><input type="checkbox" data-controller-status-choice="'+controllerPageText(item.status_code)+'" '+(controllerEnabledStatuses.includes(item.status_code)?'checked':'')+(fixed?' disabled':'')+'><span><strong>'+controllerPageText(item.label)+'</strong><small>'+(fixed?'Obrigatório para iniciar novos atendimentos':'Colaboradores poderão selecionar este status')+'</small></span></label>';}).join('');
+    out.innerHTML=controllerViewNav()+`<section class="aa-controller-status-settings"><article class="aa-card aa-controller-status-settings-card"><span class="aa-controller-overline">CONTROLE DE ACESSO</span><h1>Status disponíveis no Controller</h1><p>Escolha quais opções os colaboradores podem aplicar em “Status atual”. Atendimentos que já usam um status desativado continuam preservados; ele apenas deixa de ser uma opção para novas alterações.</p>${warning}<div class="aa-controller-status-choice-grid">${options}</div><div class="aa-controller-status-actions"><span>Pendente permanece ativo como status inicial de novos atendimentos.</span><button type="button" class="aa-btn aa-btn-primary" onclick="aaControllerSaveStatusConfig()">Salvar status disponíveis</button></div></article></section>`;
+  }
+  window.aaControllerSaveStatusConfig=async function(){
+    if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar')){alert('Somente usuários com permissão de administração do Controller podem configurar os status.');return;}
+    const selected=[...document.querySelectorAll('[data-controller-status-choice]:checked')].map(input=>String(input.dataset.controllerStatusChoice||''));
+    if(!selected.includes('pendente'))selected.unshift('pendente');
+    if(selected.some(key=>!controllerStatusDefinitions.some(item=>item.status_code===key))){alert('A lista contém um status inválido.');return;}
+    try{
+      const rows=controllerStatusDefinitions.map(item=>({status_code:item.status_code,label:item.label,active:selected.includes(item.status_code),category:item.category,sort_order:item.sort_order}));
+      const result=await controllerDb.from('controller_status_options').upsert(rows,{onConflict:'status_code'});
+      if(result.error)throw result.error;
+      controllerStatusDefinitions=controllerStatusDefinitions.map(item=>({...item,active:selected.includes(item.status_code)}));
+      controllerEnabledStatuses=controllerStatusDefinitions.filter(item=>item.active).map(item=>item.status_code);renderControllerStatusSettings();
+      if(typeof aaToast==='function')aaToast('Status disponíveis atualizados.','success');
+    }catch(error){alert('Não foi possível salvar os status. Confirme o acesso à tabela controller_status_options no Supabase. Detalhe: '+(error?.message||error));console.error('Erro ao salvar configuração de status do Controller:',error);}
+  };
   window.aaControllerFilterDashboard=function(){
     if(!controllerAllowed()||!controllerCan('controller_dashboard_ver'))return;
     controllerDashboardCollaboratorFilter=String(document.getElementById('aa-controller-dashboard-collaborator')?.value||'');
@@ -5183,7 +5286,10 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   window.aaControllerSwitchView=async function(view){
     if(!controllerAllowed())return;
     if(view==='dashboard'&&!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para visualizar o painel de acompanhamento.');return;}
-    controllerView=view==='dashboard'?'dashboard':'subpaginas';
+    if(view==='status'&&!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para configurar os status do Controller.');return;}
+    controllerView=view==='dashboard'?'dashboard':view==='status'?'status':'subpaginas';
+    await loadControllerStatusConfig();
+    if(controllerView==='status'){renderControllerStatusSettings();return;}
     await loadControllerPages();
     if(controllerView==='dashboard'){
       try{controllerDashboardRecords=await loadControllerDashboardRecords(controllerDashboardFrom,controllerDashboardTo);renderControllerDashboard();}
@@ -5197,7 +5303,22 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const panel=document.getElementById('aa-rhtab-controller');if(panel)panel.style.display='block';
     window.aaControllerSwitchView('subpaginas');
   };
-  window.aaControllerCreatePage=async function(event){if(event)event.preventDefault();if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para gerenciar áreas de acompanhamento.');return;}const name=String(document.getElementById('aa-controller-new-name')?.value||'').trim(),description=String(document.getElementById('aa-controller-new-description')?.value||'').trim();if(!name)return;if(controllerPages.some(p=>String(p.nome).toLowerCase()===name.toLowerCase()))return alert('Já existe um acompanhamento cadastrado para este colaborador.');const page={id:'controller-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),nome:name,descricao:description,criadaEm:new Date().toISOString()};try{const result=await controllerDb.from('controller_subpages').insert({id:page.id,nome:page.nome,descricao:page.descricao,criada_em:page.criadaEm});if(result.error)throw result.error;controllerPages.push(page);renderControllerPages();if(typeof aaToast==='function')aaToast('Área de acompanhamento criada com sucesso.','success');}catch(e){alert('Não foi possível adicionar o colaborador agora: '+(e?.message||'verifique sua sessão e tente novamente.'));console.error('Erro ao adicionar colaborador ao Controller:',e);}};
+  window.aaControllerCreatePage=async function(event){
+    if(event)event.preventDefault();if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para gerenciar áreas de acompanhamento.');return;}
+    const name=String(document.getElementById('aa-controller-new-name')?.value||'').trim(),description=String(document.getElementById('aa-controller-new-description')?.value||'').trim(),turno=String(document.getElementById('aa-controller-new-shift')?.value||'').trim().slice(0,60);
+    if(!name)return;if(controllerPages.some(p=>String(p.nome).toLowerCase()===name.toLowerCase()))return alert('Já existe um acompanhamento cadastrado para este colaborador.');
+    const page={id:'controller-'+Date.now().toString(36)+Math.random().toString(36).slice(0,7),nome:name,descricao:description,turno,criadaEm:new Date().toISOString()};
+    try{const result=await controllerDb.from('controller_subpages').insert({id:page.id,nome:page.nome,descricao:page.descricao,turno:page.turno,criada_em:page.criadaEm});if(result.error)throw result.error;controllerPages.push(page);renderControllerPages();if(typeof aaToast==='function')aaToast('Área de acompanhamento criada com sucesso.','success');}
+    catch(e){alert('Não foi possível adicionar o colaborador agora: '+(e?.message||'verifique sua sessão e tente novamente.'));console.error('Erro ao adicionar colaborador ao Controller:',e);}
+  };
+  window.aaControllerEditShift=async function(id){
+    if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para alterar o turno.');return;}
+    const page=controllerPages.find(item=>String(item.id)===String(id));if(!page)return;
+    const value=window.prompt('Informe o turno deste colaborador. Ex.: 07h, 07h (apoio), 14h.',page.turno||'');if(value===null)return;
+    const turno=String(value||'').trim().slice(0,60);
+    try{const result=await controllerDb.from('controller_subpages').update({turno}).eq('id',String(id));if(result.error)throw result.error;page.turno=turno;renderControllerPages();if(typeof aaToast==='function')aaToast('Turno atualizado.','success');}
+    catch(error){alert('Não foi possível atualizar o turno: '+(error?.message||''));console.error('Erro ao atualizar o turno do Controller:',error);}
+  };
   window.aaControllerDeletePage=async function(id){if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para gerenciar áreas de acompanhamento.');return;}const page=controllerPages.find(p=>String(p.id)===String(id));if(!page||!confirm('Excluir a área de acompanhamento “'+page.nome+'”?'))return;const old=controllerPages.slice();controllerPages=controllerPages.filter(p=>String(p.id)!==String(id));try{const result=await controllerDb.from('controller_subpages').delete().eq('id',String(id));if(result.error)throw result.error;renderControllerPages();if(typeof aaToast==='function')aaToast('Área de acompanhamento excluída.','success');}catch(e){controllerPages=old;renderControllerPages();alert('Não foi possível excluir a área de acompanhamento agora.');console.error(e);}};
   const oldSwitch=window.aaSwitchRHTab;
   window.aaSwitchRHTab=function(tab){if(tab==='controller'){window.aaControllerOpen();return;}const panel=document.getElementById('aa-rhtab-controller');if(panel)panel.style.display='none';return oldSwitch(tab);};
