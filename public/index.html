@@ -4684,7 +4684,7 @@ window.aaRenderProfissionaisList=function(){
     if(parts[0]!=='painel')return;
     routing=true;originalTab('painel');routing=false;
     if(!rhAuthenticated)return;
-    const target={profissionais:'banco',usuarios:'permissoes',ajustes:'ajustes',operacoes:'operacoes',perfis:'perfis',config:'config',historico:'historico',portal:'portal'}[parts[1]];
+    const target={profissionais:'banco',usuarios:'permissoes',ajustes:'ajustes',operacoes:'operacoes',perfis:'perfis',config:'config',historico:'historico',portal:'portal',controller:'controller'}[parts[1]];
     if(target&&typeof window.aaSwitchRHTab==='function'){routing=true;window.aaSwitchRHTab(target);routing=false;}
   }
   window.addEventListener('hashchange',apply);
@@ -5372,6 +5372,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   };
   window.aaControllerOpen=function(){
     if(!controllerAllowed()){alert('Faça login para acessar o Controller.');return;}
+    const route='#/painel/controller';
+    if(String(window.location.hash||'').toLowerCase()!==route)window.history.replaceState(null,'',route);
     document.querySelectorAll('[data-rhtab]').forEach(button=>button.classList.toggle('active',button.dataset.rhtab==='controller'));
     document.querySelectorAll('#aa-rh-authed-content .aa-rh-subpanel').forEach(panel=>panel.style.display='none');
     const panel=document.getElementById('aa-rhtab-controller');if(panel)panel.style.display='block';
