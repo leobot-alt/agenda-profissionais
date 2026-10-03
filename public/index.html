@@ -4903,7 +4903,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 .aa-controller-record-table th{background:#F5F7FA;color:#596A80;font-size:10px;white-space:nowrap}
 .aa-controller-record-table td{padding:12px 11px;border-color:#E9EDF2;color:#40516A;font-size:12px}
 .aa-controller-record-table tbody tr:nth-child(even) td{background:#FBFCFD}
-.aa-controller-record-table tbody tr:hover td{background:#F3F7FB}
+.aa-controller-record-table tbody tr:hover td{background:#F3F7FB} .aa-controller-record-table tbody tr.aa-controller-record-status-acompanhando td { background:#FFF1B8!important }
 .aa-controller-record-table select{min-width:140px;min-height:38px;border:1px solid #D7DFE9;border-radius:9px;background:#fff;color:#354963}
 .aa-controller-professional-cell strong{color:#2D425F;font-size:13px}
 .aa-controller-note-editor{display:flex;align-items:flex-start;gap:7px;min-width:230px}
@@ -4980,10 +4980,10 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   let controllerDashboardFrom=new Date().toISOString().slice(0,8)+'01';
   let controllerDashboardTo=new Date().toISOString().slice(0,10);
   let controllerDashboardCollaboratorFilter='';
-  const CONTROLLER_RECORD_STATUSES=[['pendente','Pendente'],['disponivel','DISPONÍVEL'],['atendido','ATENDIDO'],['bloqueado','BLOQUEADO'],['cancelado','CANCELADO'],['desmarcado','DESMARCADO'],['desmarcado_pro','DESMARCADO PRO'],['faltou','FALTOU'],['horario_reservado_lideranca','HORÁRIO RESERVADO/LIDERANÇA'],['pro_faltou','PRO FALTOU'],['remanejar','REMANEJAR']];
+  const CONTROLLER_RECORD_STATUSES=[['pendente','Pendente'],['disponivel','DISPONÍVEL'],['atendido','ATENDIDO'],['bloqueado','BLOQUEADO'],['cancelado','CANCELADO'],['desmarcado','DESMARCADO'],['desmarcado_pro','DESMARCADO PRO'],['faltou','FALTOU'],['horario_reservado_lideranca','HORÁRIO RESERVADO/LIDERANÇA'],['pro_faltou','PRO FALTOU'],['remanejar','REMANEJAR'],['acompanhando','Acompanhando']];
   const CONTROLLER_LEGACY_STATUS_CODES=['falta','remanejado','ajuste_necessario'];
   const CONTROLLER_LEGACY_STATUS_DEFINITIONS=[['falta','Falta','finalizado'],['remanejado','Remanejado','finalizado'],['ajuste_necessario','Ajuste necessário','em_andamento']];
-  const CONTROLLER_DEFAULT_STATUS_CATEGORIES={pendente:'pendente',disponivel:'pendente',atendido:'finalizado',bloqueado:'em_andamento',cancelado:'finalizado',desmarcado:'finalizado',desmarcado_pro:'finalizado',faltou:'finalizado',horario_reservado_lideranca:'em_andamento',pro_faltou:'finalizado',remanejar:'em_andamento'};
+  const CONTROLLER_DEFAULT_STATUS_CATEGORIES={pendente:'pendente',disponivel:'pendente',atendido:'finalizado',bloqueado:'em_andamento',cancelado:'finalizado',desmarcado:'finalizado',desmarcado_pro:'finalizado',faltou:'finalizado',horario_reservado_lideranca:'em_andamento',pro_faltou:'finalizado',remanejar:'em_andamento',acompanhando:'em_andamento'};
   const controllerBuildDefaultStatuses=()=>[...CONTROLLER_RECORD_STATUSES.map(([status_code,label],index)=>({status_code,label,active:true,category:CONTROLLER_DEFAULT_STATUS_CATEGORIES[status_code]||'em_andamento',sort_order:(index+1)*10})),...CONTROLLER_LEGACY_STATUS_DEFINITIONS.map(([status_code,label,category],index)=>({status_code,label,active:false,category,sort_order:900+index}))];
   let controllerStatusDefinitions=controllerBuildDefaultStatuses();
   let controllerEnabledStatuses=controllerStatusDefinitions.map(item=>item.status_code);
@@ -5035,6 +5035,9 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const allRecordsSelected=controllerPageRecords.length>0&&selectedRecordCount===controllerPageRecords.length;
     const priority=new Map(controllerEnabledStatuses.map((status,index)=>[status,index]));
     const orderedRecords=controllerPageRecords.map((record,index)=>({record,index})).sort((a,b)=>{
+      const aIsAcompanhando=String(a.record.status||'pendente').toLowerCase()==='acompanhando';
+      const bIsAcompanhando=String(b.record.status||'pendente').toLowerCase()==='acompanhando';
+      if(aIsAcompanhando!==bIsAcompanhando)return aIsAcompanhando?-1:1;
       const statusDiff=(priority.get(String(a.record.status||'pendente'))??999)-(priority.get(String(b.record.status||'pendente'))??999);
       return statusDiff||a.index-b.index;
     }).map(entry=>entry.record);
@@ -5044,7 +5047,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
       const note=canEdit
         ?`<div class="aa-controller-note-editor"><textarea class="aa-controller-note-input" id="aa-controller-record-note-${id}" rows="2" maxlength="500" aria-label="Observação do atendimento" placeholder="Adicionar observação">${controllerPageText(record.observacao||'')}</textarea><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm aa-controller-note-save" onclick="aaControllerUpdateRecordNote('${id}')">Salvar</button></div>`
         :controllerPageText(record.observacao||'—');
-      return `<tr class="${selected?'aa-controller-record-selected':''}">${selectionCell}<td data-label="Agenda / profissional" class="aa-controller-professional-cell"><strong>${controllerPageText(record.profissional)}</strong></td><td data-label="Hora">${controllerPageText(String(record.hora_atendimento||'').slice(0,5))}</td><td data-label="Status da planilha">${controllerPageText(controllerStatusLabel(record.status_original||'pendente'))}</td><td data-label="Status atual"><select data-controller-record-status="${id}" ${canEdit?'':'disabled'} onchange="aaControllerUpdateRecordStatus('${id}',this.value)">${controllerStatusOptions(record.status)}</select></td><td data-label="Última alteração">${controllerPageText(controllerDashboardDateTime(record.atualizado_em))}</td><td data-label="Observação">${note}</td><td data-label="Ação"><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeleteRecord('${id}')">Excluir</button></td></tr>`;
+      return `<tr class="${[selected?'aa-controller-record-selected':'',String(record.status||'').toLowerCase()==='acompanhando'?'aa-controller-record-status-acompanhando':''].filter(Boolean).join(' ')}">${selectionCell}<td data-label="Agenda / profissional" class="aa-controller-professional-cell"><strong>${controllerPageText(record.profissional)}</strong></td><td data-label="Hora">${controllerPageText(String(record.hora_atendimento||'').slice(0,5))}</td><td data-label="Status da planilha">${controllerPageText(controllerStatusLabel(record.status_original||'pendente'))}</td><td data-label="Status atual"><select data-controller-record-status="${id}" ${canEdit?'':'disabled'} onchange="aaControllerUpdateRecordStatus('${id}',this.value)">${controllerStatusOptions(record.status)}</select></td><td data-label="Última alteração">${controllerPageText(controllerDashboardDateTime(record.atualizado_em))}</td><td data-label="Observação">${note}</td><td data-label="Ação"><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeleteRecord('${id}')">Excluir</button></td></tr>`;
     }).join('');
     out.innerHTML=controllerViewNav()+`<section class="aa-controller-workspace">
       <header class="aa-card aa-controller-detail-header">
