@@ -4904,6 +4904,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 .aa-controller-record-table td{padding:12px 11px;border-color:#E9EDF2;color:#40516A;font-size:12px}
 .aa-controller-record-table tbody tr:nth-child(even) td{background:#FBFCFD}
 .aa-controller-record-table tbody tr:hover td{background:#F3F7FB} .aa-controller-record-table tbody tr.aa-controller-record-status-acompanhando td { background:#FFF1B8!important }
+.aa-controller-record-last-editor{display:block;margin-top:4px;color:#718096;font-size:11px;line-height:1.35}
 .aa-controller-record-table select{min-width:140px;min-height:38px;border:1px solid #D7DFE9;border-radius:9px;background:#fff;color:#354963}
 .aa-controller-professional-cell strong{color:#2D425F;font-size:13px}
 .aa-controller-note-editor{display:flex;align-items:flex-start;gap:7px;min-width:230px}
@@ -5008,7 +5009,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     }
     return controllerEnabledStatuses;
   }
-  async function loadControllerPageRecords(pageId,day){controllerSelectedDay=day||controllerSelectedDay||controllerToday();const result=await controllerDb.from('controller_page_records').select('id,page_id,operador,profissional,data_atendimento,hora_atendimento,status,status_original,observacao,criado_em,atualizado_em').eq('page_id',String(pageId)).eq('data_atendimento',controllerSelectedDay).order('hora_atendimento',{ascending:true});if(result.error)throw result.error;controllerPageRecords=result.data||[];return controllerPageRecords;}
+  async function loadControllerPageRecords(pageId,day){controllerSelectedDay=day||controllerSelectedDay||controllerToday();const result=await controllerDb.from('controller_page_records').select('id,page_id,operador,profissional,data_atendimento,hora_atendimento,status,status_original,observacao,criado_em,atualizado_em,atualizado_por').eq('page_id',String(pageId)).eq('data_atendimento',controllerSelectedDay).order('hora_atendimento',{ascending:true});if(result.error)throw result.error;controllerPageRecords=result.data||[];return controllerPageRecords;}
   function controllerStatusOptions(selected){
     const current=String(selected||'pendente');
     const active=controllerStatusDefinitions.filter(item=>controllerEnabledStatuses.includes(item.status_code));
@@ -5047,7 +5048,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
       const note=canEdit
         ?`<div class="aa-controller-note-editor"><textarea class="aa-controller-note-input" id="aa-controller-record-note-${id}" rows="2" maxlength="500" aria-label="Observação do atendimento" placeholder="Adicionar observação">${controllerPageText(record.observacao||'')}</textarea><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm aa-controller-note-save" onclick="aaControllerUpdateRecordNote('${id}')">Salvar</button></div>`
         :controllerPageText(record.observacao||'—');
-      return `<tr class="${[selected?'aa-controller-record-selected':'',String(record.status||'').toLowerCase()==='acompanhando'?'aa-controller-record-status-acompanhando':''].filter(Boolean).join(' ')}">${selectionCell}<td data-label="Agenda / profissional" class="aa-controller-professional-cell"><strong>${controllerPageText(record.profissional)}</strong></td><td data-label="Hora">${controllerPageText(String(record.hora_atendimento||'').slice(0,5))}</td><td data-label="Status da planilha">${controllerPageText(controllerStatusLabel(record.status_original||'pendente'))}</td><td data-label="Status atual"><select data-controller-record-status="${id}" ${canEdit?'':'disabled'} onchange="aaControllerUpdateRecordStatus('${id}',this.value)">${controllerStatusOptions(record.status)}</select></td><td data-label="Última alteração">${controllerPageText(controllerDashboardDateTime(record.atualizado_em))}</td><td data-label="Observação">${note}</td><td data-label="Ação"><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeleteRecord('${id}')">Excluir</button></td></tr>`;
+      return `<tr class="${[selected?'aa-controller-record-selected':'',String(record.status||'').toLowerCase()==='acompanhando'?'aa-controller-record-status-acompanhando':''].filter(Boolean).join(' ')}">${selectionCell}<td data-label="Agenda / profissional" class="aa-controller-professional-cell"><strong>${controllerPageText(record.profissional)}</strong></td><td data-label="Hora">${controllerPageText(String(record.hora_atendimento||'').slice(0,5))}</td><td data-label="Status da planilha">${controllerPageText(controllerStatusLabel(record.status_original||'pendente'))}</td><td data-label="Status atual"><select data-controller-record-status="${id}" ${canEdit?'':'disabled'} onchange="aaControllerUpdateRecordStatus('${id}',this.value)">${controllerStatusOptions(record.status)}</select></td><td data-label="Última alteração"><span>${controllerPageText(controllerDashboardDateTime(record.atualizado_em))}</span><small class="aa-controller-record-last-editor">Por: ${controllerPageText(record.atualizado_por||'Sem histórico de responsável')}</small></td><td data-label="Observação">${note}</td><td data-label="Ação"><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeleteRecord('${id}')">Excluir</button></td></tr>`;
     }).join('');
     out.innerHTML=controllerViewNav()+`<section class="aa-controller-workspace">
       <header class="aa-card aa-controller-detail-header">
@@ -5212,7 +5213,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     if(!controllerDb?.from)throw new Error('Cliente Supabase indisponível.');
     const pageSize=1000,records=[];
     for(let offset=0;;offset+=pageSize){
-      let query=controllerDb.from('controller_page_records').select('id,page_id,operador,profissional,data_atendimento,hora_atendimento,status,status_original,observacao,criado_em,atualizado_em,criado_por').order('data_atendimento',{ascending:false}).order('hora_atendimento',{ascending:true}).order('id',{ascending:true}).range(offset,offset+pageSize-1);
+      let query=controllerDb.from('controller_page_records').select('id,page_id,operador,profissional,data_atendimento,hora_atendimento,status,status_original,observacao,criado_em,atualizado_em,atualizado_por,criado_por').order('data_atendimento',{ascending:false}).order('hora_atendimento',{ascending:true}).order('id',{ascending:true}).range(offset,offset+pageSize-1);
       if(from)query=query.gte('data_atendimento',from);
       if(to)query=query.lte('data_atendimento',to);
       const result=await query;
