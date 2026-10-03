@@ -4968,10 +4968,10 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   let controllerDashboardFrom=new Date().toISOString().slice(0,8)+'01';
   let controllerDashboardTo=new Date().toISOString().slice(0,10);
   let controllerDashboardCollaboratorFilter='';
-  const CONTROLLER_RECORD_STATUSES=[['disponivel','DISPONÍVEL'],['atendido','ATENDIDO'],['bloqueado','BLOQUEADO'],['cancelado','CANCELADO'],['desmarcado','DESMARCADO'],['desmarcado_pro','DESMARCADO PRO'],['faltou','FALTOU'],['horario_reservado_lideranca','HORÁRIO RESERVADO/LIDERANÇA'],['pro_faltou','PRO FALTOU'],['remanejar','REMANEJAR']];
-  const CONTROLLER_LEGACY_STATUS_CODES=['pendente','falta','remanejado','ajuste_necessario'];
-  const CONTROLLER_LEGACY_STATUS_DEFINITIONS=[['pendente','Pendente','pendente'],['falta','Falta','finalizado'],['remanejado','Remanejado','finalizado'],['ajuste_necessario','Ajuste necessário','em_andamento']];
-  const CONTROLLER_DEFAULT_STATUS_CATEGORIES={disponivel:'pendente',atendido:'finalizado',bloqueado:'em_andamento',cancelado:'finalizado',desmarcado:'finalizado',desmarcado_pro:'finalizado',faltou:'finalizado',horario_reservado_lideranca:'em_andamento',pro_faltou:'finalizado',remanejar:'em_andamento'};
+  const CONTROLLER_RECORD_STATUSES=[['pendente','Pendente'],['disponivel','DISPONÍVEL'],['atendido','ATENDIDO'],['bloqueado','BLOQUEADO'],['cancelado','CANCELADO'],['desmarcado','DESMARCADO'],['desmarcado_pro','DESMARCADO PRO'],['faltou','FALTOU'],['horario_reservado_lideranca','HORÁRIO RESERVADO/LIDERANÇA'],['pro_faltou','PRO FALTOU'],['remanejar','REMANEJAR']];
+  const CONTROLLER_LEGACY_STATUS_CODES=['falta','remanejado','ajuste_necessario'];
+  const CONTROLLER_LEGACY_STATUS_DEFINITIONS=[['falta','Falta','finalizado'],['remanejado','Remanejado','finalizado'],['ajuste_necessario','Ajuste necessário','em_andamento']];
+  const CONTROLLER_DEFAULT_STATUS_CATEGORIES={pendente:'pendente',disponivel:'pendente',atendido:'finalizado',bloqueado:'em_andamento',cancelado:'finalizado',desmarcado:'finalizado',desmarcado_pro:'finalizado',faltou:'finalizado',horario_reservado_lideranca:'em_andamento',pro_faltou:'finalizado',remanejar:'em_andamento'};
   const controllerBuildDefaultStatuses=()=>[...CONTROLLER_RECORD_STATUSES.map(([status_code,label],index)=>({status_code,label,active:true,category:CONTROLLER_DEFAULT_STATUS_CATEGORIES[status_code]||'em_andamento',sort_order:(index+1)*10})),...CONTROLLER_LEGACY_STATUS_DEFINITIONS.map(([status_code,label,category],index)=>({status_code,label,active:false,category,sort_order:900+index}))];
   let controllerStatusDefinitions=controllerBuildDefaultStatuses();
   let controllerEnabledStatuses=controllerStatusDefinitions.map(item=>item.status_code);
@@ -4986,7 +4986,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
       if(!loaded.length)throw new Error('Não há opções de status cadastradas.');
       controllerStatusDefinitions=loaded;
       controllerEnabledStatuses=loaded.filter(row=>row.active&&!CONTROLLER_LEGACY_STATUS_CODES.includes(row.status_code)).map(row=>row.status_code);
-      if(!controllerEnabledStatuses.includes('disponivel'))controllerEnabledStatuses.unshift('disponivel');
+      if(!controllerEnabledStatuses.includes('pendente'))controllerEnabledStatuses.unshift('pendente');
       controllerStatusConfigLoaded=true;
     }catch(error){
       controllerStatusDefinitions=controllerBuildDefaultStatuses();
@@ -4998,7 +4998,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   }
   async function loadControllerPageRecords(pageId,day){controllerSelectedDay=day||controllerSelectedDay||controllerToday();const result=await controllerDb.from('controller_page_records').select('id,page_id,operador,profissional,data_atendimento,hora_atendimento,status,status_original,observacao,criado_em,atualizado_em').eq('page_id',String(pageId)).eq('data_atendimento',controllerSelectedDay).order('hora_atendimento',{ascending:true});if(result.error)throw result.error;controllerPageRecords=result.data||[];return controllerPageRecords;}
   function controllerStatusOptions(selected){
-    const current=String(selected||'disponivel');
+    const current=String(selected||'pendente');
     const active=controllerStatusDefinitions.filter(item=>controllerEnabledStatuses.includes(item.status_code));
     const options=active.map(item=>'<option value="'+controllerPageText(item.status_code)+'" '+(item.status_code===current?'selected':'')+'>'+controllerPageText(item.label)+'</option>');
     if(!controllerEnabledStatuses.includes(current)){
@@ -5007,9 +5007,9 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     }
     return options.join('');
   }
-  function controllerStatusLabel(value){const raw=String(value==null?'':value).trim();const found=controllerStatusDefinitions.find(item=>item.status_code===raw);return found?found.label:(raw||'DISPONÍVEL');}
+  function controllerStatusLabel(value){const raw=String(value==null?'':value).trim();const found=controllerStatusDefinitions.find(item=>item.status_code===raw);return found?found.label:(raw||'Pendente');}
   function controllerImportHeader(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'');}
-  function controllerImportStatus(value){const v=controllerImportHeader(value);if(v.includes('desmarcadopro'))return 'desmarcado_pro';if(v.includes('desmarcado'))return 'desmarcado';if(v.includes('horarioreserv')||v.includes('lideranca'))return 'horario_reservado_lideranca';if(v.includes('atendido')||v.includes('realizado'))return 'atendido';if(v.includes('proffaltou')||v.includes('profissionalfaltou'))return 'pro_faltou';if(v.includes('faltou')||v.includes('falta'))return 'faltou';if(v.includes('bloquead'))return 'bloqueado';if(v.includes('cancel'))return 'cancelado';if(v.includes('remanej'))return 'remanejar';if(v.includes('disponivel')||!v)return 'disponivel';return 'disponivel';}
+  function controllerImportStatus(value){const v=controllerImportHeader(value);if(v.includes('desmarcadopro'))return 'desmarcado_pro';if(v.includes('desmarcado'))return 'desmarcado';if(v.includes('horarioreserv')||v.includes('lideranca'))return 'horario_reservado_lideranca';if(v.includes('atendido')||v.includes('realizado'))return 'atendido';if(v.includes('proffaltou')||v.includes('profissionalfaltou'))return 'pro_faltou';if(v.includes('faltou')||v.includes('falta'))return 'faltou';if(v.includes('bloquead'))return 'bloqueado';if(v.includes('cancel'))return 'cancelado';if(v.includes('remanej'))return 'remanejar';if(v.includes('pendente')||v.includes('pending'))return 'pendente';if(v.includes('disponivel')||!v)return 'disponivel';return 'pendente';}
   function controllerImportTime(value){if(value instanceof Date&&!isNaN(value))return value.toTimeString().slice(0,5);if(typeof value==='number'&&isFinite(value)){const fraction=value%1;const total=Math.round(fraction*24*60);return String(Math.floor(total/60)%24).padStart(2,'0')+':'+String(total%60).padStart(2,'0');}const v=String(value||'').trim().replace('.',':');const m=v.match(/(\d{1,2}):(\d{2})/);return m?m[1].padStart(2,'0')+':'+m[2]:'';}
   function controllerPageByName(value){const n=controllerImportHeader(value);return controllerPages.find(p=>controllerImportHeader(p.nome)===n)||controllerPages.find(p=>{const pn=controllerImportHeader(p.nome);return pn&&n&&(pn.includes(n)||n.includes(pn));});}
   function controllerRenderDayDate(value){return String(value||'').split('-').reverse().join('/');}
@@ -5019,7 +5019,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const canEdit=controllerCan('controller_status_atual_editar');
     const priority=new Map(controllerEnabledStatuses.map((status,index)=>[status,index]));
     const orderedRecords=controllerPageRecords.map((record,index)=>({record,index})).sort((a,b)=>{
-      const statusDiff=(priority.get(String(a.record.status||'disponivel'))??999)-(priority.get(String(b.record.status||'disponivel'))??999);
+      const statusDiff=(priority.get(String(a.record.status||'pendente'))??999)-(priority.get(String(b.record.status||'pendente'))??999);
       return statusDiff||a.index-b.index;
     }).map(entry=>entry.record);
     const rows=orderedRecords.map(record=>{
@@ -5031,7 +5031,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     }).join('');
     out.innerHTML=controllerViewNav()+`<section class="aa-controller-workspace">
       <header class="aa-card aa-controller-detail-header">
-        <div class="aa-controller-detail-title"><button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" onclick="aaControllerBackToPages()">← Voltar aos colaboradores</button><div><span class="aa-controller-overline">ACOMPANHAMENTO DO COLABORADOR</span><h2>${controllerPageText(page.nome)}</h2><p>Atendimentos de ${controllerRenderDayDate(controllerSelectedDay)}. Os atendimentos DISPONÍVEL aparecem primeiro.</p></div></div>
+        <div class="aa-controller-detail-title"><button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" onclick="aaControllerBackToPages()">← Voltar aos colaboradores</button><div><span class="aa-controller-overline">ACOMPANHAMENTO DO COLABORADOR</span><h2>${controllerPageText(page.nome)}</h2><p>Atendimentos de ${controllerRenderDayDate(controllerSelectedDay)}. Os atendimentos pendentes aparecem primeiro.</p></div></div>
         <div class="aa-controller-detail-controls"><span class="aa-controller-count-pill">${controllerPageRecords.length} atendimento(s)</span><div class="aa-field"><label for="aa-controller-consult-day">Consultar outro dia</label><input id="aa-controller-consult-day" type="date" value="${controllerPageText(controllerSelectedDay)}" onchange="aaControllerChangeDay(this.value)"></div></div>
       </header>
       <section class="aa-card aa-controller-records-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">AGENDA DO DIA</span><h2>Atendimentos para acompanhar</h2><p>Atualize o status e, quando necessário, ajuste a observação do atendimento.</p></div><span class="aa-controller-pending-hint">Pendentes primeiro</span></header>
@@ -5051,7 +5051,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
       if(auth.error)throw auth.error;
       const creatorId=auth.data?.user?.id;
       if(!creatorId)throw new Error('Sessão autenticada indisponível. Faça login novamente.');
-      const record={id:'record-'+Date.now().toString(36)+Math.random().toString(36).slice(0,7),page_id:controllerActivePageId,operador:controllerPages.find(p=>String(p.id)===String(controllerActivePageId))?.nome||'',profissional:String(document.getElementById('aa-controller-record-profissional')?.value||'').trim(),data_atendimento:controllerSelectedDay,hora_atendimento:String(document.getElementById('aa-controller-record-time')?.value||''),status:'disponivel',status_original:String(document.getElementById('aa-controller-record-status')?.value||'disponivel'),observacao:String(document.getElementById('aa-controller-record-note')?.value||'').trim(),criado_por:creatorId,criado_em:new Date().toISOString(),atualizado_em:new Date().toISOString()};
+      const record={id:'record-'+Date.now().toString(36)+Math.random().toString(36).slice(0,7),page_id:controllerActivePageId,operador:controllerPages.find(p=>String(p.id)===String(controllerActivePageId))?.nome||'',profissional:String(document.getElementById('aa-controller-record-profissional')?.value||'').trim(),data_atendimento:controllerSelectedDay,hora_atendimento:String(document.getElementById('aa-controller-record-time')?.value||''),status:'pendente',status_original:String(document.getElementById('aa-controller-record-status')?.value||'pendente'),observacao:String(document.getElementById('aa-controller-record-note')?.value||'').trim(),criado_por:creatorId,criado_em:new Date().toISOString(),atualizado_em:new Date().toISOString()};
       if(!record.profissional||!record.hora_atendimento)return;
       const result=await controllerDb.from('controller_page_records').insert(record);
       if(result.error)throw result.error;
@@ -5095,7 +5095,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
         }
         const rows=XLSX.utils.sheet_to_json(book.Sheets[sheetName],{defval:''}),keys=rows[0]?Object.keys(rows[0]):[],findKey=names=>keys.find(k=>names.includes(controllerImportHeader(k))),kAgenda=findKey(['agenda']),kHora=findKey(['hora','horario']),kStatus=findKey(['status','situacao']),kNote=findKey(['observacao','observacoes','obs']);
         if(!kAgenda||!kHora){errors.push('Aba "'+sheetName+'": use as colunas Agenda e Hora.');continue;}
-        rows.forEach((row,i)=>{const profissional=String(row[kAgenda]||'').trim(),hora=controllerImportTime(row[kHora]);if(!profissional&&!hora)return;if(!profissional||!hora){errors.push('Aba "'+sheetName+'", linha '+(i+2)+': Agenda ou Hora vazia.');return;}records.push({id:'record-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)+'-'+records.length,page_id:page.id,operador:page.nome,profissional,data_atendimento:importDay,hora_atendimento:hora,status:'disponivel',status_original:String(kStatus?row[kStatus]||'':'').trim(),criado_por:creatorId,observacao:String(kNote?row[kNote]||'':'').trim(),criado_em:new Date().toISOString(),atualizado_em:new Date().toISOString()});});
+        rows.forEach((row,i)=>{const profissional=String(row[kAgenda]||'').trim(),hora=controllerImportTime(row[kHora]);if(!profissional&&!hora)return;if(!profissional||!hora){errors.push('Aba "'+sheetName+'", linha '+(i+2)+': Agenda ou Hora vazia.');return;}records.push({id:'record-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)+'-'+records.length,page_id:page.id,operador:page.nome,profissional,data_atendimento:importDay,hora_atendimento:hora,status:'pendente',status_original:String(kStatus?row[kStatus]||'':'').trim(),criado_por:creatorId,observacao:String(kNote?row[kNote]||'':'').trim(),criado_em:new Date().toISOString(),atualizado_em:new Date().toISOString()});});
       }
       if(!records.length){renderControllerPages();return alert('Nenhum atendimento válido foi encontrado.'+(createdPages.length?'\nÁreas de acompanhamento criadas: '+createdPages.join(', '):'')+(errors.length?'\n'+errors.slice(0,6).join('\n'):''));}
       const result=await controllerDb.from('controller_page_records').insert(records);if(result.error)throw result.error;
@@ -5202,7 +5202,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const collaborators=new Map(),hours=new Map(),shifts=new Map(),sourceStatusCounts=new Map(),currentStatusCounts=new Map();
     const currentStatusKeys=[...controllerEnabledStatuses];
     records.forEach(record=>{
-      const owner=controllerDashboardOwner(record),status=String(record.status||'disponivel'),rawSource=String(record.status_original||'').trim();
+      const owner=controllerDashboardOwner(record),status=String(record.status||'pendente'),rawSource=String(record.status_original||'').trim();
       if(!currentStatusKeys.includes(status))currentStatusKeys.push(status);
       if(!currentStatusCounts.has(status))currentStatusCounts.set(status,0);
       currentStatusCounts.set(status,currentStatusCounts.get(status)+1);
@@ -5255,20 +5255,20 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const out=document.getElementById('aa-controller-view-subpaginas');
     if(!out||!controllerCan('controller_subpaginas_gerenciar'))return;
     const warning=controllerStatusConfigLoaded?'':'<div class="aa-controller-settings-warning">Não foi possível carregar as opções do banco. Os status padrão estão sendo exibidos; verifique o acesso ao Supabase antes de salvar.</div>';
-    const options=controllerStatusDefinitions.filter(item=>!CONTROLLER_LEGACY_STATUS_CODES.includes(item.status_code)).map(item=>{const fixed=item.status_code==='disponivel';return '<label class="aa-controller-status-choice"><input type="checkbox" data-controller-status-choice="'+controllerPageText(item.status_code)+'" '+(controllerEnabledStatuses.includes(item.status_code)?'checked':'')+(fixed?' disabled':'')+'><span><strong>'+controllerPageText(item.label)+'</strong><small>'+(fixed?'Padrão obrigatório para novos atendimentos':'Colaboradores poderão selecionar este status')+'</small></span></label>';}).join('');
-    out.innerHTML=controllerViewNav()+`<section class="aa-controller-status-settings"><article class="aa-card aa-controller-status-settings-card"><span class="aa-controller-overline">CONTROLE DE ACESSO</span><h1>Status disponíveis no Controller</h1><p>Escolha quais opções os colaboradores podem aplicar em “Status atual”. Atendimentos que já usam um status desativado continuam preservados; ele apenas deixa de ser uma opção para novas alterações.</p>${warning}<div class="aa-controller-status-choice-grid">${options}</div><div class="aa-controller-status-actions"><span>DISPONÍVEL permanece ativo como status inicial de novos atendimentos.</span><button type="button" class="aa-btn aa-btn-primary" onclick="aaControllerSaveStatusConfig()">Salvar status disponíveis</button></div></article></section>`;
+    const options=controllerStatusDefinitions.filter(item=>!CONTROLLER_LEGACY_STATUS_CODES.includes(item.status_code)).map(item=>{const fixed=item.status_code==='pendente';return '<label class="aa-controller-status-choice"><input type="checkbox" data-controller-status-choice="'+controllerPageText(item.status_code)+'" '+(controllerEnabledStatuses.includes(item.status_code)?'checked':'')+(fixed?' disabled':'')+'><span><strong>'+controllerPageText(item.label)+'</strong><small>'+(fixed?'Padrão obrigatório para novos atendimentos':'Colaboradores poderão selecionar este status')+'</small></span></label>';}).join('');
+    out.innerHTML=controllerViewNav()+`<section class="aa-controller-status-settings"><article class="aa-card aa-controller-status-settings-card"><span class="aa-controller-overline">CONTROLE DE ACESSO</span><h1>Status disponíveis no Controller</h1><p>Escolha quais opções os colaboradores podem aplicar em “Status atual”. Atendimentos que já usam um status desativado continuam preservados; ele apenas deixa de ser uma opção para novas alterações.</p>${warning}<div class="aa-controller-status-choice-grid">${options}</div><div class="aa-controller-status-actions"><span>Pendente permanece ativo como status inicial de novos atendimentos.</span><button type="button" class="aa-btn aa-btn-primary" onclick="aaControllerSaveStatusConfig()">Salvar status disponíveis</button></div></article></section>`;
   }
   window.aaControllerSaveStatusConfig=async function(){
     if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar')){alert('Somente usuários com permissão de administração do Controller podem configurar os status.');return;}
     const selected=[...document.querySelectorAll('[data-controller-status-choice]:checked')].map(input=>String(input.dataset.controllerStatusChoice||''));
-    if(!selected.includes('disponivel'))selected.unshift('disponivel');
+    if(!selected.includes('pendente'))selected.unshift('pendente');
     if(selected.some(key=>!controllerStatusDefinitions.some(item=>item.status_code===key))){alert('A lista contém um status inválido.');return;}
     try{
       const rows=controllerStatusDefinitions.map(item=>({status_code:item.status_code,label:item.label,active:selected.includes(item.status_code),category:item.category,sort_order:item.sort_order}));
       const result=await controllerDb.from('controller_status_options').upsert(rows,{onConflict:'status_code'});
       if(result.error)throw result.error;
       controllerStatusDefinitions=controllerStatusDefinitions.map(item=>({...item,active:selected.includes(item.status_code)}));
-      controllerEnabledStatuses=controllerStatusDefinitions.filter(item=>item.active).map(item=>item.status_code);renderControllerStatusSettings();
+      controllerEnabledStatuses=controllerStatusDefinitions.filter(item=>item.active&&!CONTROLLER_LEGACY_STATUS_CODES.includes(item.status_code)).map(item=>item.status_code);renderControllerStatusSettings();
       if(typeof aaToast==='function')aaToast('Status disponíveis atualizados.','success');
     }catch(error){alert('Não foi possível salvar os status. Confirme o acesso à tabela controller_status_options no Supabase. Detalhe: '+(error?.message||error));console.error('Erro ao salvar configuração de status do Controller:',error);}
   };
