@@ -4876,6 +4876,12 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 .aa-controller-section-heading{align-items:flex-start}
 .aa-controller-count-pill,.aa-controller-pending-hint{flex:0 0 auto;padding:7px 11px;border:1px solid #E1E7EF;border-radius:999px;background:#F7F9FC;color:#596A80;font-size:11px;font-weight:800;white-space:nowrap}
 .aa-controller-collaborator-list{display:grid;gap:10px}
+.aa-controller-bulk-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:12px 14px;border:1px solid #E2E8EF;border-radius:12px;background:#F8FAFC}
+.aa-controller-select-all,.aa-controller-page-select{display:inline-flex;align-items:center;gap:8px;color:#43536A;font-size:13px;font-weight:700;cursor:pointer}
+.aa-controller-select-all input,.aa-controller-page-select input{width:17px;height:17px;accent-color:#315F99}
+.aa-controller-bulk-meta{display:flex;align-items:center;gap:12px;color:#66758A;font-size:12px}
+.aa-controller-collaborator-card.is-selected{border-color:#84A9D6;background:#F4F8FD}
+.aa-controller-page-select{flex:0 0 auto}
 .aa-controller-collaborator-card{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:15px 16px;border:1px solid #E5EAF1;border-radius:13px;background:#FCFDFE;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease}
 .aa-controller-collaborator-card:hover{transform:translateY(-1px);border-color:#C9D5E4;box-shadow:0 5px 14px rgba(30,48,78,.06)}
 .aa-controller-collaborator-main{display:flex;align-items:center;gap:12px;min-width:0}
@@ -4929,7 +4935,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   .aa-controller-nav{display:flex;width:100%;overflow-x:auto}.aa-controller-tab{flex:1 0 auto;padding:10px 11px;font-size:12px}
   .aa-controller-import-card,.aa-controller-pages-section,.aa-controller-records-card,.aa-controller-dashboard-header,.aa-controller-dashboard-table-card{padding:17px!important}
   .aa-controller-import-grid,.aa-controller-management-fields{grid-template-columns:1fr}.aa-controller-form-actions{justify-content:flex-start}
-  .aa-controller-collaborator-card{align-items:flex-start;flex-direction:column}.aa-controller-page-actions{width:100%}.aa-controller-page-actions .aa-btn{flex:1}
+  .aa-controller-collaborator-card{align-items:flex-start;flex-direction:column}.aa-controller-page-actions{width:100%}.aa-controller-page-actions .aa-btn{flex:1}.aa-controller-bulk-actions{align-items:flex-start;flex-direction:column}.aa-controller-bulk-meta{width:100%;justify-content:space-between}
   .aa-controller-detail-controls{align-items:stretch;flex-direction:column}.aa-controller-detail-controls .aa-field{min-width:0;width:100%}
   .aa-controller-dashboard-period{grid-template-columns:1fr 1fr}.aa-controller-dashboard-filters{grid-template-columns:1fr}.aa-controller-dashboard-filter-meta{padding:0}
   .aa-controller-dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.aa-controller-dashboard-stat{min-height:88px;padding:13px}.aa-controller-dashboard-stat strong{font-size:24px}
@@ -4948,6 +4954,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   const CONTROLLER_PAGES_KEY='controller:independent-subpages';
   const controllerDb=window.__aaSupabaseClient;
   let controllerPages=[];
+  const controllerSelectedPageIds=new Set();
+  let controllerBulkDeleting=false;
   function controllerAllowed(){
     try{
       const profile=(typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile)||null;
@@ -5108,7 +5116,12 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   };
   function renderControllerPages(){
     const out=document.getElementById('aa-controller-view-subpaginas');if(!out)return;
-    const list=controllerPages.map(page=>`<article class="aa-controller-collaborator-card"><div class="aa-controller-collaborator-main"><span class="aa-controller-avatar" aria-hidden="true">${controllerPageText(String(page.nome||'?').trim().charAt(0).toLocaleUpperCase('pt-BR'))}</span><div class="aa-controller-collaborator-copy"><h3>${controllerPageText(page.nome)}</h3><p>${controllerPageText(page.descricao||'Acompanhamentos atribuídos a este colaborador.')}</p><p><strong>Turno:</strong> ${controllerPageText(page.turno||'Não informado')}</p></div></div><div class="aa-controller-page-actions">${controllerCan('controller_subpaginas_gerenciar')?`<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerEditShift('${controllerPageText(page.id)}')">Editar turno</button>`:''}<button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaControllerOpenPage('${controllerPageText(page.id)}')">Abrir acompanhamento</button><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeletePage('${controllerPageText(page.id)}')">Excluir</button></div></article>`).join('');
+    const canManagePages=controllerCan('controller_subpaginas_gerenciar');
+    const validPageIds=new Set(controllerPages.map(page=>String(page.id)));
+    [...controllerSelectedPageIds].forEach(id=>{if(!validPageIds.has(id))controllerSelectedPageIds.delete(id);});
+    const selectedPageCount=controllerPages.filter(page=>controllerSelectedPageIds.has(String(page.id))).length;
+    const allPagesSelected=controllerPages.length>0&&selectedPageCount===controllerPages.length;
+    const list=controllerPages.map(page=>{const pageId=String(page.id),safeId=controllerPageText(page.id),selected=controllerSelectedPageIds.has(pageId);return `<article class="aa-controller-collaborator-card ${selected?'is-selected':''}">${canManagePages?`<label class="aa-controller-page-select"><input type="checkbox" data-controller-select-page="${safeId}" ${selected?'checked':''} onchange="aaControllerSetPageSelected('${safeId}',this.checked)" aria-label="Selecionar acompanhamento de ${controllerPageText(page.nome)}"><span>Selecionar</span></label>`:''}<div class="aa-controller-collaborator-main"><span class="aa-controller-avatar" aria-hidden="true">${controllerPageText(String(page.nome||'?').trim().charAt(0).toLocaleUpperCase('pt-BR'))}</span><div class="aa-controller-collaborator-copy"><h3>${controllerPageText(page.nome)}</h3><p>${controllerPageText(page.descricao||'Acompanhamentos atribuídos a este colaborador.')}</p><p><strong>Turno:</strong> ${controllerPageText(page.turno||'Não informado')}</p></div></div><div class="aa-controller-page-actions">${canManagePages?`<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerEditShift('${safeId}')">Editar turno</button>`:''}<button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaControllerOpenPage('${safeId}')">Abrir acompanhamento</button>${canManagePages?`<button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeletePage('${safeId}')">Excluir</button>`:''}</div></article>`;}).join('');
     out.innerHTML=controllerViewNav()+`<section class="aa-controller-workspace">
       <form onsubmit="aaControllerImportPlanilha(event)" class="aa-card aa-controller-import-card">
         <div class="aa-controller-card-heading"><div><span class="aa-controller-overline">ROTINA DO DIA</span><h2>Importar atendimentos</h2></div><span class="aa-controller-step">01</span></div>
@@ -5133,6 +5146,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
       </details>
       <section class="aa-controller-pages-section">
         <header class="aa-controller-section-heading"><div><span class="aa-controller-overline">ÁREAS DE TRABALHO</span><h2>Colaboradores</h2><p>Abra o nome desejado para conferir e atualizar os atendimentos do dia.</p></div><span class="aa-controller-count-pill">${controllerPages.length} colaborador(es)</span></header>
+        ${canManagePages&&controllerPages.length?`<div class="aa-controller-bulk-actions"><label class="aa-controller-select-all"><input type="checkbox" ${allPagesSelected?'checked':''} onchange="aaControllerSelectAllPages(this.checked)" aria-label="Selecionar todos os acompanhamentos"><span>Selecionar todos</span></label><div class="aa-controller-bulk-meta"><span>${selectedPageCount} selecionado(s)</span><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeleteSelectedPages()" ${selectedPageCount?'':'disabled'}>Excluir selecionados${selectedPageCount?' ('+selectedPageCount+')':''}</button></div></div>`:''}
         <div class="aa-controller-collaborator-list">${list||'<div class="aa-controller-empty"><strong>Nenhum colaborador cadastrado</strong><span>Use “Gerenciar colaboradores” para criar a primeira área de acompanhamento.</span></div>'}</div>
       </section>
     </section>`;
@@ -5321,6 +5335,40 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const turno=String(value||'').trim().slice(0,60);
     try{const result=await controllerDb.from('controller_subpages').update({turno}).eq('id',String(id));if(result.error)throw result.error;page.turno=turno;renderControllerPages();if(typeof aaToast==='function')aaToast('Turno atualizado.','success');}
     catch(error){alert('Não foi possível atualizar o turno: '+(error?.message||''));console.error('Erro ao atualizar o turno do Controller:',error);}
+  };
+  window.aaControllerSetPageSelected=function(id,checked){
+    if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar'))return;
+    const key=String(id||'');if(!controllerPages.some(page=>String(page.id)===key))return;
+    if(checked)controllerSelectedPageIds.add(key);else controllerSelectedPageIds.delete(key);
+    renderControllerPages();
+  };
+  window.aaControllerSelectAllPages=function(checked){
+    if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar'))return;
+    controllerSelectedPageIds.clear();if(checked)controllerPages.forEach(page=>controllerSelectedPageIds.add(String(page.id)));
+    renderControllerPages();
+  };
+  window.aaControllerDeleteSelectedPages=async function(){
+    if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para excluir acompanhamentos.');return;}
+    if(controllerBulkDeleting)return;
+    const selected=controllerPages.filter(page=>controllerSelectedPageIds.has(String(page.id)));
+    if(!selected.length)return alert('Selecione ao menos um acompanhamento.');
+    const names=selected.map(page=>page.nome).filter(Boolean);
+    const preview=names.slice(0,8).map(name=>'• '+name).join('\n');
+    const remainder=names.length>8?'\n• e mais '+(names.length-8)+' acompanhamento(s)':'';
+    const message='Excluir '+selected.length+' acompanhamento(s)?\n\n'+preview+remainder+'\n\nEsta ação também excluirá todos os atendimentos vinculados e não pode ser desfeita.';
+    if(!confirm(message))return;
+    controllerBulkDeleting=true;
+    try{
+      const ids=selected.map(page=>String(page.id));
+      const result=await controllerDb.from('controller_subpages').delete().in('id',ids);
+      if(result.error)throw result.error;
+      if(typeof aaLogChange==='function')await aaLogChange('Exclusão em lote no Controller',ids.join(', '),'Excluídos '+selected.length+' acompanhamentos: '+names.join(', '),undefined,names.join(', '),'Excluído');
+      ids.forEach(id=>controllerSelectedPageIds.delete(id));
+      await loadControllerPages();
+      renderControllerPages();
+      if(typeof aaToast==='function')aaToast(selected.length+' acompanhamento(s) excluído(s).','success');
+    }catch(error){alert('Não foi possível excluir os acompanhamentos selecionados: '+(error?.message||''));console.error('Erro ao excluir acompanhamentos em lote:',error);}
+    finally{controllerBulkDeleting=false;}
   };
   window.aaControllerDeletePage=async function(id){if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para gerenciar áreas de acompanhamento.');return;}const page=controllerPages.find(p=>String(p.id)===String(id));if(!page||!confirm('Excluir a área de acompanhamento “'+page.nome+'”?'))return;const old=controllerPages.slice();controllerPages=controllerPages.filter(p=>String(p.id)!==String(id));try{const result=await controllerDb.from('controller_subpages').delete().eq('id',String(id));if(result.error)throw result.error;renderControllerPages();if(typeof aaToast==='function')aaToast('Área de acompanhamento excluída.','success');}catch(e){controllerPages=old;renderControllerPages();alert('Não foi possível excluir a área de acompanhamento agora.');console.error(e);}};
   const oldSwitch=window.aaSwitchRHTab;
