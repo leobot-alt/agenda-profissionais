@@ -5035,6 +5035,9 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const allRecordsSelected=controllerPageRecords.length>0&&selectedRecordCount===controllerPageRecords.length;
     const priority=new Map(controllerEnabledStatuses.map((status,index)=>[status,index]));
     const orderedRecords=controllerPageRecords.map((record,index)=>({record,index})).sort((a,b)=>{
+      const aIsAcompanhando=String(a.record.status||'pendente').toLowerCase()==='acompanhando';
+      const bIsAcompanhando=String(b.record.status||'pendente').toLowerCase()==='acompanhando';
+      if(aIsAcompanhando!==bIsAcompanhando)return aIsAcompanhando?-1:1;
       const statusDiff=(priority.get(String(a.record.status||'pendente'))??999)-(priority.get(String(b.record.status||'pendente'))??999);
       return statusDiff||a.index-b.index;
     }).map(entry=>entry.record);
