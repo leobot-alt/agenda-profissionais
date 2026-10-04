@@ -70,7 +70,7 @@
 .aa-panel { display: none; }
 .aa-panel.active { display: block; }
 
-.aa-rh-login-fields{grid-template-columns:1fr 1fr 150px!important;align-items:end}.aa-rh-login-actions{display:flex;flex-direction:column;gap:8px;min-width:130px}.aa-rh-login-actions .aa-btn{width:100%;margin:0}.aa-rh-login-actions .aa-btn-ghost{height:36px!important}.aa-rh-login-actions .aa-btn-primary{height:44px!important}@media(max-width:640px){.aa-rh-login-fields{grid-template-columns:1fr!important}.aa-rh-login-actions{min-width:0}}.aa-user-card-inactive{background:#FAF9FD;border-color:#E7D7DC}.aa-user-card-inactive .aa-operation-badge{opacity:.72}.aa-user-card-actions{align-items:flex-end!important}.aa-rh-login-actions .aa-btn-ghost{font-size:11px!important;white-space:nowrap;padding:7px 3px!important}.aa-dashboard-section{background:#fff;border:1px solid var(--line);border-top:4px solid #B36FEF;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 5px 16px rgba(75,50,168,.05)}.aa-dashboard-section h3{color:var(--primary-dark)}.aa-dashboard-section .aa-summary-stat{background:var(--primary-tint);border:1px solid var(--line);border-radius:11px}.aa-dashboard-section .aa-stat-value{color:var(--primary-dark)}.aa-dashboard-table th{background:#F0EBFC;color:var(--primary-dark);border-bottom:2px solid var(--line-strong)}.aa-dashboard-table td{border-bottom:1px solid #EEEAF7}.aa-dashboard-summary-alerts{background:#FAF9FD!important}
+.aa-rh-login-fields{grid-template-columns:1fr!important;align-items:stretch;gap:14px}.aa-rh-login-fields>.aa-field{width:100%;min-width:0}.aa-rh-login-fields>.aa-field input{width:100%}.aa-rh-login-actions{display:flex;flex-direction:column;gap:9px;min-width:0;width:100%}.aa-rh-login-actions .aa-btn{width:100%;margin:0}.aa-rh-login-actions .aa-btn-primary{height:46px!important}.aa-rh-login-actions .aa-forgot-link{display:block;width:100%;min-height:32px;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;color:var(--ink-soft)!important;padding:3px 8px!important;font-size:13px!important;font-weight:600;text-align:center;text-decoration:none}.aa-rh-login-actions .aa-forgot-link:hover{color:var(--primary-dark)!important;text-decoration:underline}.aa-rh-login-actions .aa-forgot-link:focus-visible{outline:2px solid var(--primary)!important;outline-offset:3px;border-radius:5px!important}@media(max-width:640px){.aa-rh-login-fields{grid-template-columns:1fr!important}.aa-rh-login-actions{min-width:0}}.aa-user-card-inactive{background:#FAF9FD;border-color:#E7D7DC}.aa-user-card-inactive .aa-operation-badge{opacity:.72}.aa-user-card-actions{align-items:flex-end!important}.aa-rh-login-actions .aa-btn-ghost{font-size:11px!important;white-space:nowrap;padding:7px 3px!important}.aa-dashboard-section{background:#fff;border:1px solid var(--line);border-top:4px solid #B36FEF;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 5px 16px rgba(75,50,168,.05)}.aa-dashboard-section h3{color:var(--primary-dark)}.aa-dashboard-section .aa-summary-stat{background:var(--primary-tint);border:1px solid var(--line);border-radius:11px}.aa-dashboard-section .aa-stat-value{color:var(--primary-dark)}.aa-dashboard-table th{background:#F0EBFC;color:var(--primary-dark);border-bottom:2px solid var(--line-strong)}.aa-dashboard-table td{border-bottom:1px solid #EEEAF7}.aa-dashboard-summary-alerts{background:#FAF9FD!important}
 .aa-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 24px; margin-bottom: 18px; }
 .aa-card h2 { font-family: var(--font-display); font-size: 19px; font-weight: 800; margin: 0 0 4px; color: var(--primary-dark); }
 .aa-card .aa-hint { color: var(--ink-soft); font-size: 13px; margin: 0 0 18px; }
@@ -321,17 +321,64 @@
 .aa-adjust-dashboard-compact-card{margin:0 0 8px;border:1px solid #D8E2F0;border-radius:11px;background:#fff;box-shadow:0 3px 10px rgba(38,58,92,.04);overflow:hidden}.aa-adjust-compact-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px}.aa-adjust-compact-link{border:0;background:none;padding:0;cursor:pointer;text-align:left}.aa-adjust-compact-id{color:var(--primary-dark);font-weight:900;font-family:var(--font-mono);white-space:nowrap}.aa-adjust-compact-professional{color:var(--ink);font-weight:800;overflow-wrap:anywhere}.aa-adjust-compact-link:hover{text-decoration:underline;color:var(--primary)}.aa-adjust-compact-meta{color:var(--ink-soft);font-size:12px;flex:1;min-width:260px}.aa-adjust-dashboard-compact-card .aa-adjust-status{white-space:nowrap}@media(max-width:640px){.aa-adjust-compact-summary{align-items:flex-start;flex-direction:column;gap:5px}.aa-adjust-compact-meta{min-width:0}.aa-adjust-dashboard-compact-card .aa-adjust-status{align-self:flex-start}}
 
 .aa-portal-scale-toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;background:#F7FAFF;border:1px solid #D8E2F0;border-radius:12px;padding:14px;margin:14px 0 18px}.aa-portal-scale-toolbar .aa-field{min-width:150px}.aa-scale-grid-wrap{overflow:auto;border:1px solid #D8E2F0;border-radius:12px}.aa-scale-grid{width:100%;min-width:900px;border-collapse:collapse;font-size:12px}.aa-scale-grid th{background:#173B68;color:#fff;padding:9px 8px;text-align:left}.aa-scale-grid td{padding:7px 8px;border-top:1px solid #E5EAF1}.aa-scale-grid input,.aa-scale-grid select{width:100%;min-width:82px;border:1px solid #C9D6E4;border-radius:6px;padding:6px;font-size:12px}.aa-scale-grid .date{font-weight:800;color:#173B68;white-space:nowrap}.aa-scale-grid tr.off{background:#FFF8F8}.aa-scale-badge{display:inline-flex;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:800;background:#E8F5EE;color:#14754D}.aa-scale-request{background:#F7F4FE;border:1px solid #DDD4F3;border-radius:10px;padding:14px;margin-top:14px}.aa-scale-empty{padding:24px;text-align:center;color:#718096}.aa-scale-note{font-size:12px;color:#64748B;margin:4px 0 12px}
+
+/* Atualização visual do acesso RH: layout compacto, vertical e alinhado à identidade da marca. */
+.aa-header-left{gap:12px}
+.aa-header-left .aa-brand-badge{order:2;padding:6px 12px;border-radius:999px;font-size:12px;white-space:nowrap}
+.aa-header-left>div:not(.aa-brand-badge){order:1}
+.aa-header .aa-tabs .aa-tab[data-tab="painel"]{position:relative;border-radius:12px}
+.aa-header .aa-tabs .aa-tab[data-tab="painel"].active{background:transparent!important;color:var(--primary-dark)!important;font-weight:900;box-shadow:none!important}
+.aa-header .aa-tabs .aa-tab[data-tab="painel"].active::after{content:"";position:absolute;left:0;right:0;bottom:-4px;height:3px;border-radius:999px;background:var(--grad)}
+#aa-rh-login-card{width:min(100%,500px);max-width:500px;margin:38px auto 18px;padding:28px 30px;border-radius:16px;box-shadow:0 12px 32px rgba(75,50,168,.10)}
+#aa-rh-login-card h2{text-align:center;font-size:22px;margin-bottom:18px}
+@media(max-width:640px){.aa-header-left{flex-wrap:wrap;gap:9px}.aa-header-left .aa-brand-badge{font-size:11px;padding:5px 10px}#aa-rh-login-card{width:100%;max-width:500px;margin:26px auto 16px;padding:22px 18px}}
+
+.aa-header>.aa-tabs{display:flex;flex-wrap:nowrap;width:100%}
+.aa-header>.aa-tabs>.aa-tab{flex:1;min-width:0;text-align:center}
+@media(max-width:480px){.aa-header>.aa-tabs>.aa-tab{padding:8px 4px;font-size:11.5px;white-space:normal;line-height:1.25}}
+
+/* Refinamento visual conforme referência do acesso RH. */
+.aa-header-left{align-items:center;gap:12px}
+.aa-header-logo{display:block;flex:0 0 42px;width:42px;height:42px;border-radius:11px}
+.aa-header-left h1{font-size:27px}
+.aa-header-left .aa-brand-badge{order:2;padding:6px 13px;border-radius:999px;font-size:12px;font-weight:700}
+#aa-rh-login-card{width:min(100%,450px);max-width:450px;margin:38px auto 18px;padding:28px 28px 24px;border-radius:16px;background:#fff;box-shadow:0 12px 32px rgba(75,50,168,.10)}
+#aa-rh-login-card h2{text-align:center;font-size:23px;margin:0 0 17px}
+#aa-rh-login-card .aa-field label{text-transform:none;letter-spacing:0;font-size:14px;font-weight:600;color:#514B64;margin-bottom:6px}
+.aa-rh-login-fields{display:grid;grid-template-columns:1fr!important;gap:13px;margin:0}
+.aa-rh-login-fields>.aa-field{width:100%;min-width:0}
+.aa-login-input-wrap{position:relative;display:flex;align-items:center;width:100%}
+.aa-login-input-icon{position:absolute;left:13px;z-index:1;display:flex;align-items:center;color:#827993;pointer-events:none}
+.aa-login-input-icon svg,.aa-login-password-toggle svg{display:block;width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.aa-login-input-wrap input{display:block;width:100%;height:49px;padding:10px 43px 10px 42px!important;border:1px solid #D5CFE4!important;border-radius:8px!important;background:#F0EDF8!important;color:#3F3853!important;font-size:14.5px!important;box-shadow:inset 0 1px 2px rgba(34,28,54,.03);transition:border-color .15s,box-shadow .15s,background .15s}
+.aa-login-input-wrap input::placeholder{color:#827C91}
+.aa-login-input-wrap input:focus{outline:none;border-color:#8B70DF!important;background:#fff!important;box-shadow:0 0 0 3px rgba(108,79,224,.13)!important}
+.aa-login-password-toggle{position:absolute;right:10px;z-index:2;display:grid;place-items:center;width:32px;height:34px;padding:0;border:0;background:transparent;color:#827993;border-radius:6px}
+.aa-login-password-toggle:hover{color:var(--primary-dark);background:rgba(108,79,224,.06)}
+.aa-login-password-toggle:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+.aa-password-eye-open{display:none!important}
+.aa-login-password-toggle[aria-pressed="true"] .aa-password-eye-closed{display:none}
+.aa-login-password-toggle[aria-pressed="true"] .aa-password-eye-open{display:block!important}
+.aa-rh-login-actions{display:flex;flex-direction:column;gap:9px;min-width:0;width:100%}
+.aa-rh-login-actions .aa-btn-primary{width:100%;height:46px!important}
+.aa-rh-login-actions .aa-forgot-link{display:block;width:100%;min-height:31px;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;color:var(--ink-soft)!important;padding:3px 8px!important;font-size:13px!important;font-weight:500!important;text-align:center;text-decoration:none}
+.aa-rh-login-actions .aa-forgot-link:hover{color:var(--primary-dark)!important;text-decoration:underline}
+@media(max-width:640px){.aa-header-left{flex-wrap:wrap;gap:9px}.aa-header-logo{flex-basis:36px;width:36px;height:36px}.aa-header-left h1{font-size:22px}.aa-header-left .aa-brand-badge{font-size:11px;padding:5px 10px}#aa-rh-login-card{width:100%;max-width:450px;margin:26px auto 16px;padding:22px 18px}}
+
+/* Foto de consultório apenas no estado de login RH, com contraste preservado. */
+#agenda-app:has(#aa-panel-painel.active #aa-rh-login-card:not([style*="display: none"]):not([style*="display:none"])){min-height:100vh;background-image:linear-gradient(135deg,rgba(250,249,255,.28),rgba(242,247,252,.34)),url("assets/login-office-bg.webp");background-size:cover;background-position:center center;background-repeat:no-repeat;background-attachment:fixed}
+@media(max-width:640px){#agenda-app:has(#aa-panel-painel.active #aa-rh-login-card:not([style*="display: none"]):not([style*="display:none"])){background-attachment:scroll;background-position:center center}}
 </style>
 
 <div id="agenda-app">
   <div class="aa-shell">
     <div class="aa-header">
       <div class="aa-header-left">
-        <div class="aa-brand-badge">somente</div>
+        <img class="aa-header-logo" alt="" aria-hidden="true" src="assets/clinic-mark.svg">
         <div>
           <h1>Painel RH Clínico</h1>
-          
         </div>
+        <div class="aa-brand-badge">Exclusivo RH</div>
       </div>
       <div class="aa-tabs">
         <button class="aa-tab active" data-tab="enviar" onclick="aaSwitchTab('enviar')">Enviar agenda</button>
@@ -460,11 +507,11 @@
       <div class="aa-card" id="aa-rh-login-card">
         <h2>Acesso RH</h2>
         <div class="aa-field-row aa-rh-login-fields">
-          <div class="aa-field"><label>E-mail</label><input type="email" id="aa-rh-user" placeholder="rh@empresa.com"></div>
-          <div class="aa-field"><label>Senha</label><input type="password" id="aa-rh-pass" onkeydown="if(event.key==='Enter') aaRHLogin();"></div>
+          <div class="aa-field aa-rh-login-field"><label for="aa-rh-user">E-mail</label><div class="aa-login-input-wrap"><span class="aa-login-input-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 7 9 6 9-6"></path></svg></span><input type="email" id="aa-rh-user" autocomplete="username" placeholder="rh@empresa.com"></div></div>
+          <div class="aa-field aa-rh-login-field"><label for="aa-rh-pass">Senha</label><div class="aa-login-input-wrap"><span class="aa-login-input-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"></path></svg></span><input type="password" id="aa-rh-pass" autocomplete="current-password" onkeydown="if(event.key==='Enter') aaRHLogin();"><button type="button" class="aa-login-password-toggle" aria-label="Mostrar senha" aria-pressed="false" onclick="aaToggleLoginPassword()"><svg class="aa-password-eye-closed" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle><path d="m3 3 18 18"></path></svg><svg class="aa-password-eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg></button></div></div>
           <div class="aa-rh-login-actions">
             <button class="aa-btn aa-btn-primary" onclick="aaRHLogin()">Entrar</button>
-            <button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" onclick="aaSolicitarResetSenha()">Esqueci minha senha</button>
+            <button type="button" class="aa-forgot-link" onclick="aaSolicitarResetSenha()">Esqueci minha senha</button>
           </div>
         </div>
         <div class="aa-error-msg" id="aa-rh-login-err"></div>
@@ -1942,6 +1989,15 @@ function aaScheduleAutoLogout(){
   aaAutoLogoutTimer=setTimeout(async()=>{try{window.localStorage?.removeItem(key);}catch(_e){}alert('Sua sessão expirou após 5 horas. Faça login novamente.');await aaRHLogout();},Math.max(1000,5*60*60*1000-(now-stored)));
 }
 // ---------- RH login ----------
+window.aaToggleLoginPassword = function(){
+  const input=document.getElementById('aa-rh-pass');
+  const button=document.querySelector('.aa-login-password-toggle');
+  if(!input||!button)return;
+  const show=input.type==='password';
+  input.type=show?'text':'password';
+  button.setAttribute('aria-pressed',String(show));
+  button.setAttribute('aria-label',show?'Ocultar senha':'Mostrar senha');
+};
 window.aaRHLogin = async function(){
   const u = document.getElementById('aa-rh-user').value.trim();
   const p = document.getElementById('aa-rh-pass').value;
