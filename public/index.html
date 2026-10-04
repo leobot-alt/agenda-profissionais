@@ -365,9 +365,11 @@
 .aa-rh-login-actions .aa-forgot-link:hover{color:var(--primary-dark)!important;text-decoration:underline}
 @media(max-width:640px){.aa-header-left{flex-wrap:wrap;gap:9px}.aa-header-logo{flex-basis:36px;width:36px;height:36px}.aa-header-left h1{font-size:22px}.aa-header-left .aa-brand-badge{font-size:11px;padding:5px 10px}#aa-rh-login-card{width:100%;max-width:450px;margin:26px auto 16px;padding:22px 18px}}
 
-/* Foto de consultório apenas no estado de login RH, com contraste preservado. */
-#agenda-app:has(#aa-panel-painel.active #aa-rh-login-card:not([style*="display: none"]):not([style*="display:none"])){min-height:100vh;background-image:linear-gradient(135deg,rgba(250,249,255,.28),rgba(242,247,252,.34)),url("assets/login-office-bg.webp");background-size:cover;background-position:center center;background-repeat:no-repeat;background-attachment:fixed}
-@media(max-width:640px){#agenda-app:has(#aa-panel-painel.active #aa-rh-login-card:not([style*="display: none"]):not([style*="display:none"])){background-attachment:scroll;background-position:center center}}
+/* Foto de consultório nas áreas públicas Enviar/Consultar e no login RH; o painel RH autenticado permanece sem fundo. */
+#agenda-app:has(#aa-panel-enviar.active),
+#agenda-app:has(#aa-panel-consultar.active),
+#agenda-app:has(#aa-panel-painel.active #aa-rh-login-card:not([style*="display: none"]):not([style*="display:none"])) {min-height:100vh;background-image:linear-gradient(135deg,rgba(250,249,255,.28),rgba(242,247,252,.34)),url("assets/login-office-bg.webp");background-size:cover;background-position:center center;background-repeat:no-repeat;background-attachment:fixed}
+@media(max-width:640px){#agenda-app:has(#aa-panel-enviar.active),#agenda-app:has(#aa-panel-consultar.active),#agenda-app:has(#aa-panel-painel.active #aa-rh-login-card:not([style*="display: none"]):not([style*="display:none"])){background-attachment:scroll;background-position:center center}}
 </style>
 
 <div id="agenda-app">
