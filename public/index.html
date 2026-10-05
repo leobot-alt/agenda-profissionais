@@ -5571,8 +5571,9 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   const refresh=()=>{const panel=document.getElementById('aa-presence-sidebar');if(!panel)return;panel.hidden=!access();if(access()){start();render(channel?.presenceState?.()||{});}};
   window.aaPresenceSetPage=tab=>{currentTab=String(tab||'dashboard');track();};
   const oldSwitch=window.aaSwitchRHTab;window.aaSwitchRHTab=function(tab){currentTab=tab;const result=oldSwitch?oldSwitch.apply(this,arguments):undefined;setTimeout(()=>{track();refresh();},0);return result;};
+  const oldApply=window.aaApplyRHPermissionsUI;window.aaApplyRHPermissionsUI=function(){const result=oldApply?oldApply.apply(this,arguments):undefined;setTimeout(refresh,0);return result;};
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){track();refresh();}});
-  refreshTimer=setInterval(()=>{if(rhAuthenticated){refresh();track();}else stop();},15000);
+  refreshTimer=setInterval(()=>{if(rhAuthenticated){refresh();track();}else stop();},5000);
   setTimeout(refresh,800);
 })();
 </script></body>
