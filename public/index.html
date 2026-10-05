@@ -637,11 +637,12 @@
                 <div class="aa-export-toolbar">
                   <button data-permission-action="agendas_ativas_exportar" class="aa-btn aa-btn-secondary aa-btn-sm" id="aa-btn-export-selected" onclick="aaExportSelected()" disabled>Exportar selecionadas</button>
                   <button data-permission-action="agendas_ativas_exportar" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaExportAllFiltered()">Exportar todas</button>
+                  <button type="button" data-permission-action="agendas_ativas_importar" class="aa-btn aa-btn-ghost aa-btn-sm" id="aa-btn-toggle-agenda-import" aria-expanded="false" aria-controls="aa-agenda-import-panel" onclick="aaToggleAgendaImportPanel()">Importar agenda</button>
                 </div>
               </div>
             </div>
 
-            <div class="aa-agenda-import-panel" data-permission-any="agendas_ativas_exportar,agendas_ativas_status,agendas_ativas_importar">
+            <div class="aa-agenda-import-panel" id="aa-agenda-import-panel" hidden data-permission-any="agendas_ativas_exportar,agendas_ativas_status,agendas_ativas_importar">
               <div class="aa-agenda-import-head"><div><h3>Importar agendas ativas</h3><p>Baixe um modelo por mês ou trimestre e importe a agenda vinculando-a a um profissional.</p></div></div>
               <div class="aa-agenda-import-actions">
                 <div class="aa-field"><label>Tipo de período do modelo</label><select id="aa-agenda-template-type" onchange="aaUpdateAgendaTemplatePeriodOptions()"><option value="mes">Mês</option><option value="trimestre">Trimestre</option></select></div>
@@ -1774,6 +1775,14 @@ function aaAgendaImportDate(value){
   const raw=String(value??'').trim();if(/^\d{4}-\d{2}-\d{2}$/.test(raw))return raw;const br=raw.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);return br?br[3]+'-'+pad2(br[2])+'-'+pad2(br[1]):'';
 }
 function aaAgendaImportTime(value){const raw=String(value??'').trim();const m=raw.match(/^(\d{1,2})[:h](\d{2})/);return m?pad2(m[1])+':'+m[2]:'';}
+window.aaToggleAgendaImportPanel=function(){
+  if(!aaRequire('agendas_ativas_importar'))return;
+  const panel=document.getElementById('aa-agenda-import-panel'),button=document.getElementById('aa-btn-toggle-agenda-import');
+  if(!panel)return;
+  const open=panel.hidden; panel.hidden=!open;
+  if(button){button.setAttribute('aria-expanded',String(open));button.textContent=open?'Fechar importação':'Importar agenda';}
+  if(open){window.aaRefreshAgendaImportProfessionals?.();document.getElementById('aa-agenda-template-year')?.focus();}
+};
 window.aaImportAgendaSpreadsheet=function(event){
   if(!aaRequire('agendas_ativas_importar'))return;
   const file=event?.target?.files?.[0],statusEl=document.getElementById('aa-agenda-import-status'),select=document.getElementById('aa-agenda-import-profissional');
