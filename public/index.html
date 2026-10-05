@@ -521,7 +521,7 @@
 
       <div id="aa-rh-authed-content" style="display:none;">
         <div id="aa-rh-session-bar" class="aa-rh-session-bar" style="display:none; margin-bottom:12px; padding:10px 14px; border:1px solid var(--line); border-radius:10px; background:#FAF9FD; color:var(--ink-soft);"><div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;"><span>Usuário conectado: <b id="aa-rh-session-name"></b><span style="font-weight:400;color:var(--ink-soft);"> · </span><b id="aa-rh-session-email"></b></span><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaRHLogout()">Sair do painel</button></div></div>
-        <div class="aa-tabs" style="margin-bottom:18px;">
+        <nav class="aa-tabs aa-rh-sidebar-nav" aria-label="Navegação do painel RH">
           <button class="aa-tab active" data-rhtab="dashboard" onclick="aaSwitchRHTab('dashboard')">Dashboard</button>
           <button class="aa-tab" data-rhtab="agendas" onclick="aaSwitchRHTab('agendas')">Agendas Ativas</button>
           <button class="aa-tab" data-rhtab="banco" onclick="aaSwitchRHTab('banco')">Banco de Dados</button>
@@ -529,7 +529,7 @@
           <button class="aa-tab" data-rhtab="controller" onclick="aaControllerOpen()">Controller</button>
           <button class="aa-tab" data-rhtab="portal" onclick="aaSwitchRHTab('portal')">Portal</button>
           <button class="aa-tab" data-rhtab="controler" onclick="aaSwitchRHTab('controler')">Administração</button>
-        </div>
+        </nav>
         <main id="aa-rh-page-mount" aria-live="polite"></main>
         <div id="aa-rh-page-cache" aria-hidden="true"></div>
 
@@ -582,27 +582,31 @@
           <div class="aa-card">
             <h2>Visão geral</h2>
             
-            <div class="aa-field-row aa-dashboard-filters-primary" style="align-items:end; margin-bottom:12px;">
+            <div class="aa-dashboard-filters-grid">
               <div class="aa-field"><label>Ano</label><input type="number" id="aa-dash-ano" min="2025" max="2035" onchange="aaUpdateDashboardMonths();aaRenderDashboard()"></div>
               <div class="aa-field"><label>Trimestre de referência</label><select id="aa-dash-trimestre" onchange="aaUpdateDashboardMonths();aaRenderDashboard()"></select></div>
               <div class="aa-field"><label>Mês analisado</label><select id="aa-dash-mes" onchange="aaRenderDashboard()"></select></div>
-            </div>
-            <div class="aa-field-row aa-dashboard-filters-secondary" style="align-items:end; margin-bottom:18px;">
               <div class="aa-field"><label>Operação</label><select id="aa-dash-operacao" onchange="aaUpdateDashboardBlocks();aaFilterDashboardProfessionals();aaRenderDashboard()"></select></div>
               <div class="aa-field"><label>Bloco</label><select id="aa-dash-bloco" onchange="aaFilterDashboardProfessionals();aaRenderDashboard()"></select></div>
               <div class="aa-field"><label>Especialidade</label><select id="aa-dash-especialidade" onchange="aaFilterDashboardProfessionals();aaRenderDashboard()"><option value="">Todas</option><option value="psicologo">Psicólogos</option><option value="psiquiatra">Psiquiatras</option></select></div>
               <div class="aa-field"><label>Pesquisar profissional</label><input type="search" id="aa-dash-profissional" placeholder="Buscar por nome ou usuário" oninput="aaRenderDashboard()"></div>
               <button class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaRenderDashboard()">Atualizar</button>
             </div>
-            <div data-permission-action="dashboard_meta_ver" class="aa-card" style="background:#FAF9FD; border:1px solid var(--line); margin-bottom:18px; padding:18px;">
-              <h2 style="font-size:16px; margin-bottom:4px;">Meta atual — teto de horas do mês</h2>
-              
-              <div class="aa-field-row" style="grid-template-columns:1fr 1fr auto; align-items:end; margin-bottom:0;">
-                <div class="aa-field"><label>Meta de Psicólogos (horas)</label><input data-permission-disable="dashboard_meta_editar" type="number" id="aa-meta-psicologo" min="0" step="0.5" value="120"></div>
-                <div class="aa-field"><label>Meta de Psiquiatras (horas)</label><input data-permission-disable="dashboard_meta_editar" type="number" id="aa-meta-psiquiatra" min="0" step="0.5" value="120"></div>
-                <button data-permission-action="dashboard_meta_editar" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaSaveDashboardMeta()">Salvar metas</button>
-              </div>
-              <div class="aa-error-msg" id="aa-dashboard-meta-err"></div>
+            <section data-permission-action="dashboard_meta_ver" class="aa-dashboard-meta-strip" aria-label="Configuração das metas do mês">
+              <div><span class="aa-dashboard-meta-eyebrow">METAS DO MÊS</span><h2>Meta atual — teto de horas do mês</h2><p>As metas por especialidade podem ser ajustadas quando necessário.</p></div>
+              <button data-permission-action="dashboard_meta_editar" type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaOpenDashboardMetaModal()">Configurar Metas</button>
+            </section>
+            <div id="aa-dashboard-meta-modal" class="aa-dashboard-meta-modal" role="presentation" aria-hidden="true" onclick="if(event.target===this)aaCloseDashboardMetaModal()">
+              <section class="aa-dashboard-meta-dialog" role="dialog" aria-modal="true" aria-labelledby="aa-dashboard-meta-title">
+                <header class="aa-dashboard-meta-dialog-head"><div><span class="aa-dashboard-meta-eyebrow">CONFIGURAÇÃO</span><h2 id="aa-dashboard-meta-title">Metas do mês</h2></div><button type="button" class="aa-dashboard-meta-close" aria-label="Fechar" onclick="aaCloseDashboardMetaModal()">×</button></header>
+                <p class="aa-dashboard-meta-description">Defina o teto mensal de horas para cada especialidade.</p>
+                <div class="aa-dashboard-meta-fields">
+                  <div class="aa-field"><label for="aa-meta-psicologo">Meta de Psicólogos (horas)</label><input data-permission-disable="dashboard_meta_editar" type="number" id="aa-meta-psicologo" min="0" step="0.5" value="120"></div>
+                  <div class="aa-field"><label for="aa-meta-psiquiatra">Meta de Psiquiatras (horas)</label><input data-permission-disable="dashboard_meta_editar" type="number" id="aa-meta-psiquiatra" min="0" step="0.5" value="120"></div>
+                </div>
+                <div class="aa-error-msg" id="aa-dashboard-meta-err" role="status" aria-live="polite"></div>
+                <div class="aa-dashboard-meta-actions"><button type="button" class="aa-btn aa-btn-ghost" onclick="aaCloseDashboardMetaModal()">Cancelar</button><button data-permission-action="dashboard_meta_editar" type="button" class="aa-btn aa-btn-primary" onclick="aaSaveDashboardMeta()">Salvar metas</button></div>
+              </section>
             </div>
             <div id="aa-dashboard-content"><div class="aa-loading">Carregando...</div></div>
           </div>
@@ -821,7 +825,6 @@
             <div id="aa-controller-view-subpaginas"></div>
           </section>
         </div>
-        <div style="text-align:right; margin-top:14px; padding:0 4px 4px;"><button class="aa-btn aa-btn-ghost aa-btn-sm" onclick="aaRHLogout()">Sair do painel RH</button></div>
       </div>
 
     </div>
@@ -3157,6 +3160,21 @@ window.aaToggleDashboardSection=function(id,button){
 };
 // ---------- Dashboard ----------
 let dashboardMetas={psicologo:120,psiquiatra:120};
+let dashboardMetaReturnFocus=null;
+let dashboardMetaPreviousOverflow='';
+window.aaOpenDashboardMetaModal=function(){
+  if(!aaRequire('dashboard_meta_editar'))return;
+  const modal=document.getElementById('aa-dashboard-meta-modal');if(!modal)return;
+  dashboardMetaReturnFocus=document.activeElement;dashboardMetaPreviousOverflow=document.body.style.overflow;
+  modal.classList.add('open');modal.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';
+  document.getElementById('aa-meta-psicologo')?.focus({preventScroll:true});
+};
+window.aaCloseDashboardMetaModal=function(){
+  const modal=document.getElementById('aa-dashboard-meta-modal');if(!modal)return;
+  modal.classList.remove('open');modal.setAttribute('aria-hidden','true');document.body.style.overflow=dashboardMetaPreviousOverflow;
+  if(dashboardMetaReturnFocus&&typeof dashboardMetaReturnFocus.focus==='function')dashboardMetaReturnFocus.focus();
+};
+document.addEventListener('keydown',function(event){const modal=document.getElementById('aa-dashboard-meta-modal');if(event.key==='Escape'&&modal?.classList.contains('open'))window.aaCloseDashboardMetaModal();});
 async function loadDashboardMetas(){
   dataLoadState.metas=false;
   try{
@@ -3192,7 +3210,7 @@ window.aaSaveDashboardMeta=async function(){
   const metasAntes='Psicólogos: '+dashboardMetas.psicologo+'h; Psiquiatras: '+dashboardMetas.psiquiatra+'h';
   const anterior={...dashboardMetas};
   dashboardMetas={psicologo:p,psiquiatra:q};
-  try{ if(!dataLoadState.metas) throw new Error('As metas ainda não foram carregadas com sucesso.'); await storageSetRetry(DASHBOARD_META_KEY,JSON.stringify(dashboardMetas),true); try{ await aaLogChange('Alteração de metas do Dashboard','Dashboard','Psicólogos: '+p+'h; Psiquiatras: '+q+'h',undefined,metasAntes,'Psicólogos: '+p+'h; Psiquiatras: '+q+'h'); }catch(logError){ console.warn('Metas salvas, mas não foi possível registrar o histórico.',logError); } if(err) err.textContent='Metas salvas.'; await window.aaRenderDashboard(); }
+  try{ if(!dataLoadState.metas) throw new Error('As metas ainda não foram carregadas com sucesso.'); await storageSetRetry(DASHBOARD_META_KEY,JSON.stringify(dashboardMetas),true); try{ await aaLogChange('Alteração de metas do Dashboard','Dashboard','Psicólogos: '+p+'h; Psiquiatras: '+q+'h',undefined,metasAntes,'Psicólogos: '+p+'h; Psiquiatras: '+q+'h'); }catch(logError){ console.warn('Metas salvas, mas não foi possível registrar o histórico.',logError); } if(err) err.textContent='Metas salvas.'; window.aaCloseDashboardMetaModal(); await window.aaRenderDashboard(); }
   catch(e){ dashboardMetas=anterior; if(err) err.textContent='Não foi possível salvar as metas agora.'; console.error(e); }
 }
 function populateDashboardProfessionalFilter(){
@@ -3288,7 +3306,7 @@ window.aaRenderDashboard = async function(){
   if(ativosSemAgenda) resumoAlertas.push(ativosSemAgenda+' profissional(is) ativo(s) sem agenda');
   if(cadastrosIncompletos) resumoAlertas.push(cadastrosIncompletos+' cadastro(s) com dados incompletos');
   const resumoMesId='aa-dashboard-resumo-mes-'+ym.replace(/[^0-9A-Za-z_-]/g,'');
-  let html='<div class="aa-dashboard-section"><div class="aa-dashboard-section-head"><div><h3>Resumo do mês</h3><div class="aa-hint">Visão geral de '+monthLabel(ym)+'</div></div><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm aa-collapse-btn" onclick="aaToggleDashboardSection(\''+resumoMesId+'\',this)">Mostrar</button></div><div id="'+resumoMesId+'" style="display:none"><div class="aa-dashboard-grid">';
+  let html='<div class="aa-dashboard-section"><div class="aa-dashboard-section-head"><div><h3>Resumo do mês</h3><div class="aa-hint">Visão geral de '+monthLabel(ym)+'</div></div><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm aa-collapse-btn" onclick="aaToggleDashboardSection(\''+resumoMesId+'\',this)">Mostrar</button></div><div id="'+resumoMesId+'" style="display:none"><div class="aa-dashboard-grid aa-dashboard-summary-grid">';
   html+='<div class="aa-summary-stat"><div class="aa-stat-label">Horas totais do mês</div><div class="aa-stat-value">'+formatHours(total)+'</div><small style="display:block;color:var(--ink-soft);margin-top:3px;">'+aaHtmlSafe(hoursDeltaLabel)+'</small></div>';
   html+='<div class="aa-summary-stat"><div class="aa-stat-label">Psicólogos ativos</div><div class="aa-stat-value">'+psAtivos+' <small style="font-size:12px;color:var(--ink-soft)">('+psInativos+' inativos)</small></div></div>';
   html+='<div class="aa-summary-stat"><div class="aa-stat-label">Psiquiatras ativos</div><div class="aa-stat-value">'+pqAtivos+' <small style="font-size:12px;color:var(--ink-soft)">('+pqInativos+' inativos)</small></div></div>';
@@ -5459,5 +5477,55 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   const oldApply=window.aaApplyRHPermissionsUI||function(){};window.aaApplyRHPermissionsUI=function(){oldApply();const button=document.querySelector('[data-rhtab="controller"]');if(button)button.style.display=controllerAllowed()?'':'none';};
   const oldFirst=window.aaFirstAllowedRHTab; if(typeof oldFirst==='function'){window.aaFirstAllowedRHTab=function(){return oldFirst()||(controllerAllowed()?'controller':null);};}
 })();
-</script></body>
+</script>
+<style id="aa-dashboard-refactor-styles">
+/* Layout do painel RH: navegação lateral, sessão no topo e conteúdo na coluna principal. */
+#agenda-app:has(#aa-rh-authed-content[style*="display: block"]) .aa-shell{width:min(100%,1760px);max-width:1760px;padding:22px clamp(14px,2vw,34px) 52px}
+#aa-rh-authed-content[style*="display: block"]{display:grid!important;grid-template-columns:clamp(180px,16vw,230px) minmax(0,1fr);gap:14px 18px;align-items:start}
+#aa-rh-authed-content[style*="display: block"]>#aa-rh-session-bar{grid-column:1/-1;width:100%;margin:0!important;background:#fff!important;border:1px solid #E6E2EF!important;border-radius:12px!important}
+#aa-rh-authed-content[style*="display: block"]>.aa-rh-sidebar-nav{grid-column:1;grid-row:2;position:sticky;top:14px;display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;gap:5px!important;width:100%!important;margin:0!important;padding:8px!important;border:1px solid #E4E0EC!important;border-radius:14px!important;background:#fff!important;box-shadow:0 5px 18px rgba(44,35,70,.06)!important;backdrop-filter:none!important}
+#aa-rh-authed-content[style*="display: block"]>.aa-rh-sidebar-nav .aa-tab{display:flex;align-items:center;justify-content:flex-start;flex:0 0 auto;width:100%;min-width:0;min-height:42px;padding:10px 12px;border:0;border-left:3px solid transparent;border-radius:9px;background:transparent!important;box-shadow:none!important;color:#5F5876;text-align:left;white-space:normal;font-size:13px;font-weight:700}
+#aa-rh-authed-content[style*="display: block"]>.aa-rh-sidebar-nav .aa-tab:hover{background:#F8F6FC!important;color:var(--primary-dark)}
+#aa-rh-authed-content[style*="display: block"]>.aa-rh-sidebar-nav .aa-tab.active{border-left-color:var(--primary);background:#F1EDFB!important;color:var(--primary-dark)!important;font-weight:900}
+#aa-rh-authed-content[style*="display: block"]>#aa-rh-page-mount{grid-column:2;grid-row:2;min-width:0;width:100%}
+#aa-rh-authed-content[style*="display: block"]>#aa-rh-page-mount>.aa-rh-subpanel{width:100%;max-width:none;min-width:0}
+#aa-rh-page-cache{display:none!important}
+#aa-rh-authed-content[style*="display: block"] #aa-rhtab-dashboard>.aa-card{width:100%;max-width:none;padding:22px}
+#aa-rh-authed-content[style*="display: block"] #aa-dashboard-content .aa-dashboard-section{width:100%;max-width:none;margin-left:0;margin-right:0}
+/* Filtros compactos: 4 colunas no desktop; Atualizar fecha a última linha à direita. */
+#aa-rh-authed-content[style*="display: block"] .aa-dashboard-filters-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:end;gap:10px 12px;margin:12px 0 16px;padding:14px;border:1px solid #E7E3EF;border-radius:12px;background:#FAF9FD}
+.aa-dashboard-filters-grid>.aa-field{min-width:0;margin:0}
+.aa-dashboard-filters-grid>.aa-field label{margin-bottom:5px;font-size:10.5px;letter-spacing:.04em}
+.aa-dashboard-filters-grid input,.aa-dashboard-filters-grid select{width:100%;min-width:0}
+.aa-dashboard-filters-grid>.aa-btn{justify-self:end;align-self:end;min-width:118px;margin:0}
+/* Metas: controle discreto no painel e formulário somente no diálogo. */
+.aa-dashboard-meta-strip{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 16px;padding:15px 17px;border:1px solid #E3DFEA;border-radius:13px;background:#fff;box-shadow:0 3px 12px rgba(44,35,70,.04)}
+.aa-dashboard-meta-strip>.aa-btn{white-space:nowrap;flex-shrink:0}
+.aa-dashboard-meta-strip h2{margin:1px 0 2px;color:#2F2940;font-size:15px;font-weight:800}
+.aa-dashboard-meta-strip p{margin:0;color:#777286;font-size:12px}
+.aa-dashboard-meta-eyebrow{display:block;color:#7B6BB0;font-size:9.5px;font-weight:900;letter-spacing:.09em}
+.aa-dashboard-meta-modal{position:fixed;inset:0;z-index:10020;display:none;place-items:center;padding:20px;background:rgba(28,22,45,.48)}
+.aa-dashboard-meta-modal.open{display:grid}
+.aa-dashboard-meta-dialog{width:min(520px,100%);max-height:calc(100vh - 40px);overflow:auto;padding:24px;border:1px solid #DDD6EE;border-radius:17px;background:#fff;box-shadow:0 24px 80px rgba(25,17,61,.28)}
+.aa-dashboard-meta-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.aa-dashboard-meta-dialog-head h2{margin:3px 0 0;color:var(--primary-dark);font-size:21px}
+.aa-dashboard-meta-close{display:grid;place-items:center;width:36px;height:36px;border:1px solid #E8E4EF;border-radius:10px;background:#fff;color:#625D70;font-size:23px;line-height:1}
+.aa-dashboard-meta-close:hover{background:#F7F4FC;color:var(--primary-dark)}
+.aa-dashboard-meta-description{margin:8px 0 18px;color:var(--ink-soft);font-size:13px}
+.aa-dashboard-meta-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.aa-dashboard-meta-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px;padding-top:15px;border-top:1px solid #EEEAF4}
+/* Métricas em cartões brancos; resumo com 9 itens em 3x3 e indicadores em 4 colunas. */
+#aa-dashboard-content .aa-dashboard-section .aa-summary-stat{min-width:0;border:1px solid #E1E3E8;border-radius:11px;background:#fff!important;box-shadow:0 2px 7px rgba(31,28,46,.035)}
+#aa-dashboard-content .aa-dashboard-section .aa-stat-label{color:#667085;opacity:1}
+#aa-dashboard-content .aa-dashboard-section .aa-stat-value{color:var(--primary-dark)}
+#aa-dashboard-content .aa-dashboard-summary-grid, #aa-dashboard-content .aa-adjust-dashboard-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px;margin-bottom:14px}
+#aa-dashboard-content .aa-dashboard-summary-grid>.aa-summary-stat:last-child:nth-child(odd),#aa-dashboard-content .aa-adjust-dashboard-grid>.aa-summary-stat:last-child:nth-child(odd){grid-column:auto}
+@media(max-width:1120px){#agenda-app:has(#aa-rh-authed-content[style*="display: block"]) .aa-shell{padding:18px clamp(14px,2vw,22px) 40px}#aa-rh-authed-content[style*="display: block"] .aa-dashboard-filters-grid{grid-template-columns:repeat(3,minmax(0,1fr))}#aa-rh-authed-content[style*="display: block"] .aa-dashboard-filters-grid>.aa-btn{grid-column:3}}
+@media(max-width:1000px){#aa-rh-authed-content[style*="display: block"]{grid-template-columns:clamp(180px,19vw,205px) minmax(0,1fr);gap:12px}#aa-rh-authed-content[style*="display: block"]>.aa-rh-sidebar-nav .aa-tab{font-size:12px;padding:9px 10px}}
+@media(max-width:900px){#aa-rh-authed-content[style*="display: block"] .aa-dashboard-filters-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}#aa-rh-authed-content[style*="display: block"] .aa-dashboard-filters-grid>.aa-btn{grid-column:auto}#aa-dashboard-content .aa-dashboard-summary-grid,#aa-dashboard-content .aa-adjust-dashboard-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}#aa-dashboard-content .aa-dashboard-summary-grid>.aa-summary-stat:last-child:nth-child(odd),#aa-dashboard-content .aa-adjust-dashboard-grid>.aa-summary-stat:last-child:nth-child(odd){grid-column:1/-1}}
+@media(max-width:560px){#aa-dashboard-content .aa-dashboard-summary-grid,#aa-dashboard-content .aa-adjust-dashboard-grid{grid-template-columns:1fr!important}#aa-dashboard-content .aa-dashboard-summary-grid>.aa-summary-stat:last-child:nth-child(odd),#aa-dashboard-content .aa-adjust-dashboard-grid>.aa-summary-stat:last-child:nth-child(odd){grid-column:auto}}
+@media(max-width:760px){#agenda-app:has(#aa-rh-authed-content[style*="display: block"]) .aa-shell{padding:14px 12px 36px}#aa-rh-authed-content[style*="display: block"]{grid-template-columns:minmax(0,1fr);gap:11px}#aa-rh-authed-content[style*="display: block"]>#aa-rh-session-bar,#aa-rh-authed-content[style*="display: block"]>.aa-rh-sidebar-nav,#aa-rh-authed-content[style*="display: block"]>#aa-rh-page-mount{grid-column:1;grid-row:auto}#aa-rh-authed-content[style*="display: block"]>.aa-rh-sidebar-nav{position:static;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}#aa-rh-authed-content[style*="display: block"]>.aa-rh-sidebar-nav .aa-tab{white-space:normal}.aa-dashboard-filters-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.aa-dashboard-meta-strip{align-items:flex-start}.aa-dashboard-meta-fields{grid-template-columns:1fr}}
+@media(max-width:480px){#aa-rh-authed-content[style*="display: block"] #aa-rhtab-dashboard>.aa-card{padding:15px}#aa-rh-authed-content[style*="display: block"] .aa-dashboard-filters-grid{grid-template-columns:1fr!important}#aa-rh-authed-content[style*="display: block"] .aa-dashboard-filters-grid>.aa-btn{justify-self:stretch;width:100%;grid-column:auto}.aa-dashboard-meta-strip{flex-direction:column;align-items:stretch}.aa-dashboard-meta-strip>.aa-btn{width:100%}.aa-dashboard-meta-dialog{padding:18px}.aa-dashboard-meta-actions>.aa-btn{flex:1}}
+</style>
+</body>
 </html>
