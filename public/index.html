@@ -680,12 +680,12 @@
               <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 <button data-permission-action="banco_modelo" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaDownloadTemplate()">Baixar planilha modelo</button>
                 <button data-permission-action="banco_backup_baixar" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaDownloadBackup()">Baixar backup</button>
-                <button data-permission-action="banco_importar" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="document.getElementById('aa-import-file').click()">Importar planilha</button>
-                <input type="file" id="aa-import-file" accept=".xlsx,.xls" style="display:none;" onchange="aaImportSpreadsheet(event)">
+                <button type="button" data-permission-action="banco_importar" class="aa-btn aa-btn-ghost aa-btn-sm" id="aa-btn-toggle-database-import" aria-expanded="false" aria-controls="aa-database-import-panel" onclick="aaToggleDatabaseImportPanel()">Importar planilha</button>
                 <button data-permission-action="banco_profissionais_cadastrar" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaShowNovoCadastro()">Novo cadastro</button>
               </div>
             </div>
 
+            <div id="aa-database-import-panel" class="aa-card" hidden data-permission-action="banco_importar" style="background:#F8FBFF; border:1px solid #C9D8E8; margin:0 0 18px; padding:13px 15px;"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;"><div><b style="color:#173B68;">Importar profissionais</b><p class="aa-hint" style="margin:3px 0 0;">Selecione a planilha preenchida para atualizar ou cadastrar profissionais.</p></div><button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="document.getElementById('aa-import-file').click()">Selecionar planilha</button><input type="file" id="aa-import-file" accept=".xlsx,.xls" style="display:none;" onchange="aaImportSpreadsheet(event)"></div></div>
             <div data-permission-action="banco_backup_baixar" class="aa-card" style="background:#FAF9FD; border:1px solid var(--line); margin:0 0 18px; padding:18px;">
               <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
                 <div><h2 style="font-size:16px; margin:0 0 4px;">Backup do sistema</h2></div>
@@ -1807,6 +1807,13 @@ window.aaImportAgendaSpreadsheet=function(event){
   };reader.readAsArrayBuffer(file);
 };
 
+window.aaToggleDatabaseImportPanel=function(){
+  if(!aaRequire('banco_importar'))return;
+  const panel=document.getElementById('aa-database-import-panel'),button=document.getElementById('aa-btn-toggle-database-import');
+  if(!panel)return;
+  const open=panel.hidden;panel.hidden=!open;
+  if(button){button.setAttribute('aria-expanded',String(open));button.textContent=open?'Fechar importação':'Importar planilha';}
+};
 window.aaImportSpreadsheet = function(event){
   if(!aaRequire('banco_importar')) return;
   const file = event.target.files[0];
