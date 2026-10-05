@@ -5016,6 +5016,12 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 .aa-controller-dashboard-filter-card{padding:16px 20px!important}
 .aa-controller-dashboard-filters{display:grid;grid-template-columns:minmax(220px,360px) auto;align-items:end;gap:15px}
 .aa-controller-dashboard-filter-meta{padding:10px 0;color:#77849A;font-size:12px;font-weight:700}
+.aa-controller-professional-search-filters{display:grid;grid-template-columns:minmax(220px,1fr) auto;align-items:end;gap:12px;margin-top:14px}
+.aa-controller-professional-search-filters .aa-field{min-width:0;margin:0}
+.aa-controller-professional-search-meta{margin-top:10px;color:#77849A;font-size:12px;line-height:1.5}
+.aa-controller-professional-search-results{max-width:none;width:100%}
+.aa-controller-professional-search-table{min-width:760px}
+.aa-controller-professional-search-owner small{display:block;margin-top:4px;color:#718096;font-size:11px}
 .aa-controller-dashboard-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .aa-controller-dashboard-stat{display:flex;flex-direction:column;justify-content:center;gap:8px;min-width:0;min-height:105px;padding:16px 18px;border:1px solid #E3E8EF;border-top:3px solid #7D6AAF;border-radius:14px;background:#fff;box-shadow:0 4px 13px rgba(30,48,78,.035)}
 .aa-controller-dashboard-stat small{color:#6F7D91;font-size:11px;font-weight:800;letter-spacing:.03em}
@@ -5033,6 +5039,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 @media(max-width:760px){
   .aa-controller-nav{display:flex;width:100%;overflow-x:auto}.aa-controller-tab{flex:1 0 auto;padding:10px 11px;font-size:12px}
   .aa-controller-import-card,.aa-controller-pages-section,.aa-controller-records-card,.aa-controller-dashboard-header,.aa-controller-dashboard-table-card{padding:17px!important}
+  .aa-controller-professional-search-filters{grid-template-columns:1fr}.aa-controller-professional-search-filters .aa-btn{width:100%}
   .aa-controller-import-grid,.aa-controller-management-fields{grid-template-columns:1fr}.aa-controller-form-actions{justify-content:flex-start}
     .aa-controller-collaborator-card{align-items:flex-start;flex-direction:column}.aa-controller-page-actions{width:100%}.aa-controller-page-actions .aa-btn{flex:1}
   .aa-controller-detail-controls{align-items:stretch;flex-direction:column}.aa-controller-detail-controls .aa-field{min-width:0;width:100%}
@@ -5083,6 +5090,10 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   let controllerDashboardFrom=new Date().toISOString().slice(0,8)+'01';
   let controllerDashboardTo=new Date().toISOString().slice(0,10);
   let controllerDashboardCollaboratorFilter='';
+  let controllerProfessionalSearchRecords=[];
+  let controllerProfessionalSearchFrom='';
+  let controllerProfessionalSearchTo='';
+  let controllerProfessionalSearchName='';
   const CONTROLLER_RECORD_STATUSES=[['pendente','Pendente'],['disponivel','DISPONÍVEL'],['atendido','ATENDIDO'],['bloqueado','BLOQUEADO'],['cancelado','CANCELADO'],['desmarcado','DESMARCADO'],['desmarcado_pro','DESMARCADO PRO'],['faltou','FALTOU'],['horario_reservado_lideranca','HORÁRIO RESERVADO/LIDERANÇA'],['pro_faltou','PRO FALTOU'],['remanejar','REMANEJAR'],['acompanhando','Acompanhando'],['em_atendimento','Em atendimento'],['paciente_aguardando','Paciente aguardando'],['profissional_aguardando','Profissional aguardando'],['sala_fechada','Sala fechada']];
   const CONTROLLER_PINNED_STATUSES=new Set(['acompanhando','em_atendimento','paciente_aguardando','profissional_aguardando','sala_fechada']);
   const CONTROLLER_LEGACY_STATUS_CODES=['falta','remanejado','ajuste_necessario'];
@@ -5093,6 +5104,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   let controllerEnabledStatuses=controllerStatusDefinitions.map(item=>item.status_code);
   let controllerStatusConfigLoaded=false;
   const controllerToday=()=>new Date().toISOString().slice(0,10);
+  controllerProfessionalSearchFrom=controllerToday();
+  controllerProfessionalSearchTo=controllerToday();
   async function loadControllerStatusConfig(force){
     if(controllerStatusConfigLoaded&&!force)return controllerEnabledStatuses;
     try{
@@ -5345,9 +5358,24 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     }
     return records;
   }
+  async function loadControllerProfessionalSearchRecords(from,to){
+    if(!controllerDb?.from)throw new Error('Cliente Supabase indisponível.');
+    const pageSize=1000,records=[];
+    for(let offset=0;;offset+=pageSize){
+      let query=controllerDb.from('controller_page_records').select('id,page_id,operador,profissional,data_atendimento,hora_atendimento,status').order('data_atendimento',{ascending:false}).order('hora_atendimento',{ascending:true}).order('id',{ascending:true}).range(offset,offset+pageSize-1);
+      if(from)query=query.gte('data_atendimento',from);
+      if(to)query=query.lte('data_atendimento',to);
+      const result=await query;
+      if(result.error)throw result.error;
+      const batch=result.data||[];
+      records.push(...batch);
+      if(batch.length<pageSize)break;
+    }
+    return records;
+  }
   function controllerViewNav(){
     const dashboardAllowed=controllerCan('controller_dashboard_ver'),settingsAllowed=controllerCan('controller_subpaginas_gerenciar');
-    return '<nav class="aa-controller-nav" aria-label="Navegação do acompanhamento"><button type="button" class="aa-controller-tab '+(controllerView==='subpaginas'?'active':'')+'" aria-current="'+(controllerView==='subpaginas'?'page':'false')+'" onclick="aaControllerSwitchView(\'subpaginas\')">Acompanhamento por colaborador</button>'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='dashboard'?'active':'')+'" aria-current="'+(controllerView==='dashboard'?'page':'false')+'" onclick="aaControllerSwitchView(\'dashboard\')">Painel de acompanhamento</button>':'')+(settingsAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='status'?'active':'')+'" aria-current="'+(controllerView==='status'?'page':'false')+'" onclick="aaControllerSwitchView(\'status\')">Status disponíveis</button>':'')+'</nav>';
+    return '<nav class="aa-controller-nav" aria-label="Navegação do acompanhamento"><button type="button" class="aa-controller-tab '+(controllerView==='subpaginas'?'active':'')+'" aria-current="'+(controllerView==='subpaginas'?'page':'false')+'" onclick="aaControllerSwitchView(\'subpaginas\')">Acompanhamento por colaborador</button>'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='dashboard'?'active':'')+'" aria-current="'+(controllerView==='dashboard'?'page':'false')+'" onclick="aaControllerSwitchView(\'dashboard\')">Painel de acompanhamento</button><button type="button" class="aa-controller-tab '+(controllerView==='professional-search'?'active':'')+'" aria-current="'+(controllerView==='professional-search'?'page':'false')+'" onclick="aaControllerSwitchView(\'professional-search\')">Buscar profissional</button>':'')+(settingsAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='status'?'active':'')+'" aria-current="'+(controllerView==='status'?'page':'false')+'" onclick="aaControllerSwitchView(\'status\')">Status disponíveis</button>':'')+'</nav>';
   }
   function controllerDashboardPage(record){
     return controllerPages.find(page=>String(page.id)===String(record?.page_id||''))||null;
@@ -5356,6 +5384,43 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const page=controllerDashboardPage(record);
     const name=String(page?.nome||record?.operador||'Não identificado').trim();
     return {key:record?.page_id?'page:'+String(record.page_id):'name:'+name.toLocaleLowerCase('pt-BR'),name,turno:String(page?.turno||'').trim()||'Sem turno cadastrado'};
+  }
+  function controllerProfessionalSearchMatches(){
+    const terms=controllerNormalizeProfessionalName(controllerProfessionalSearchName).trim().split(/\s+/).filter(Boolean);
+    if(!terms.length)return [];
+    return controllerProfessionalSearchRecords.filter(record=>{
+      const professional=controllerNormalizeProfessionalName(record.profissional);
+      return terms.every(term=>professional.includes(term));
+    }).sort((a,b)=>{
+      const nameOrder=String(a.profissional||'').localeCompare(String(b.profissional||''),'pt-BR',{sensitivity:'base'});
+      if(nameOrder)return nameOrder;
+      const dateOrder=String(b.data_atendimento||'').localeCompare(String(a.data_atendimento||''));
+      if(dateOrder)return dateOrder;
+      const hourOrder=String(a.hora_atendimento||'').localeCompare(String(b.hora_atendimento||''),'pt-BR',{numeric:true});
+      if(hourOrder)return hourOrder;
+      return controllerDashboardOwner(a).name.localeCompare(controllerDashboardOwner(b).name,'pt-BR',{sensitivity:'base'});
+    });
+  }
+  function renderControllerProfessionalSearch(){
+    const out=document.getElementById('aa-controller-view-subpaginas');
+    if(!out)return;
+    const terms=controllerNormalizeProfessionalName(controllerProfessionalSearchName).trim().split(/\s+/).filter(Boolean);
+    const matches=controllerProfessionalSearchMatches();
+    const professionalCount=new Set(matches.map(record=>controllerNormalizeProfessionalName(record.profissional))).size;
+    const rows=matches.map(record=>{
+      const owner=controllerDashboardOwner(record),professional=controllerPageText(record.profissional||'');
+      return '<tr><td><strong>'+professional+'</strong></td><td class="aa-controller-professional-search-owner"><strong>'+controllerPageText(owner.name)+'</strong><small>'+controllerPageText(owner.turno)+'</small></td><td>'+controllerPageText(controllerRenderDayDate(record.data_atendimento))+'</td><td>'+controllerPageText(String(record.hora_atendimento||'').slice(0,5)||'—')+'</td><td>'+controllerPageText(controllerStatusLabel(record.status||'pendente'))+'</td></tr>';
+    }).join('');
+    const resultContent=!terms.length
+      ?'<div class="aa-controller-empty"><strong>Pesquise um profissional</strong><span>Digite o nome para localizar atendimentos em todas as áreas do Controller.</span></div>'
+      :rows?'<div class="aa-table-scroll aa-controller-dashboard-table-scroll"><table class="aa-compact-table aa-controller-dashboard-table aa-controller-professional-search-table"><thead><tr><th>Profissional</th><th>Colaborador responsável</th><th>Data</th><th>Horário</th><th>Status atual</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+      :'<div class="aa-controller-empty"><strong>Nenhum profissional encontrado</strong><span>Confira o nome e o período selecionado.</span></div>';
+    const resultSummary=terms.length?matches.length+' atendimento(s) encontrado(s) para '+professionalCount+' profissional(is).':controllerProfessionalSearchRecords.length+' atendimento(s) disponíveis no período. Digite um nome para pesquisar.';
+    out.innerHTML=controllerViewNav()+`<section class="aa-controller-dashboard">
+      <header class="aa-card aa-controller-dashboard-header"><div class="aa-controller-dashboard-title"><span class="aa-controller-overline">LOCALIZAR NA EQUIPE</span><h1>Buscar profissional</h1><p>Pesquise em todas as áreas do Controller e veja qual colaborador está responsável pelo acompanhamento.</p></div><div class="aa-controller-dashboard-period"><div class="aa-field"><label for="aa-controller-professional-search-from">Data inicial</label><input id="aa-controller-professional-search-from" type="date" value="${controllerPageText(controllerProfessionalSearchFrom)}" onchange="aaControllerChangeProfessionalSearchPeriod()"></div><div class="aa-field"><label for="aa-controller-professional-search-to">Data final</label><input id="aa-controller-professional-search-to" type="date" value="${controllerPageText(controllerProfessionalSearchTo)}" onchange="aaControllerChangeProfessionalSearchPeriod()"></div></div></header>
+      <section class="aa-card aa-controller-dashboard-filter-card"><div class="aa-controller-professional-search-filters"><div class="aa-field"><label for="aa-controller-professional-search-name">Nome do profissional</label><input id="aa-controller-professional-search-name" type="search" maxlength="120" autocomplete="off" placeholder="Digite parte do nome do profissional" value="${controllerPageText(controllerProfessionalSearchName)}" oninput="aaControllerFilterProfessionalSearch(this)"></div><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerClearProfessionalSearch()" ${controllerProfessionalSearchName.trim()?'':'disabled'}>Limpar busca</button></div><div class="aa-controller-professional-search-meta">${resultSummary}</div></section>
+      <section class="aa-card aa-controller-dashboard-table-card aa-controller-professional-search-results"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">RESULTADOS DA BUSCA</span><h2>Profissionais e responsáveis</h2><p>Quando houver mais de um atendimento no período, cada horário aparece em uma linha.</p></div></header>${resultContent}</section>
+    </section>`;
   }
   function controllerDashboardWorkflowStatus(record){
     const status=controllerImportHeader(record?.status||'disponivel');
@@ -5478,14 +5543,37 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     try{controllerDashboardRecords=await loadControllerDashboardRecords(from,to);renderControllerDashboard();}
     catch(e){if(out)out.innerHTML=controllerViewNav()+'<div class="aa-error-msg">Não foi possível carregar o painel de acompanhamento. Tente novamente.</div>';console.error('Erro ao carregar registros da dashboard do Controller.',e);}
   };
+  window.aaControllerChangeProfessionalSearchPeriod=async function(){
+    if(!controllerAllowed()||!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para pesquisar profissionais no Controller.');return;}
+    const from=String(document.getElementById('aa-controller-professional-search-from')?.value||''),to=String(document.getElementById('aa-controller-professional-search-to')?.value||'');
+    if(from&&to&&from>to){alert('A data inicial deve ser anterior ou igual à data final.');renderControllerProfessionalSearch();return;}
+    controllerProfessionalSearchFrom=from;controllerProfessionalSearchTo=to;
+    const out=document.getElementById('aa-controller-view-subpaginas');if(out)out.innerHTML=controllerViewNav()+'<div class="aa-card">Carregando profissionais...</div>';
+    try{controllerProfessionalSearchRecords=await loadControllerProfessionalSearchRecords(from,to);if(controllerView==='professional-search')renderControllerProfessionalSearch();}
+    catch(error){if(out&&controllerView==='professional-search')out.innerHTML=controllerViewNav()+'<div class="aa-error-msg">Não foi possível pesquisar os profissionais no período selecionado. Tente novamente.</div>';console.error('Erro ao pesquisar profissionais no Controller.',error);}
+  };
+  window.aaControllerFilterProfessionalSearch=function(element){
+    const focusId=element?.id||'',selectionStart=element&&typeof element.selectionStart==='number'?element.selectionStart:null,selectionEnd=element&&typeof element.selectionEnd==='number'?element.selectionEnd:null;
+    controllerProfessionalSearchName=document.getElementById('aa-controller-professional-search-name')?.value||'';
+    renderControllerProfessionalSearch();
+    if(focusId){const next=document.getElementById(focusId);if(next){next.focus();if(selectionStart!==null&&typeof next.setSelectionRange==='function')next.setSelectionRange(selectionStart,selectionEnd);}}
+  };
+  window.aaControllerClearProfessionalSearch=function(){controllerProfessionalSearchName='';renderControllerProfessionalSearch();document.getElementById('aa-controller-professional-search-name')?.focus();};
   window.aaControllerSwitchView=async function(view){
     if(!controllerAllowed())return;
     if(view==='dashboard'&&!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para visualizar o painel de acompanhamento.');return;}
+    if(view==='professional-search'&&!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para pesquisar profissionais no Controller.');return;}
     if(view==='status'&&!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para configurar os status do Controller.');return;}
-    controllerView=view==='dashboard'?'dashboard':view==='status'?'status':'subpaginas';
+    controllerView=view==='dashboard'?'dashboard':view==='professional-search'?'professional-search':view==='status'?'status':'subpaginas';
     await loadControllerStatusConfig();
     if(controllerView==='status'){renderControllerStatusSettings();return;}
     await loadControllerPages();
+    if(controllerView==='professional-search'){
+      const out=document.getElementById('aa-controller-view-subpaginas');if(out)out.innerHTML=controllerViewNav()+'<div class="aa-card">Carregando profissionais...</div>';
+      try{controllerProfessionalSearchRecords=await loadControllerProfessionalSearchRecords(controllerProfessionalSearchFrom,controllerProfessionalSearchTo);if(controllerView==='professional-search')renderControllerProfessionalSearch();}
+      catch(error){if(out&&controllerView==='professional-search')out.innerHTML=controllerViewNav()+'<div class="aa-error-msg">Não foi possível pesquisar os profissionais neste período. Tente novamente.</div>';console.error('Erro ao abrir a busca global de profissionais.',error);}
+      return;
+    }
     if(controllerView==='dashboard'){
       try{controllerDashboardRecords=await loadControllerDashboardRecords(controllerDashboardFrom,controllerDashboardTo);renderControllerDashboard();}
       catch(e){const out=document.getElementById('aa-controller-view-subpaginas');if(out)out.innerHTML=controllerViewNav()+'<div class="aa-error-msg">Não foi possível carregar o painel de acompanhamento. Tente novamente.</div>';console.error('Erro ao abrir a dashboard do Controller.',e);}
