@@ -4984,6 +4984,12 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 .aa-controller-detail-title h2{margin:3px 0 0!important;color:#223752;font-size:22px!important;letter-spacing:-.02em}
 .aa-controller-detail-controls{display:flex;align-items:end;gap:12px}
 .aa-controller-detail-controls .aa-field{min-width:190px}
+.aa-controller-record-filters{display:grid;grid-template-columns:minmax(170px,220px) minmax(220px,1fr);align-items:end;gap:12px;margin:0;padding:13px 14px;border:1px solid #E2E8EF;border-radius:12px;background:#F8FAFC}
+.aa-controller-record-filters .aa-field{min-width:0;margin:0}
+.aa-controller-record-filters label{display:block;margin-bottom:6px;color:#536176;font-size:11px;font-weight:800;letter-spacing:.035em;text-transform:uppercase}
+.aa-controller-record-filters input,.aa-controller-record-filters select{width:100%;min-height:43px;border:1px solid #D8E0EA;border-radius:10px;background:#fff;padding:0 11px;color:#354963;font:inherit;font-size:13px}
+.aa-controller-record-filters input:focus,.aa-controller-record-filters select:focus{outline:3px solid rgba(67,112,170,.14);border-color:#7696BE}
+.aa-controller-record-filter-meta{padding:0 2px 12px;color:#718096;font-size:12px;white-space:nowrap}
 .aa-controller-records-card{display:grid;gap:16px;padding:21px 23px!important}
 .aa-controller-records-card>.aa-controller-section-heading{align-items:center}
 .aa-controller-record-bulk-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin:0 0 12px;padding:12px 14px;border:1px solid #E2E8EF;border-radius:12px;background:#F8FAFC}
@@ -5030,6 +5036,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   .aa-controller-import-grid,.aa-controller-management-fields{grid-template-columns:1fr}.aa-controller-form-actions{justify-content:flex-start}
     .aa-controller-collaborator-card{align-items:flex-start;flex-direction:column}.aa-controller-page-actions{width:100%}.aa-controller-page-actions .aa-btn{flex:1}
   .aa-controller-detail-controls{align-items:stretch;flex-direction:column}.aa-controller-detail-controls .aa-field{min-width:0;width:100%}
+  .aa-controller-record-filters{grid-template-columns:1fr;align-items:stretch}.aa-controller-record-filter-meta{padding:0;white-space:normal}
   .aa-controller-dashboard-period{grid-template-columns:1fr 1fr}.aa-controller-dashboard-filters{grid-template-columns:1fr}.aa-controller-dashboard-filter-meta{padding:0}
   .aa-controller-dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.aa-controller-dashboard-stat{min-height:88px;padding:13px}.aa-controller-dashboard-stat strong{font-size:24px}
   .aa-controller-section-heading{align-items:flex-start;flex-direction:column}.aa-controller-count-pill,.aa-controller-pending-hint{align-self:flex-start}
@@ -5070,6 +5077,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   const controllerSelectedRecordIds=new Set();
   let controllerBulkDeletingRecords=false;
   let controllerSelectedDay=new Date().toISOString().slice(0,10);
+  let controllerRecordHourFilter='';
+  let controllerRecordNameSearch='';
   let controllerDashboardRecords=[];
   let controllerDashboardFrom=new Date().toISOString().slice(0,8)+'01';
   let controllerDashboardTo=new Date().toISOString().slice(0,10);
@@ -5118,7 +5127,21 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   function controllerImportStatus(value){const v=controllerImportHeader(value);if(v.includes('desmarcadopro'))return 'desmarcado_pro';if(v.includes('desmarcado'))return 'desmarcado';if(v.includes('horarioreserv')||v.includes('lideranca'))return 'horario_reservado_lideranca';if(v.includes('atendido')||v.includes('realizado'))return 'atendido';if(v.includes('proffaltou')||v.includes('profissionalfaltou'))return 'pro_faltou';if(v.includes('faltou')||v.includes('falta'))return 'faltou';if(v.includes('bloquead'))return 'bloqueado';if(v.includes('cancel'))return 'cancelado';if(v.includes('remanej'))return 'remanejar';if(v.includes('pendente')||v.includes('pending'))return 'pendente';if(v.includes('disponivel')||!v)return 'disponivel';return 'pendente';}
   function controllerImportTime(value){if(value instanceof Date&&!isNaN(value))return value.toTimeString().slice(0,5);if(typeof value==='number'&&isFinite(value)){const fraction=value%1;const total=Math.round(fraction*24*60);return String(Math.floor(total/60)%24).padStart(2,'0')+':'+String(total%60).padStart(2,'0');}const v=String(value||'').trim().replace('.',':');const m=v.match(/(\d{1,2}):(\d{2})/);return m?m[1].padStart(2,'0')+':'+m[2]:'';}
   function controllerPageByName(value){const n=controllerImportHeader(value);return controllerPages.find(p=>controllerImportHeader(p.nome)===n)||controllerPages.find(p=>{const pn=controllerImportHeader(p.nome);return pn&&n&&(pn.includes(n)||n.includes(pn));});}
-  function controllerRenderDayDate(value){return String(value||'').split('-').reverse().join('/');}
+  function controllerRenderDayDate(value){return String(value||'').split('-').reverse().join('/')}
+  function controllerNormalizeProfessionalName(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');}
+  function controllerFilteredPageRecords(){
+    const terms=controllerNormalizeProfessionalName(controllerRecordNameSearch).trim().split(/\s+/).filter(Boolean);
+    return controllerPageRecords.filter(record=>{
+      const hour=String(record.hora_atendimento||'').slice(0,5);
+      if(controllerRecordHourFilter&&hour!==controllerRecordHourFilter)return false;
+      const name=controllerNormalizeProfessionalName(record.profissional);
+      return terms.every(term=>name.includes(term));
+    }).sort((a,b)=>{
+      const hourOrder=String(a.hora_atendimento||'').slice(0,5).localeCompare(String(b.hora_atendimento||'').slice(0,5),'pt-BR',{numeric:true});
+      if(hourOrder)return hourOrder;
+      return String(a.profissional||'').localeCompare(String(b.profissional||''),'pt-BR',{sensitivity:'base'})||String(a.id||'').localeCompare(String(b.id||''));
+    });
+  }
   window.aaControllerDownloadTemplate=function(){if(!window.XLSX)return alert('A biblioteca da planilha ainda não foi carregada.');const book=XLSX.utils.book_new();const pages=controllerPages.length?controllerPages:[{nome:'NOME DO RESPONSAVEL'}];pages.forEach(page=>{const rows=[['Agenda','Hora','Status','Observação']];const ws=XLSX.utils.aoa_to_sheet(rows);XLSX.utils.book_append_sheet(book,ws,String(page.nome||'Responsavel').slice(0,31));});XLSX.writeFile(book,'modelo-conferencia-atendimentos.xlsx');};
   function renderControllerPageDetail(){
     const out=document.getElementById('aa-controller-view-subpaginas'),page=controllerPages.find(item=>String(item.id)===String(controllerActivePageId));if(!out||!page)return;
@@ -5126,16 +5149,14 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const currentIds=new Set(controllerPageRecords.map(record=>String(record.id)));
     [...controllerSelectedRecordIds].forEach(id=>{if(!currentIds.has(id))controllerSelectedRecordIds.delete(id);});
     const selectedRecordCount=controllerPageRecords.filter(record=>controllerSelectedRecordIds.has(String(record.id))).length;
-    const allRecordsSelected=controllerPageRecords.length>0&&selectedRecordCount===controllerPageRecords.length;
-    const priority=new Map(controllerEnabledStatuses.map((status,index)=>[status,index]));
-    const orderedRecords=controllerPageRecords.map((record,index)=>({record,index})).sort((a,b)=>{
-      const aIsAcompanhando=String(a.record.status||'pendente').toLowerCase()==='acompanhando';
-      const bIsAcompanhando=String(b.record.status||'pendente').toLowerCase()==='acompanhando';
-      if(aIsAcompanhando!==bIsAcompanhando)return aIsAcompanhando?-1:1;
-      const statusDiff=(priority.get(String(a.record.status||'pendente'))??999)-(priority.get(String(b.record.status||'pendente'))??999);
-      return statusDiff||a.index-b.index;
-    }).map(entry=>entry.record);
-    const rows=orderedRecords.map(record=>{
+    const visibleRecords=controllerFilteredPageRecords();
+    const visibleSelectedCount=visibleRecords.filter(record=>controllerSelectedRecordIds.has(String(record.id))).length;
+    const allRecordsSelected=visibleRecords.length>0&&visibleSelectedCount===visibleRecords.length;
+    const availableHours=[...new Set(controllerPageRecords.map(record=>String(record.hora_atendimento||'').slice(0,5)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR',{numeric:true}));
+    const hasRecordFilters=!!(controllerRecordHourFilter||controllerRecordNameSearch.trim());
+    const filterControls=`<div class="aa-controller-record-filters"><div class="aa-field"><label for="aa-controller-record-hour-filter">Filtrar por horário</label><select id="aa-controller-record-hour-filter" onchange="aaControllerFilterRecords(this)"><option value="">Todos os horários</option>${availableHours.map(hour=>'<option value="'+controllerPageText(hour)+'" '+(controllerRecordHourFilter===hour?'selected':'')+'>'+controllerPageText(hour)+'</option>').join('')}</select></div><div class="aa-field"><label for="aa-controller-record-name-search">Pesquisar por nome</label><input id="aa-controller-record-name-search" type="search" maxlength="120" autocomplete="off" placeholder="Digite o nome do profissional" value="${controllerPageText(controllerRecordNameSearch)}" oninput="aaControllerFilterRecords(this)"></div><span class="aa-controller-record-filter-meta">Exibindo ${visibleRecords.length} de ${controllerPageRecords.length} atendimento(s)</span><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerClearRecordFilters()" ${hasRecordFilters?'':'disabled'}>Limpar filtros</button></div>`;
+    const emptyState=controllerPageRecords.length?'<div class="aa-controller-empty"><strong>Nenhum atendimento encontrado</strong><span>Altere ou limpe os filtros de horário e nome.</span></div>':'<div class="aa-controller-empty"><strong>Nenhum atendimento neste dia</strong><span>Quando a planilha do dia for importada, os atendimentos aparecerão aqui.</span></div>';
+    const rows=visibleRecords.map(record=>{
       const id=controllerPageText(record.id),selected=controllerSelectedRecordIds.has(String(record.id));
       const selectionCell=canDeleteRecords?`<td data-label="Selecionar"><label class="aa-controller-record-select"><input type="checkbox" data-controller-select-record="${id}" ${selected?'checked':''} onchange="aaControllerSetRecordSelected('${id}',this.checked)" aria-label="Selecionar horário de ${controllerPageText(record.profissional)} às ${controllerPageText(String(record.hora_atendimento||'').slice(0,5))}"></label></td>`:'';
       const note=canEdit
@@ -5145,19 +5166,22 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     }).join('');
     out.innerHTML=controllerViewNav()+`<section class="aa-controller-workspace">
       <header class="aa-card aa-controller-detail-header">
-        <div class="aa-controller-detail-title"><button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" onclick="aaControllerBackToPages()">← Voltar aos colaboradores</button><div><span class="aa-controller-overline">ACOMPANHAMENTO DO COLABORADOR</span><h2>${controllerPageText(page.nome)}</h2><p>Atendimentos de ${controllerRenderDayDate(controllerSelectedDay)}. Os atendimentos pendentes aparecem primeiro.</p></div></div>
+        <div class="aa-controller-detail-title"><button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" onclick="aaControllerBackToPages()">← Voltar aos colaboradores</button><div><span class="aa-controller-overline">ACOMPANHAMENTO DO COLABORADOR</span><h2>${controllerPageText(page.nome)}</h2><p>Atendimentos de ${controllerRenderDayDate(controllerSelectedDay)}. A lista é organizada por horário e nome.</p></div></div>
         <div class="aa-controller-detail-controls"><span class="aa-controller-count-pill">${controllerPageRecords.length} atendimento(s)</span><div class="aa-field"><label for="aa-controller-consult-day">Consultar outro dia</label><input id="aa-controller-consult-day" type="date" value="${controllerPageText(controllerSelectedDay)}" onchange="aaControllerChangeDay(this.value)"></div></div>
       </header>
-      <section class="aa-card aa-controller-records-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">AGENDA DO DIA</span><h2>Atendimentos para acompanhar</h2><p>Atualize o status e, quando necessário, ajuste a observação do atendimento.</p></div><span class="aa-controller-pending-hint">Pendentes primeiro</span></header>
-        ${canDeleteRecords&&controllerPageRecords.length?`<div class="aa-controller-record-bulk-actions"><label class="aa-controller-record-select-all"><input type="checkbox" ${allRecordsSelected?'checked':''} onchange="aaControllerSelectAllRecords(this.checked)" aria-label="Selecionar todos os horários desta subpágina"><span>Selecionar todos os horários</span></label><span>${selectedRecordCount} selecionado(s)</span><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeleteSelectedRecords()" ${selectedRecordCount?'':'disabled'}>Excluir horários selecionados${selectedRecordCount?' ('+selectedRecordCount+')':''}</button></div>`:''}
-        ${rows?`<div class="aa-table-scroll aa-controller-record-scroll"><table class="aa-compact-table aa-controller-record-table"><thead><tr>${canDeleteRecords?`<th scope="col"><input type="checkbox" ${allRecordsSelected?'checked':''} onchange="aaControllerSelectAllRecords(this.checked)" aria-label="Selecionar todos os horários"></th>`:''}<th>Agenda / profissional</th><th>Hora</th><th>Status da planilha</th><th>Status atual</th><th>Última alteração</th><th>Observação</th><th>Ação</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<div class="aa-controller-empty"><strong>Nenhum atendimento neste dia</strong><span>Quando a planilha do dia for importada, os atendimentos aparecerão aqui.</span></div>'}
+      <section class="aa-card aa-controller-records-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">AGENDA DO DIA</span><h2>Atendimentos para acompanhar</h2><p>Atualize o status e, quando necessário, ajuste a observação do atendimento.</p></div><span class="aa-controller-pending-hint">Ordem: horário e nome (A–Z)</span></header>
+        ${filterControls}
+        ${canDeleteRecords&&controllerPageRecords.length?`<div class="aa-controller-record-bulk-actions"><label class="aa-controller-record-select-all"><input type="checkbox" ${allRecordsSelected?'checked':''} onchange="aaControllerSelectAllRecords(this.checked)" aria-label="Selecionar todos os horários exibidos"><span>Selecionar horários exibidos</span></label><span>${selectedRecordCount} selecionado(s) no total</span><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeleteSelectedRecords()" ${selectedRecordCount?'':'disabled'}>Excluir horários selecionados${selectedRecordCount?' ('+selectedRecordCount+')':''}</button></div>`:''}
+        ${rows?`<div class="aa-table-scroll aa-controller-record-scroll"><table class="aa-compact-table aa-controller-record-table"><thead><tr>${canDeleteRecords?`<th scope="col"><input type="checkbox" ${allRecordsSelected?'checked':''} onchange="aaControllerSelectAllRecords(this.checked)" aria-label="Selecionar todos os horários exibidos"></th>`:''}<th>Agenda / profissional</th><th>Hora</th><th>Status da planilha</th><th>Status atual</th><th>Última alteração</th><th>Observação</th><th>Ação</th></tr></thead><tbody>${rows}</tbody></table></div>`:emptyState}
       </section>
     </section>`;
     if(!canDeleteRecords)out.querySelectorAll('.aa-btn-danger').forEach(button=>button.style.display='none');
   }
-  window.aaControllerOpenPage=async function(id,day){if(!controllerAllowed())return;controllerSelectedRecordIds.clear();controllerView='subpaginas';controllerActivePageId=String(id);controllerSelectedDay=day||controllerToday();try{await loadControllerStatusConfig();await loadControllerPageRecords(id,controllerSelectedDay);renderControllerPageDetail();}catch(e){alert('Não foi possível carregar os atendimentos desta área: '+(e?.message||''));console.error(e);}};
+  window.aaControllerOpenPage=async function(id,day){if(!controllerAllowed())return;const targetPage=String(id),targetDay=day||controllerToday();if(targetPage!==controllerActivePageId||targetDay!==controllerSelectedDay){controllerRecordHourFilter='';controllerRecordNameSearch='';}controllerSelectedRecordIds.clear();controllerView='subpaginas';controllerActivePageId=targetPage;controllerSelectedDay=targetDay;try{await loadControllerStatusConfig();await loadControllerPageRecords(id,controllerSelectedDay);renderControllerPageDetail();}catch(e){alert('Não foi possível carregar os atendimentos desta área: '+(e?.message||''));console.error(e);}};
   window.aaControllerChangeDay=async function(day){if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!controllerActivePageId)return;await window.aaControllerOpenPage(controllerActivePageId,day);};
-  window.aaControllerBackToPages=function(){controllerActivePageId='';controllerView='subpaginas';renderControllerPages();};
+  window.aaControllerFilterRecords=function(element){const focusId=element?.id||'',selectionStart=element&&typeof element.selectionStart==='number'?element.selectionStart:null,selectionEnd=element&&typeof element.selectionEnd==='number'?element.selectionEnd:null;controllerRecordHourFilter=document.getElementById('aa-controller-record-hour-filter')?.value||'';controllerRecordNameSearch=document.getElementById('aa-controller-record-name-search')?.value||'';renderControllerPageDetail();if(focusId){const next=document.getElementById(focusId);if(next){next.focus();if(selectionStart!==null&&typeof next.setSelectionRange==='function')next.setSelectionRange(selectionStart,selectionEnd);}}};
+  window.aaControllerClearRecordFilters=function(){controllerRecordHourFilter='';controllerRecordNameSearch='';renderControllerPageDetail();document.getElementById('aa-controller-record-name-search')?.focus();};
+  window.aaControllerBackToPages=function(){controllerActivePageId='';controllerRecordHourFilter='';controllerRecordNameSearch='';controllerView='subpaginas';renderControllerPages();};
   window.aaControllerCreateRecord=async function(event){
     if(event)event.preventDefault();
     if(!controllerAllowed()||!controllerCan('controller_registros_criar')||!controllerActivePageId){if(controllerAllowed()&&!controllerCan('controller_registros_criar'))alert('Você não tem permissão para cadastrar atendimentos manualmente.');return;}
@@ -5203,7 +5227,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   };
   window.aaControllerSelectAllRecords=function(checked){
     if(!controllerAllowed()||!controllerCan('controller_registros_excluir'))return;
-    controllerSelectedRecordIds.clear();if(checked)controllerPageRecords.forEach(record=>controllerSelectedRecordIds.add(String(record.id)));
+    const visibleIds=controllerFilteredPageRecords().map(record=>String(record.id));visibleIds.forEach(id=>{if(checked)controllerSelectedRecordIds.add(id);else controllerSelectedRecordIds.delete(id);});
     renderControllerPageDetail();
   };
   window.aaControllerDeleteSelectedRecords=async function(){
