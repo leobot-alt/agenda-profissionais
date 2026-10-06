@@ -530,7 +530,7 @@
           <button class="aa-tab" data-rhtab="portal" onclick="aaSwitchRHTab('portal')">Portal</button>
           <button class="aa-tab" data-rhtab="controler" onclick="aaSwitchRHTab('controler')">Administração</button>
         </nav>
-        <section id="aa-presence-sidebar" class="aa-presence-sidebar" hidden aria-live="polite"><div class="aa-presence-sidebar-head"><strong>Equipe conectada</strong><span id="aa-presence-sidebar-count">0 online</span></div><div id="aa-presence-sidebar-list" class="aa-presence-sidebar-list"><div class="aa-presence-sidebar-empty">Carregando...</div></div></section>
+        <section id="aa-presence-sidebar" class="aa-presence-sidebar" hidden aria-live="polite"><div class="aa-presence-sidebar-head"><strong>Equipe online</strong><span id="aa-presence-sidebar-count">0 online</span></div><div id="aa-presence-sidebar-list" class="aa-presence-sidebar-list"><div class="aa-presence-sidebar-empty">Carregando...</div></div></section>
         <main id="aa-rh-page-mount" aria-live="polite"></main>
         <div id="aa-rh-page-cache" aria-hidden="true"></div>
 
@@ -2066,6 +2066,22 @@ async function aaCheckCurrentUserAccess(){
 function aaCan(permission){ const root=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').toLowerCase()===String((window.__AA_ADMIN_EMAIL || 'adm@adm.com')||'').toLowerCase(); return rhAuthenticated && (root||rhCurrentPermissions.includes(permission)) && (!rhCurrentProfile || (rhCurrentProfile.ativo!==false && perfilAtivo(rhCurrentProfile.perfil))); }
 window.__aaCanPermission = permission => aaCan(permission);
 window.__aaIsLeadershipAdmin = () => { const role=normalizePerfil(rhCurrentProfile&&rhCurrentProfile.perfil),email=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase(),principal=String(window.__AA_ADMIN_EMAIL||'adm@adm.com').trim().toLowerCase(); return rhAuthenticated&&(['administrador','administrador_geral'].includes(role)||email===principal)&&aaCan('controller_dashboard_ver'); };
+window.__aaGetPresenceSession = () => {
+  if(!rhAuthenticated)return null;
+  const current=rhCurrentProfile||{},principal=String(window.__AA_ADMIN_EMAIL||'adm@adm.com').trim().toLowerCase(),email=String(rhCurrentUser||current.username||'').trim().toLowerCase();
+  if(!email)return null;
+  const isPrincipal=email===principal;
+  if(!isPrincipal&&(current.removido||current.ativo===false||!perfilAtivo(current.perfil)))return null;
+  const role=normalizePerfil(current.perfil),name=String(current.nomeCompleto||current.nome||email).trim();
+  return {email,username:email,name,nome:name,nomeCompleto:name,perfil:String(current.perfil||''),profileLabel:perfilLabel(current.perfil),auth_user_id:String(current.auth_user_id||''),isAdmin:isPrincipal||['administrador','administrador_geral'].includes(role)};
+};
+window.__aaGetPresenceRoster = () => {
+  const current=window.__aaGetPresenceSession();
+  if(!current||!current.isAdmin)return [];
+  const roster=(Array.isArray(allRHUsers)?allRHUsers:[]).filter(user=>!user.removido&&user.ativo!==false).map(user=>{const email=String(user.username||user.email||'').trim().toLowerCase();return email?{email,auth_user_id:String(user.auth_user_id||user.authUserId||''),name:String(user.nomeCompleto||user.nome||email).trim()}:null;}).filter(Boolean);
+  if(current.email&&!roster.some(user=>user.email===current.email))roster.push({email:current.email,auth_user_id:current.auth_user_id,name:current.name});
+  return roster.sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+};
 function aaCanAny(){ return [...arguments].some(permission=>aaCan(permission)); }
 function aaCanPerfilAction(action){ return aaCanAny('perfis_gerenciar','perfis_'+action); }
 function aaCanOperacoes(){ return aaCanAny('perfis_gerenciar','operacoes_gerenciar'); }
@@ -5412,7 +5428,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   }
   function controllerViewNav(){
     const dashboardAllowed=controllerCan('controller_dashboard_ver'),leadershipAllowed=controllerLeadershipAdminAllowed(),settingsAllowed=controllerCan('controller_subpaginas_gerenciar');
-    return '<nav class="aa-controller-nav" aria-label="Navegação do acompanhamento"><button type="button" class="aa-controller-tab '+(controllerView==='subpaginas'?'active':'')+'" aria-current="'+(controllerView==='subpaginas'?'page':'false')+'" onclick="aaControllerSwitchView(\'subpaginas\')">Acompanhamento por colaborador</button>'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='dashboard'?'active':'')+'" aria-current="'+(controllerView==='dashboard'?'page':'false')+'" onclick="aaControllerSwitchView(\'dashboard\')">Painel de acompanhamento</button><button type="button" class="aa-controller-tab '+(controllerView==='professional-search'?'active':'')+'" aria-current="'+(controllerView==='professional-search'?'page':'false')+'" onclick="aaControllerSwitchView(\'professional-search\')">Buscar profissional</button>':'')+(leadershipAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='leadership'?'active':'')+'" aria-current="'+(controllerView==='leadership'?'page':'false')+'" onclick="aaControllerSwitchView(\'leadership\')">Acompanhamento da liderança</button>':'')+(settingsAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='status'?'active':'')+'" aria-current="'+(controllerView==='status'?'page':'false')+'" onclick="aaControllerSwitchView(\'status\')">Status disponíveis</button>':'')+'</nav>';
+    const item=(view,label)=>'<button type="button" class="aa-controller-tab '+(controllerView===view?'active':'')+'" data-controller-view="'+view+'" aria-current="'+(controllerView===view?'page':'false')+'" onclick="aaControllerSwitchView(\''+view+'\')">'+label+'</button>';
+    return '<nav class="aa-controller-nav" aria-label="Menu do Controller">'+item('subpaginas','Acompanhamento individual')+(leadershipAllowed?item('leadership','Visão da liderança'):'')+(dashboardAllowed?item('dashboard','Painel geral')+item('professional-search','Pesquisar profissional'):'')+(settingsAllowed?item('status','Configurar status'):'')+'</nav>';
   }
   function controllerDashboardPage(record){
     return controllerPages.find(page=>String(page.id)===String(record?.page_id||''))||null;
@@ -5809,24 +5826,81 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 </style>
 <script id="aa-presence-preview">
 (function(){
-  let channel=null,started=false,currentTab='dashboard',refreshTimer=null;
+  let selfChannel=null,selfStarted=false,selfStarting=false,selfUserId='',selfEmail='',currentTab='enviar',adminChannels=new Map(),refreshTimer=null;
+  try{currentTab=document.querySelector('.aa-tab[data-tab].active')?.dataset.tab||currentTab;}catch(error){}
   const safe=v=>typeof aaHtmlSafe==='function'?aaHtmlSafe(v==null?'':String(v)):String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const profile=()=>((typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile)||{});
-  const admin=()=>{const p=profile(),role=typeof normalizePerfil==='function'?normalizePerfil(p.perfil):String(p.perfil||'').trim().toLowerCase().replace(/[áàãâ]/g,'a').replace(/[éê]/g,'e').replace(/ç/g,'c').replace(/\s+/g,'_');const email=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||p.username||'').trim().toLowerCase();const principal=String(window.__AA_ADMIN_EMAIL||'adm@adm.com').trim().toLowerCase();return role==='administrador'||role==='administrador_geral'||email===principal;};
-  const label=tab=>({dashboard:'Dashboard',agendas:'Agendas Ativas',agendas2:'Agendas Desativadas',banco:'Banco de Dados',ajustes:'Ajuste de Agenda',controller:'Controller',portal:'Portal',controler:'Administração',historico:'Histórico',permissoes:'Usuários e permissões',operacoes:'Operações',perfis:'Perfis',config:'Configurações'}[tab]||tab||'Sistema');
-  const displayName=()=>String(profile().nomeCompleto||profile().nome||((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'Usuário')).trim();
-  const render=state=>{const list=document.getElementById('aa-presence-sidebar-list'),count=document.getElementById('aa-presence-sidebar-count'),panel=document.getElementById('aa-presence-sidebar');if(!list||!count||!panel)return;const onlineMap=new Map();Object.values(state||{}).flat().filter(x=>x&&x.email).forEach(x=>onlineMap.set(String(x.email).toLowerCase(),x));const users=(Array.isArray(allRHUsers)?allRHUsers:[]).filter(x=>!x.removido&&x.ativo!==false&&String(x.username||x.email||'').trim()).map(u=>{const email=String(u.username||u.email||'').trim().toLowerCase(),live=onlineMap.get(email);return {name:u.nomeCompleto||u.nome||email,email,profile:u.perfil||'',online:!!live,page:live?.page||'',profileLabel:live?.profileLabel||((typeof perfilLabel==='function'&&u.perfil)?perfilLabel(u.perfil):u.perfil||'Usuário')};}).sort((a,b)=>Number(b.online)-Number(a.online)||String(a.name).localeCompare(String(b.name),'pt-BR'));const online=users.filter(x=>x.online).length;count.textContent=online+' online';list.innerHTML=users.length?users.map(x=>'<div class=\"aa-presence-sidebar-user\"><span class=\"aa-presence-sidebar-dot '+(x.online?'online':'')+'\"></span><div><span class=\"aa-presence-sidebar-name\">'+safe(x.name)+'</span><span class=\"aa-presence-sidebar-meta '+(x.online?'online':'')+'\">'+(x.online?'Online · '+safe(label(x.page)):'Offline')+'</span></div></div>').join(''):'<div class=\"aa-presence-sidebar-empty\">Nenhum usuário cadastrado.</div>';};
-  const payload=()=>({email:String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase(),name:displayName(),profile:profile().perfil||'',profileLabel:typeof perfilLabel==='function'?perfilLabel(profile().perfil):profile().perfil||'',page:currentTab,lastSeen:new Date().toISOString()});
-  const track=()=>{if(channel&&rhAuthenticated)channel.track(payload()).catch(()=>{});};
-  const start=async()=>{if(started||!rhAuthenticated||typeof supabase==='undefined'||!supabase||typeof supabase.channel!=='function')return;started=true;const p=profile(),key=String(p.auth_user_id||((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'')).replace(/[^a-zA-Z0-9_-]/g,'_');channel=supabase.channel('aa-rh-presence',{config:{presence:{key:key||'anonymous'}}});channel.on('presence',{event:'sync'},()=>render(channel.presenceState())).on('presence',{event:'join'},()=>render(channel.presenceState())).on('presence',{event:'leave'},()=>render(channel.presenceState()));await channel.subscribe(status=>{if(status==='SUBSCRIBED')track();});};
-  const stop=()=>{if(channel){supabase.removeChannel(channel);channel=null;}started=false;};
+  const session=()=>typeof window.__aaGetPresenceSession==='function'?window.__aaGetPresenceSession():null;
+  const profile=()=>session()||{};
+  const admin=()=>profile().isAdmin===true;
+  const label=tab=>({enviar:'Enviar agenda',consultar:'Consultar agenda',painel:'Painel RH Clínico',dashboard:'Dashboard',agendas:'Agendas Ativas',agendas2:'Agendas Desativadas',banco:'Banco de Dados',ajustes:'Ajuste de Agenda',controller:'Controller','controller:subpaginas':'Controller · Acompanhamento individual','controller:leadership':'Controller · Visão da liderança','controller:dashboard':'Controller · Painel geral','controller:professional-search':'Controller · Pesquisar profissional','controller:status':'Controller · Configurar status',portal:'Portal',controler:'Administração',historico:'Histórico',permissoes:'Usuários e permissões',operacoes:'Operações',perfis:'Perfis',config:'Configurações'}[tab]||tab||'Sistema');
+  const displayName=()=>String(profile().nomeCompleto||profile().nome||'Usuário').trim();
+  const render=()=>{
+    const list=document.getElementById('aa-presence-sidebar-list'),count=document.getElementById('aa-presence-sidebar-count'),panel=document.getElementById('aa-presence-sidebar');
+    if(!list||!count||!panel)return;
+    const onlineMap=new Map();
+    const collect=channel=>{if(!channel||typeof channel.presenceState!=='function')return;Object.values(channel.presenceState()||{}).flat().filter(user=>user&&user.email).forEach(user=>onlineMap.set(String(user.email).toLowerCase(),user));};
+    collect(selfChannel);
+    adminChannels.forEach(collect);
+    const roster=typeof window.__aaGetPresenceRoster==='function'?window.__aaGetPresenceRoster():[];
+    const users=(Array.isArray(roster)?roster:[]).map(user=>{const live=onlineMap.get(String(user.email||'').toLowerCase());return {name:user.name||user.email,online:!!live,page:live?.page||''};}).sort((a,b)=>Number(b.online)-Number(a.online)||String(a.name).localeCompare(String(b.name),'pt-BR'));
+    count.textContent=users.filter(user=>user.online).length+' online';
+    list.innerHTML=users.length?users.map(user=>'<div class="aa-presence-sidebar-user"><span class="aa-presence-sidebar-dot '+(user.online?'online':'')+'"></span><div><span class="aa-presence-sidebar-name">'+safe(user.name)+'</span><span class="aa-presence-sidebar-meta '+(user.online?'online':'')+'">'+(user.online?'Online · '+safe(label(user.page)):'Offline')+'</span></div></div>').join(''):'<div class="aa-presence-sidebar-empty">Nenhum usuário ativo encontrado.</div>';
+  };
+  const payload=()=>{const current=profile();return current.email?{email:current.email,name:displayName(),profile:current.perfil||'',profileLabel:current.profileLabel||current.perfil||'',page:currentTab,lastSeen:new Date().toISOString()}:null;};
+  const track=()=>{const current=payload();if(selfChannel&&current)selfChannel.track(current).catch(()=>{});};
+  const removeChannel=(channel,client=window.__aaSupabaseClient)=>{try{const result=client?.removeChannel?.(channel);result?.catch?.(()=>{});}catch(error){console.warn('Não foi possível encerrar um canal de presença.',error);}};
+  const topic=userId=>'aa-rh-presence:'+String(userId||'').trim();
+  const resolveUserId=async(current,client)=>{
+    if(current.auth_user_id)return String(current.auth_user_id).trim();
+    try{const result=await client.auth.getUser();if(!result.error)return String(result.data?.user?.id||'').trim();}catch(error){console.warn('Não foi possível identificar a sessão Realtime.',error);}
+    return '';
+  };
+  const start=async()=>{
+    const current=profile(),client=window.__aaSupabaseClient;
+    if(!current.email||!client||typeof client.channel!=='function'||selfStarting)return;
+    if(selfStarted&&selfEmail===current.email)return;
+    if(selfStarted)stop();
+    selfStarting=true;
+    try{
+      const userId=await resolveUserId(current,client);
+      if(!userId||profile().email!==current.email)return;
+      selfUserId=userId;selfEmail=current.email;
+      const channel=client.channel(topic(userId),{config:{private:true,presence:{key:userId}}});
+      selfChannel=channel;selfStarted=true;
+      channel.on('presence',{event:'sync'},render).on('presence',{event:'join'},render).on('presence',{event:'leave'},render);
+      channel.subscribe(status=>{
+        if(status==='SUBSCRIBED')track();
+        else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){if(selfChannel===channel){selfChannel=null;selfStarted=false;selfUserId='';selfEmail='';}removeChannel(channel,client);}
+      });
+    }catch(error){selfStarted=false;selfChannel=null;selfUserId='';selfEmail='';console.warn('Não foi possível iniciar a presença da equipe.',error);}
+    finally{selfStarting=false;}
+  };
+  const clearAdminChannels=()=>{const client=window.__aaSupabaseClient;adminChannels.forEach(channel=>removeChannel(channel,client));adminChannels.clear();};
+  const syncAdminChannels=()=>{
+    const current=profile(),client=window.__aaSupabaseClient;
+    if(!current.isAdmin||!current.email||!client||typeof client.channel!=='function'){clearAdminChannels();return;}
+    const roster=typeof window.__aaGetPresenceRoster==='function'?window.__aaGetPresenceRoster():[],ownId=String(current.auth_user_id||selfUserId||'');
+    const wanted=new Map((Array.isArray(roster)?roster:[]).filter(user=>user.auth_user_id&&String(user.auth_user_id)!==ownId).map(user=>[String(user.auth_user_id),user]));
+    adminChannels.forEach((channel,userId)=>{if(!wanted.has(userId)){removeChannel(channel,client);adminChannels.delete(userId);}});
+    wanted.forEach((_user,userId)=>{
+      if(adminChannels.has(userId))return;
+      const channel=client.channel(topic(userId),{config:{private:true,presence:{key:'observer-'+ownId}}});
+      adminChannels.set(userId,channel);
+      channel.on('presence',{event:'sync'},render).on('presence',{event:'join'},render).on('presence',{event:'leave'},render);
+      channel.subscribe(status=>{if(status==='SUBSCRIBED')render();else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){if(adminChannels.get(userId)===channel)adminChannels.delete(userId);removeChannel(channel,client);}});
+    });
+  };
+  const stop=()=>{const client=window.__aaSupabaseClient;if(selfChannel)removeChannel(selfChannel,client);selfChannel=null;selfStarted=false;selfStarting=false;selfUserId='';selfEmail='';clearAdminChannels();};
   const access=()=>admin();
-  const refresh=()=>{const panel=document.getElementById('aa-presence-sidebar');if(!panel)return;panel.hidden=!access();if(access()){start();render(channel?.presenceState?.()||{});}};
+  const refresh=()=>{const panel=document.getElementById('aa-presence-sidebar');if(!panel)return;const current=profile();panel.hidden=!access();if(!current.email){stop();return;}if(selfEmail&&selfEmail!==current.email)stop();start();if(access()){syncAdminChannels();render();}else clearAdminChannels();};
   window.aaPresenceSetPage=tab=>{currentTab=String(tab||'dashboard');track();};
+  const oldMainSwitch=window.aaSwitchTab;if(typeof oldMainSwitch==='function')window.aaSwitchTab=function(tab){currentTab=String(tab||'enviar');const result=oldMainSwitch.apply(this,arguments);setTimeout(()=>{track();refresh();},0);return result;};
   const oldSwitch=window.aaSwitchRHTab;window.aaSwitchRHTab=function(tab){currentTab=tab;const result=oldSwitch?oldSwitch.apply(this,arguments):undefined;setTimeout(()=>{track();refresh();},0);return result;};
+  const oldControllerOpen=window.aaControllerOpen;if(typeof oldControllerOpen==='function')window.aaControllerOpen=function(){currentTab='controller';const result=oldControllerOpen.apply(this,arguments);const activeView=document.querySelector('.aa-controller-tab.active')?.dataset.controllerView;if(activeView)currentTab='controller:'+activeView;setTimeout(()=>{track();refresh();},0);return result;};
+  const oldControllerSwitch=window.aaControllerSwitchView;if(typeof oldControllerSwitch==='function')window.aaControllerSwitchView=function(view){currentTab='controller:'+String(view||'subpaginas');const result=oldControllerSwitch.apply(this,arguments);setTimeout(()=>{track();refresh();},0);return result;};
   const oldApply=window.aaApplyRHPermissionsUI;window.aaApplyRHPermissionsUI=function(){const result=oldApply?oldApply.apply(this,arguments):undefined;setTimeout(refresh,0);return result;};
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){track();refresh();}});
-  refreshTimer=setInterval(()=>{if(rhAuthenticated){refresh();track();}else stop();},5000);
+  refreshTimer=setInterval(()=>{if(profile().email){refresh();track();}else stop();},5000);
   setTimeout(refresh,800);
 })();
 </script></body>
