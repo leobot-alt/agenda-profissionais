@@ -2064,7 +2064,9 @@ async function aaCheckCurrentUserAccess(){
   return true;
 }
 function aaCan(permission){ const root=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').toLowerCase()===String((window.__AA_ADMIN_EMAIL || 'adm@adm.com')||'').toLowerCase(); return rhAuthenticated && (root||rhCurrentPermissions.includes(permission)) && (!rhCurrentProfile || (rhCurrentProfile.ativo!==false && perfilAtivo(rhCurrentProfile.perfil))); }
-window.__aaCanPermission = permission => aaCan(permission); function aaCanAny(){ return [...arguments].some(permission=>aaCan(permission)); }
+window.__aaCanPermission = permission => aaCan(permission);
+window.__aaIsLeadershipAdmin = () => { const role=normalizePerfil(rhCurrentProfile&&rhCurrentProfile.perfil),email=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase(),principal=String(window.__AA_ADMIN_EMAIL||'adm@adm.com').trim().toLowerCase(); return rhAuthenticated&&(['administrador','administrador_geral'].includes(role)||email===principal)&&aaCan('controller_dashboard_ver'); };
+function aaCanAny(){ return [...arguments].some(permission=>aaCan(permission)); }
 function aaCanPerfilAction(action){ return aaCanAny('perfis_gerenciar','perfis_'+action); }
 function aaCanOperacoes(){ return aaCanAny('perfis_gerenciar','operacoes_gerenciar'); }
 function aaRequireAny(){ return aaCanAny(...arguments); }
@@ -4935,7 +4937,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 .aa-controller-root-header{padding:3px 2px 6px}
 .aa-controller-root-header h1{margin:4px 0 0;color:#223752;font-size:23px;letter-spacing:-.025em}
 .aa-controller-root-header p{margin:5px 0 0;color:#69778B;font-size:13px;line-height:1.5}
-.aa-controller-nav{display:flex;gap:5px;width:max-content;max-width:100%;margin:0 0 18px;padding:5px;border:1px solid #E3E7EE;border-radius:14px;background:#F2F4F8}
+.aa-controller-nav{display:flex;flex-wrap:wrap;gap:5px;width:max-content;max-width:100%;margin:0 0 18px;padding:5px;border:1px solid #E3E7EE;border-radius:14px;background:#F2F4F8}
 .aa-controller-tab{min-height:42px;padding:10px 16px;border:0;border-radius:10px;background:transparent;color:#626D7D;font:inherit;font-size:13px;font-weight:700;line-height:1.2;cursor:pointer;transition:background .16s ease,color .16s ease,box-shadow .16s ease}
 .aa-controller-tab:hover{color:#253B5B;background:rgba(255,255,255,.65)}
 .aa-controller-tab.active{background:#fff;color:#243B5B;box-shadow:0 2px 7px rgba(25,43,72,.10)}
@@ -5044,7 +5046,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 .aa-controller-dashboard-table td{color:#40516A}
 @media(max-width:900px){.aa-controller-dashboard-header{grid-template-columns:1fr}.aa-controller-dashboard-period{max-width:520px;width:100%}.aa-controller-detail-header{align-items:flex-start;flex-direction:column}.aa-controller-detail-controls{width:100%;justify-content:space-between}}
 @media(max-width:760px){
-  .aa-controller-nav{display:flex;width:100%;overflow-x:auto}.aa-controller-tab{flex:1 0 auto;padding:10px 11px;font-size:12px}
+  .aa-controller-nav{display:flex;flex-wrap:wrap;width:100%;overflow:visible}.aa-controller-tab{flex:1 1 150px;min-width:0;white-space:normal;padding:10px 11px;font-size:12px}
   .aa-controller-import-card,.aa-controller-pages-section,.aa-controller-records-card,.aa-controller-dashboard-header,.aa-controller-dashboard-table-card{padding:17px!important}
   .aa-controller-professional-search-filters{grid-template-columns:1fr}.aa-controller-professional-search-filters .aa-btn{width:100%}
   .aa-controller-import-grid,.aa-controller-management-fields{grid-template-columns:1fr}.aa-controller-form-actions{justify-content:flex-start}
@@ -5081,13 +5083,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   }
   function controllerLeadershipAdminAllowed(){
     try{
-      const profile=(typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile)||{};
-      const role=typeof normalizePerfil==='function'?normalizePerfil(profile.perfil):String(profile.perfil||'').trim().toLowerCase();
-      const rawRole=String(profile.perfil||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
-      const email=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||profile.username||'').trim().toLowerCase();
-      const principal=String(window.__AA_ADMIN_EMAIL||'adm@adm.com').trim().toLowerCase();
-      const isLeadershipAdmin=['administrador','administrador_geral'].includes(role)||['adm','adm_geral'].includes(rawRole)||email===principal;
-      return isLeadershipAdmin&&controllerCan('controller_dashboard_ver');
+      return typeof window.__aaIsLeadershipAdmin==='function'&&window.__aaIsLeadershipAdmin()===true;
     }catch(error){return false;}
   }
   function controllerPageText(value){return typeof aaHtmlSafe==='function'?aaHtmlSafe(value==null?'':String(value)):String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
