@@ -2066,6 +2066,22 @@ async function aaCheckCurrentUserAccess(){
 function aaCan(permission){ const root=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').toLowerCase()===String((window.__AA_ADMIN_EMAIL || 'adm@adm.com')||'').toLowerCase(); return rhAuthenticated && (root||rhCurrentPermissions.includes(permission)) && (!rhCurrentProfile || (rhCurrentProfile.ativo!==false && perfilAtivo(rhCurrentProfile.perfil))); }
 window.__aaCanPermission = permission => aaCan(permission);
 window.__aaIsLeadershipAdmin = () => { const role=normalizePerfil(rhCurrentProfile&&rhCurrentProfile.perfil),email=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase(),principal=String(window.__AA_ADMIN_EMAIL||'adm@adm.com').trim().toLowerCase(); return rhAuthenticated&&(['administrador','administrador_geral'].includes(role)||email===principal)&&aaCan('controller_dashboard_ver'); };
+window.__aaGetPresenceSession = () => {
+  if(!rhAuthenticated)return null;
+  const current=rhCurrentProfile||{},principal=String(window.__AA_ADMIN_EMAIL||'adm@adm.com').trim().toLowerCase(),email=String(rhCurrentUser||current.username||'').trim().toLowerCase();
+  if(!email)return null;
+  const isPrincipal=email===principal;
+  if(!isPrincipal&&(current.removido||current.ativo===false||!perfilAtivo(current.perfil)))return null;
+  const role=normalizePerfil(current.perfil),name=String(current.nomeCompleto||current.nome||email).trim();
+  return {email,username:email,name,nome:name,nomeCompleto:name,perfil:String(current.perfil||''),profileLabel:perfilLabel(current.perfil),auth_user_id:String(current.auth_user_id||''),isAdmin:isPrincipal||['administrador','administrador_geral'].includes(role)};
+};
+window.__aaGetPresenceRoster = () => {
+  const current=window.__aaGetPresenceSession();
+  if(!current||!current.isAdmin)return [];
+  const roster=(Array.isArray(allRHUsers)?allRHUsers:[]).filter(user=>!user.removido&&user.ativo!==false).map(user=>{const email=String(user.username||user.email||'').trim().toLowerCase();return email?{email,auth_user_id:String(user.auth_user_id||user.authUserId||''),name:String(user.nomeCompleto||user.nome||email).trim()}:null;}).filter(Boolean);
+  if(current.email&&!roster.some(user=>user.email===current.email))roster.push({email:current.email,auth_user_id:current.auth_user_id,name:current.name});
+  return roster.sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+};
 function aaCanAny(){ return [...arguments].some(permission=>aaCan(permission)); }
 function aaCanPerfilAction(action){ return aaCanAny('perfis_gerenciar','perfis_'+action); }
 function aaCanOperacoes(){ return aaCanAny('perfis_gerenciar','operacoes_gerenciar'); }
@@ -5868,25 +5884,20 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 </style>
 <script id="aa-presence-preview">
 (function(){
-  let channel=null,started=false,currentTab='dashboard',refreshTimer=null;
+  let timer=null,currentPage='Dashboard',userId='',lastEmail='',publishing=false;
+  const client=()=>window.__aaSupabaseClient;
+  const session=()=>typeof window.__aaGetPresenceSession==='function'?window.__aaGetPresenceSession():null;
   const safe=v=>typeof aaHtmlSafe==='function'?aaHtmlSafe(v==null?'':String(v)):String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const profile=()=>((typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile)||{});
-  const admin=()=>{const p=profile(),role=typeof normalizePerfil==='function'?normalizePerfil(p.perfil):String(p.perfil||'').trim().toLowerCase().replace(/[áàãâ]/g,'a').replace(/[éê]/g,'e').replace(/ç/g,'c').replace(/\s+/g,'_');const email=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||p.username||'').trim().toLowerCase();const principal=String(window.__AA_ADMIN_EMAIL||'adm@adm.com').trim().toLowerCase();return role==='administrador'||role==='administrador_geral'||email===principal;};
-  const label=tab=>({dashboard:'Dashboard',agendas:'Agendas Ativas',agendas2:'Agendas Desativadas',banco:'Banco de Dados',ajustes:'Ajuste de Agenda',controller:'Controller',portal:'Portal',controler:'Administração',historico:'Histórico',permissoes:'Usuários e permissões',operacoes:'Operações',perfis:'Perfis',config:'Configurações'}[tab]||tab||'Sistema');
-  const displayName=()=>String(profile().nomeCompleto||profile().nome||((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'Usuário')).trim();
-  const render=state=>{const list=document.getElementById('aa-presence-sidebar-list'),count=document.getElementById('aa-presence-sidebar-count'),panel=document.getElementById('aa-presence-sidebar');if(!list||!count||!panel)return;const onlineMap=new Map();Object.values(state||{}).flat().filter(x=>x&&x.email).forEach(x=>onlineMap.set(String(x.email).toLowerCase(),x));const users=(Array.isArray(allRHUsers)?allRHUsers:[]).filter(x=>!x.removido&&x.ativo!==false&&String(x.username||x.email||'').trim()).map(u=>{const email=String(u.username||u.email||'').trim().toLowerCase(),live=onlineMap.get(email);return {name:u.nomeCompleto||u.nome||email,email,profile:u.perfil||'',online:!!live,page:live?.page||'',profileLabel:live?.profileLabel||((typeof perfilLabel==='function'&&u.perfil)?perfilLabel(u.perfil):u.perfil||'Usuário')};}).sort((a,b)=>Number(b.online)-Number(a.online)||String(a.name).localeCompare(String(b.name),'pt-BR'));const online=users.filter(x=>x.online).length;count.textContent=online+' online';list.innerHTML=users.length?users.map(x=>'<div class=\"aa-presence-sidebar-user\"><span class=\"aa-presence-sidebar-dot '+(x.online?'online':'')+'\"></span><div><span class=\"aa-presence-sidebar-name\">'+safe(x.name)+'</span><span class=\"aa-presence-sidebar-meta '+(x.online?'online':'')+'\">'+(x.online?'Online · '+safe(label(x.page)):'Offline')+'</span></div></div>').join(''):'<div class=\"aa-presence-sidebar-empty\">Nenhum usuário cadastrado.</div>';};
-  const payload=()=>({email:String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase(),name:displayName(),profile:profile().perfil||'',profileLabel:typeof perfilLabel==='function'?perfilLabel(profile().perfil):profile().perfil||'',page:currentTab,lastSeen:new Date().toISOString()});
-  const track=()=>{if(channel&&rhAuthenticated)channel.track(payload()).catch(()=>{});};
-  const start=async()=>{if(started||!rhAuthenticated||typeof supabase==='undefined'||!supabase||typeof supabase.channel!=='function')return;started=true;const p=profile(),key=String(p.auth_user_id||((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'')).replace(/[^a-zA-Z0-9_-]/g,'_');channel=supabase.channel('aa-rh-presence',{config:{presence:{key:key||'anonymous'}}});channel.on('presence',{event:'sync'},()=>render(channel.presenceState())).on('presence',{event:'join'},()=>render(channel.presenceState())).on('presence',{event:'leave'},()=>render(channel.presenceState()));await channel.subscribe(status=>{if(status==='SUBSCRIBED')track();});};
-  const stop=()=>{if(channel){supabase.removeChannel(channel);channel=null;}started=false;};
-  const access=()=>admin();
-  const refresh=()=>{const panel=document.getElementById('aa-presence-sidebar');if(!panel)return;panel.hidden=!access();if(access()){start();render(channel?.presenceState?.()||{});}};
-  window.aaPresenceSetPage=tab=>{currentTab=String(tab||'dashboard');track();};
-  const oldSwitch=window.aaSwitchRHTab;window.aaSwitchRHTab=function(tab){currentTab=tab;const result=oldSwitch?oldSwitch.apply(this,arguments):undefined;setTimeout(()=>{track();refresh();},0);return result;};
-  const oldApply=window.aaApplyRHPermissionsUI;window.aaApplyRHPermissionsUI=function(){const result=oldApply?oldApply.apply(this,arguments):undefined;setTimeout(refresh,0);return result;};
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){track();refresh();}});
-  refreshTimer=setInterval(()=>{if(rhAuthenticated){refresh();track();}else stop();},5000);
-  setTimeout(refresh,800);
+  const labels={dashboard:'Dashboard',agendas:'Agendas Ativas',banco:'Banco de Dados',ajustes:'Ajuste de Agenda',controller:'Controller',portal:'Portal',controler:'Administração',historico:'Histórico',permissoes:'Usuários e permissões',operacoes:'Operações',perfis:'Perfis',config:'Configurações'};
+  const pageLabel=tab=>labels[String(tab||'').split(':')[0]]||String(tab||'Sistema');
+  const render=rows=>{const panel=document.getElementById('aa-presence-sidebar'),list=document.getElementById('aa-presence-sidebar-list'),count=document.getElementById('aa-presence-sidebar-count');if(!panel||!list||!count)return;const roster=typeof window.__aaGetPresenceRoster==='function'?window.__aaGetPresenceRoster():[];const live=new Map((Array.isArray(rows)?rows:[]).map(row=>[String(row.email||'').toLowerCase(),row]));const cutoff=Date.now()-90000;const users=(Array.isArray(roster)?roster:[]).map(user=>{const email=String(user.email||'').toLowerCase(),row=live.get(email),online=!!row&&new Date(row.last_seen).getTime()>=cutoff;return {name:user.name||email,online,page:row?.current_page||''};}).sort((a,b)=>Number(b.online)-Number(a.online)||String(a.name).localeCompare(String(b.name),'pt-BR'));count.textContent=users.filter(x=>x.online).length+' online';list.innerHTML=users.length?users.map(x=>'<div class="aa-presence-sidebar-user"><span class="aa-presence-sidebar-dot '+(x.online?'online':'')+'"></span><div><span class="aa-presence-sidebar-name">'+safe(x.name)+'</span><span class="aa-presence-sidebar-meta '+(x.online?'online':'')+'">'+(x.online?'Online · '+safe(pageLabel(x.page)):'Offline')+'</span></div></div>').join(''):'<div class="aa-presence-sidebar-empty">Nenhum usuário ativo encontrado.</div>';};
+  const publish=async()=>{const current=session(),db=client();if(!current?.email||!current.auth_user_id||publishing||!db)return;publishing=true;try{await db.from('rh_presence').upsert({auth_user_id:current.auth_user_id,email:current.email,display_name:current.nomeCompleto||current.name||current.email,profile:current.perfil||'',current_page:pageLabel(currentPage),last_seen:new Date().toISOString()},{onConflict:'auth_user_id'});}catch(error){console.warn('Não foi possível atualizar a presença.',error);}finally{publishing=false;}};
+  const refresh=async()=>{const panel=document.getElementById('aa-presence-sidebar'),current=session(),db=client();if(!panel)return;const allowed=!!current?.isAdmin;panel.hidden=!allowed;if(!current?.email||!db){return;}if(current.email!==lastEmail){lastEmail=current.email;userId=current.auth_user_id||'';}await publish();if(!allowed)return;try{const result=await db.from('rh_presence').select('auth_user_id,email,display_name,profile,current_page,last_seen').order('display_name',{ascending:true});if(result.error)throw result.error;render(result.data||[]);}catch(error){console.warn('Não foi possível carregar a equipe online.',error);render([]);}};
+  window.aaPresenceSetPage=tab=>{currentPage=String(tab||'Dashboard');publish();};
+  const oldSwitch=window.aaSwitchRHTab;if(typeof oldSwitch==='function')window.aaSwitchRHTab=function(tab){currentPage=String(tab||'Dashboard');const result=oldSwitch.apply(this,arguments);setTimeout(refresh,0);return result;};
+  const oldController=window.aaControllerOpen;if(typeof oldController==='function')window.aaControllerOpen=function(){currentPage='Controller';const result=oldController.apply(this,arguments);setTimeout(refresh,0);return result;};
+  const oldApply=window.aaApplyRHPermissionsUI;if(typeof oldApply==='function')window.aaApplyRHPermissionsUI=function(){const result=oldApply.apply(this,arguments);setTimeout(refresh,0);return result;};
+  timer=setInterval(refresh,10000);setTimeout(refresh,1200);window.addEventListener('beforeunload',()=>{clearInterval(timer);});
 })();
 </script></body>
 </html>
