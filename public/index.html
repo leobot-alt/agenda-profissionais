@@ -4987,7 +4987,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 .aa-controller-detail-title h2{margin:3px 0 0!important;color:#223752;font-size:22px!important;letter-spacing:-.02em}
 .aa-controller-detail-controls{display:flex;align-items:end;gap:12px}
 .aa-controller-detail-controls .aa-field{min-width:190px}
-.aa-controller-record-filters{display:grid;grid-template-columns:minmax(170px,220px) minmax(220px,1fr);align-items:end;gap:12px;margin:0;padding:13px 14px;border:1px solid #E2E8EF;border-radius:12px;background:#F8FAFC}
+.aa-controller-record-filters{display:grid;grid-template-columns:minmax(150px,200px) minmax(150px,200px) minmax(220px,1fr) auto auto;align-items:end;gap:12px;margin:0;padding:13px 14px;border:1px solid #E2E8EF;border-radius:12px;background:#F8FAFC}
 .aa-controller-record-filters .aa-field{min-width:0;margin:0}
 .aa-controller-record-filters label{display:block;margin-bottom:6px;color:#536176;font-size:11px;font-weight:800;letter-spacing:.035em;text-transform:uppercase}
 .aa-controller-record-filters input,.aa-controller-record-filters select{width:100%;min-height:43px;border:1px solid #D8E0EA;border-radius:10px;background:#fff;padding:0 11px;color:#354963;font:inherit;font-size:13px}
@@ -5101,6 +5101,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   let controllerBulkDeletingRecords=false;
   let controllerSelectedDay=new Date().toISOString().slice(0,10);
   let controllerRecordHourFilter='';
+  let controllerRecordStatusFilter='';
   let controllerRecordNameSearch='';
   let controllerDashboardRecords=[];
   let controllerDashboardFrom=new Date().toISOString().slice(0,8)+'01';
@@ -5124,7 +5125,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   const CONTROLLER_LEGACY_STATUS_DEFINITIONS=[['falta','Falta','finalizado'],['remanejado','Remanejado','finalizado'],['ajuste_necessario','Ajuste necessário','em_andamento']];
   const CONTROLLER_DEFAULT_STATUS_CATEGORIES={pendente:'pendente',disponivel:'pendente',atendido:'finalizado',bloqueado:'em_andamento',cancelado:'finalizado',desmarcado:'finalizado',desmarcado_pro:'finalizado',faltou:'finalizado',horario_reservado_lideranca:'em_andamento',pro_faltou:'finalizado',remanejar:'em_andamento',acompanhando:'em_andamento',em_atendimento:'em_andamento',paciente_aguardando:'em_andamento',profissional_aguardando:'em_andamento',sala_fechada:'em_andamento'};
   function controllerStatusColor(value,statusCode){const color=String(value||'').trim().toUpperCase();return /^#[0-9A-F]{6}$/.test(color)?color:(String(statusCode||'').toLowerCase()==='pendente'?'#FFFFFF':'#E2F3E8');}
-  const controllerBuildDefaultStatuses=()=>[...CONTROLLER_RECORD_STATUSES.map(([status_code,label],index)=>({status_code,label,active:true,category:CONTROLLER_DEFAULT_STATUS_CATEGORIES[status_code]||'em_andamento',row_color:controllerStatusColor('',status_code),sort_order:(index+1)*10})),...CONTROLLER_LEGACY_STATUS_DEFINITIONS.map(([status_code,label,category],index)=>({status_code,label,active:false,category,row_color:controllerStatusColor('',status_code),sort_order:900+index}))];
+  const controllerBuildDefaultStatuses=()=>[...CONTROLLER_RECORD_STATUSES.map(([status_code,label],index)=>({status_code,label,active:true,archived:false,category:CONTROLLER_DEFAULT_STATUS_CATEGORIES[status_code]||'em_andamento',row_color:controllerStatusColor('',status_code),sort_order:(index+1)*10})),...CONTROLLER_LEGACY_STATUS_DEFINITIONS.map(([status_code,label,category],index)=>({status_code,label,active:false,archived:false,category,row_color:controllerStatusColor('',status_code),sort_order:900+index}))];
   let controllerStatusDefinitions=controllerBuildDefaultStatuses();
   let controllerEnabledStatuses=controllerStatusDefinitions.map(item=>item.status_code);
   let controllerStatusConfigLoaded=false;
@@ -5135,13 +5136,13 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   async function loadControllerStatusConfig(force){
     if(controllerStatusConfigLoaded&&!force)return controllerEnabledStatuses;
     try{
-      const result=await controllerDb.from('controller_status_options').select('status_code,label,active,category,sort_order,row_color').order('sort_order',{ascending:true});
+      const result=await controllerDb.from('controller_status_options').select('status_code,label,active,archived,category,sort_order,row_color').order('sort_order',{ascending:true});
       if(result.error)throw result.error;
-      const loaded=(result.data||[]).map(row=>({status_code:String(row.status_code||''),label:String(row.label||row.status_code||''),active:row.active!==false,category:String(row.category||'em_andamento'),row_color:controllerStatusColor(row.row_color,row.status_code),sort_order:Number(row.sort_order)||0})).filter(row=>row.status_code&&row.label);
+      const loaded=(result.data||[]).map(row=>({status_code:String(row.status_code||''),label:String(row.label||row.status_code||''),active:row.active!==false,archived:row.archived===true,category:String(row.category||'em_andamento'),row_color:controllerStatusColor(row.row_color,row.status_code),sort_order:Number(row.sort_order)||0})).filter(row=>row.status_code&&row.label);
       if(!loaded.length)throw new Error('Não há opções de status cadastradas.');
       controllerStatusDefinitions=loaded;
-      controllerEnabledStatuses=loaded.filter(row=>row.active).map(row=>row.status_code);
-      if(!controllerEnabledStatuses.includes('pendente'))controllerEnabledStatuses.unshift('pendente');
+      controllerEnabledStatuses=loaded.filter(row=>row.active&&!row.archived).map(row=>row.status_code);
+      if(!loaded.some(row=>row.status_code==='pendente'))controllerEnabledStatuses.unshift('pendente');
       controllerStatusConfigLoaded=true;
     }catch(error){
       controllerStatusDefinitions=controllerBuildDefaultStatuses();
@@ -5162,7 +5163,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     }
     return options.join('');
   }
-  function controllerStatusLabel(value){const raw=String(value==null?'':value).trim();const found=controllerStatusDefinitions.find(item=>item.status_code===raw);return found?found.label:(raw||'Pendente');}
+  function controllerStatusLabel(value){const raw=String(value==null?'':value).trim(),found=controllerStatusDefinitions.find(item=>item.status_code===raw);if(found)return found.label;if(raw.toLowerCase()==='pendente')return 'Pendente';if(raw.toLowerCase()==='disponivel')return 'DISPONÍVEL';return raw||'Pendente';}
   function controllerImportHeader(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'');}
   function controllerImportStatus(value){const v=controllerImportHeader(value);if(v.includes('desmarcadopro'))return 'desmarcado_pro';if(v.includes('desmarcado'))return 'desmarcado';if(v.includes('horarioreserv')||v.includes('lideranca'))return 'horario_reservado_lideranca';if(v.includes('atendido')||v.includes('realizado'))return 'atendido';if(v.includes('proffaltou')||v.includes('profissionalfaltou'))return 'pro_faltou';if(v.includes('faltou')||v.includes('falta'))return 'faltou';if(v.includes('bloquead'))return 'bloqueado';if(v.includes('cancel'))return 'cancelado';if(v.includes('remanej'))return 'remanejar';if(v.includes('pendente')||v.includes('pending'))return 'pendente';if(v.includes('disponivel')||!v)return 'disponivel';return 'pendente';}
   function controllerImportTime(value){if(value instanceof Date&&!isNaN(value))return value.toTimeString().slice(0,5);if(typeof value==='number'&&isFinite(value)){const fraction=value%1;const total=Math.round(fraction*24*60);return String(Math.floor(total/60)%24).padStart(2,'0')+':'+String(total%60).padStart(2,'0');}const v=String(value||'').trim().replace('.',':');const m=v.match(/(\d{1,2}):(\d{2})/);return m?m[1].padStart(2,'0')+':'+m[2]:'';}
@@ -5174,6 +5175,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     return controllerPageRecords.filter(record=>{
       const hour=String(record.hora_atendimento||'').slice(0,5);
       if(controllerRecordHourFilter&&hour!==controllerRecordHourFilter)return false;
+      const status=String(record.status||'pendente').toLowerCase();
+      if(controllerRecordStatusFilter&&status!==controllerRecordStatusFilter)return false;
       const name=controllerNormalizeProfessionalName(record.profissional);
       return terms.every(term=>name.includes(term));
     }).sort((a,b)=>{
@@ -5196,9 +5199,11 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const visibleSelectedCount=visibleRecords.filter(record=>controllerSelectedRecordIds.has(String(record.id))).length;
     const allRecordsSelected=visibleRecords.length>0&&visibleSelectedCount===visibleRecords.length;
     const availableHours=[...new Set(controllerPageRecords.map(record=>String(record.hora_atendimento||'').slice(0,5)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR',{numeric:true}));
-    const hasRecordFilters=!!(controllerRecordHourFilter||controllerRecordNameSearch.trim());
-    const filterControls=`<div class="aa-controller-record-filters"><div class="aa-field"><label for="aa-controller-record-hour-filter">Filtrar por horário</label><select id="aa-controller-record-hour-filter" onchange="aaControllerFilterRecords(this)"><option value="">Todos os horários</option>${availableHours.map(hour=>'<option value="'+controllerPageText(hour)+'" '+(controllerRecordHourFilter===hour?'selected':'')+'>'+controllerPageText(hour)+'</option>').join('')}</select></div><div class="aa-field"><label for="aa-controller-record-name-search">Pesquisar por nome</label><input id="aa-controller-record-name-search" type="search" maxlength="120" autocomplete="off" placeholder="Digite o nome do profissional" value="${controllerPageText(controllerRecordNameSearch)}" oninput="aaControllerFilterRecords(this)"></div><span class="aa-controller-record-filter-meta">Exibindo ${visibleRecords.length} de ${controllerPageRecords.length} atendimento(s)</span><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerClearRecordFilters()" ${hasRecordFilters?'':'disabled'}>Limpar filtros</button></div>`;
-    const emptyState=controllerPageRecords.length?'<div class="aa-controller-empty"><strong>Nenhum atendimento encontrado</strong><span>Altere ou limpe os filtros de horário e nome.</span></div>':'<div class="aa-controller-empty"><strong>Nenhum atendimento neste dia</strong><span>Quando a planilha do dia for importada, os atendimentos aparecerão aqui.</span></div>';
+    const filterStatusCodes=[...new Set([...controllerEnabledStatuses,...controllerPageRecords.map(record=>String(record.status||'pendente').toLowerCase()),...(controllerRecordStatusFilter?[controllerRecordStatusFilter]:[])])];
+    const statusFilterOptions=filterStatusCodes.map(code=>{const item=controllerStatusDefinitions.find(status=>status.status_code===code),label=item?item.label:controllerStatusLabel(code),suffix=item?.archived?' (Arquivado)':item&&!item.active?' (Inativo)':'';return '<option value="'+controllerPageText(code)+'" '+(controllerRecordStatusFilter===code?'selected':'')+'>'+controllerPageText(label+suffix)+'</option>';}).join('');
+    const hasRecordFilters=!!(controllerRecordHourFilter||controllerRecordStatusFilter||controllerRecordNameSearch.trim());
+    const filterControls=`<div class="aa-controller-record-filters"><div class="aa-field"><label for="aa-controller-record-hour-filter">Filtrar por horário</label><select id="aa-controller-record-hour-filter" onchange="aaControllerFilterRecords(this)"><option value="">Todos os horários</option>${availableHours.map(hour=>'<option value="'+controllerPageText(hour)+'" '+(controllerRecordHourFilter===hour?'selected':'')+'>'+controllerPageText(hour)+'</option>').join('')}</select></div><div class="aa-field"><label for="aa-controller-record-status-filter">Filtrar por status</label><select id="aa-controller-record-status-filter" onchange="aaControllerFilterRecords(this)"><option value="">Todos os status</option>${statusFilterOptions}</select></div><div class="aa-field"><label for="aa-controller-record-name-search">Pesquisar por nome</label><input id="aa-controller-record-name-search" type="search" maxlength="120" autocomplete="off" placeholder="Digite o nome do profissional" value="${controllerPageText(controllerRecordNameSearch)}" oninput="aaControllerFilterRecords(this)"></div><span class="aa-controller-record-filter-meta">Exibindo ${visibleRecords.length} de ${controllerPageRecords.length} atendimento(s)</span><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerClearRecordFilters()" ${hasRecordFilters?'':'disabled'}>Limpar filtros</button></div>`;
+    const emptyState=controllerPageRecords.length?'<div class="aa-controller-empty"><strong>Nenhum atendimento encontrado</strong><span>Altere ou limpe os filtros de horário, status e nome.</span></div>':'<div class="aa-controller-empty"><strong>Nenhum atendimento neste dia</strong><span>Quando a planilha do dia for importada, os atendimentos aparecerão aqui.</span></div>';
     const rows=visibleRecords.map(record=>{
       const id=controllerPageText(record.id),selected=controllerSelectedRecordIds.has(String(record.id));
       const selectionCell=canDeleteRecords?`<td data-label="Selecionar"><label class="aa-controller-record-select"><input type="checkbox" data-controller-select-record="${id}" ${selected?'checked':''} onchange="aaControllerSetRecordSelected('${id}',this.checked)" aria-label="Selecionar horário de ${controllerPageText(record.profissional)} às ${controllerPageText(String(record.hora_atendimento||'').slice(0,5))}"></label></td>`:'';
@@ -5221,11 +5226,11 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     </section>`;
     if(!canDeleteRecords)out.querySelectorAll('.aa-btn-danger').forEach(button=>button.style.display='none');
   }
-  window.aaControllerOpenPage=async function(id,day){if(!controllerAllowed())return;const targetPage=String(id),targetDay=day||controllerToday();if(targetPage!==controllerActivePageId||targetDay!==controllerSelectedDay){controllerRecordHourFilter='';controllerRecordNameSearch='';}controllerSelectedRecordIds.clear();controllerView='subpaginas';controllerActivePageId=targetPage;controllerSelectedDay=targetDay;try{await loadControllerStatusConfig();await loadControllerPageRecords(id,controllerSelectedDay);renderControllerPageDetail();}catch(e){alert('Não foi possível carregar os atendimentos desta área: '+(e?.message||''));console.error(e);}};
+  window.aaControllerOpenPage=async function(id,day){if(!controllerAllowed())return;const targetPage=String(id),targetDay=day||controllerToday();if(targetPage!==controllerActivePageId||targetDay!==controllerSelectedDay){controllerRecordHourFilter='';controllerRecordStatusFilter='';controllerRecordNameSearch='';}controllerSelectedRecordIds.clear();controllerView='subpaginas';controllerActivePageId=targetPage;controllerSelectedDay=targetDay;try{await loadControllerStatusConfig();await loadControllerPageRecords(id,controllerSelectedDay);renderControllerPageDetail();}catch(e){alert('Não foi possível carregar os atendimentos desta área: '+(e?.message||''));console.error(e);}};
   window.aaControllerChangeDay=async function(day){if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!controllerActivePageId)return;await window.aaControllerOpenPage(controllerActivePageId,day);};
-  window.aaControllerFilterRecords=function(element){const focusId=element?.id||'',selectionStart=element&&typeof element.selectionStart==='number'?element.selectionStart:null,selectionEnd=element&&typeof element.selectionEnd==='number'?element.selectionEnd:null;controllerRecordHourFilter=document.getElementById('aa-controller-record-hour-filter')?.value||'';controllerRecordNameSearch=document.getElementById('aa-controller-record-name-search')?.value||'';renderControllerPageDetail();if(focusId){const next=document.getElementById(focusId);if(next){next.focus();if(selectionStart!==null&&typeof next.setSelectionRange==='function')next.setSelectionRange(selectionStart,selectionEnd);}}};
-  window.aaControllerClearRecordFilters=function(){controllerRecordHourFilter='';controllerRecordNameSearch='';renderControllerPageDetail();document.getElementById('aa-controller-record-name-search')?.focus();};
-  window.aaControllerBackToPages=function(){controllerActivePageId='';controllerRecordHourFilter='';controllerRecordNameSearch='';controllerView='subpaginas';renderControllerPages();};
+  window.aaControllerFilterRecords=function(element){const focusId=element?.id||'',selectionStart=element&&typeof element.selectionStart==='number'?element.selectionStart:null,selectionEnd=element&&typeof element.selectionEnd==='number'?element.selectionEnd:null;controllerRecordHourFilter=document.getElementById('aa-controller-record-hour-filter')?.value||'';controllerRecordStatusFilter=document.getElementById('aa-controller-record-status-filter')?.value||'';controllerRecordNameSearch=document.getElementById('aa-controller-record-name-search')?.value||'';renderControllerPageDetail();if(focusId){const next=document.getElementById(focusId);if(next){next.focus();if(selectionStart!==null&&typeof next.setSelectionRange==='function')next.setSelectionRange(selectionStart,selectionEnd);}}};
+  window.aaControllerClearRecordFilters=function(){controllerRecordHourFilter='';controllerRecordStatusFilter='';controllerRecordNameSearch='';renderControllerPageDetail();document.getElementById('aa-controller-record-name-search')?.focus();};
+  window.aaControllerBackToPages=function(){controllerActivePageId='';controllerRecordHourFilter='';controllerRecordStatusFilter='';controllerRecordNameSearch='';controllerView='subpaginas';renderControllerPages();};
   window.aaControllerCreateRecord=async function(event){
     if(event)event.preventDefault();
     if(!controllerAllowed()||!controllerCan('controller_registros_criar')||!controllerActivePageId){if(controllerAllowed()&&!controllerCan('controller_registros_criar'))alert('Você não tem permissão para cadastrar atendimentos manualmente.');return;}
@@ -5609,7 +5614,6 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   function controllerStopLeadershipRefresh(){if(controllerLeadershipRefreshTimer){clearInterval(controllerLeadershipRefreshTimer);controllerLeadershipRefreshTimer=null;}}
   function controllerLeadershipPanelVisible(){const panel=document.getElementById('aa-rhtab-controller');return !!panel&&!panel.hidden&&panel.style.display!=='none'&&(!panel.getClientRects||panel.getClientRects().length>0);}
   function controllerStartLeadershipRefresh(){controllerStopLeadershipRefresh();controllerLeadershipRefreshTimer=setInterval(()=>{if(controllerView==='leadership'&&document.visibilityState==='visible'&&controllerLeadershipPanelVisible())window.aaControllerRefreshLeadership(true);},10000);}
-  const CONTROLLER_REQUIRED_STATUS_CODES=new Set(['pendente','disponivel']);
   const CONTROLLER_STATUS_CATEGORIES=[['pendente','Pendente'],['em_andamento','Em andamento'],['finalizado','Finalizado']];
   function controllerStatusCategoryOptions(selected){return CONTROLLER_STATUS_CATEGORIES.map(([value,label])=>'<option value="'+value+'" '+(value===selected?'selected':'')+'>'+label+'</option>').join('');}
   function controllerStatusCodeFromLabel(label){return String(label||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,60);}
@@ -5620,10 +5624,14 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const warning=unavailable?'<div class="aa-controller-settings-warning">Não foi possível carregar as opções do banco. Atualize a página e confirme o acesso ao Supabase antes de editar os status.</div>':'';
     const sorted=[...controllerStatusDefinitions].sort((a,b)=>a.sort_order-b.sort_order||a.label.localeCompare(b.label,'pt-BR'));
     const rows=sorted.map(item=>{
-      const code=controllerPageText(item.status_code),fixed=CONTROLLER_REQUIRED_STATUS_CODES.has(item.status_code),safeLabel=controllerPageText(item.label),rowColor=controllerStatusColor(item.row_color,item.status_code);
-      return '<article class="aa-controller-status-row"><div class="aa-controller-status-edit-fields"><label>Nome do status<input type="text" maxlength="80" id="aa-controller-status-label-'+code+'" value="'+safeLabel+'" '+(unavailable?'disabled':'')+'></label><label>Categoria<select id="aa-controller-status-category-'+code+'" '+(unavailable?'disabled':'')+'>'+controllerStatusCategoryOptions(item.category)+'</select></label><label>Cor da linha<input type="color" id="aa-controller-status-color-'+code+'" value="'+rowColor+'" aria-label="Cor das linhas com status '+safeLabel+'" '+(unavailable?'disabled':'')+'></label><div class="aa-controller-status-enable"><label><input type="checkbox" '+(item.active?'checked':'')+' '+(fixed||unavailable?'disabled':'')+' onchange="aaControllerToggleStatus(\''+code+'\',this.checked)"> Disponível</label>'+(fixed?'<small>Status obrigatório: não pode ser desativado nem excluído.</small>':'<small>Desativar mantém o status nos históricos.</small>')+'</div></div><div class="aa-controller-status-row-actions"><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerUpdateStatus(\''+code+'\')" '+(unavailable?'disabled':'')+'>Salvar edição</button>'+(fixed?'':'<button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeleteStatus(\''+code+'\')" '+(unavailable?'disabled':'')+'>Excluir</button>')+'</div><small class="aa-controller-status-code">Código interno: '+code+'</small></article>';
+      const code=controllerPageText(item.status_code),archived=item.archived===true,safeLabel=controllerPageText(item.label),rowColor=controllerStatusColor(item.row_color,item.status_code);
+      const availabilityHint=archived?'Status arquivado; atendimentos antigos e sua identificação foram preservados.':'Arquivar retira das opções sem apagar o histórico.';
+      const rowAction=archived
+        ?'<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerRestoreStatus(\''+code+'\')" '+(unavailable?'disabled':'')+'>Restaurar</button>'
+        :'<button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeleteStatus(\''+code+'\')" '+(unavailable?'disabled':'')+'>Excluir</button>';
+      return '<article class="aa-controller-status-row"><div class="aa-controller-status-edit-fields"><label>Nome do status<input type="text" maxlength="80" id="aa-controller-status-label-'+code+'" value="'+safeLabel+'" '+(unavailable?'disabled':'')+'></label><label>Categoria<select id="aa-controller-status-category-'+code+'" '+(unavailable?'disabled':'')+'>'+controllerStatusCategoryOptions(item.category)+'</select></label><label>Cor da linha<input type="color" id="aa-controller-status-color-'+code+'" value="'+rowColor+'" aria-label="Cor das linhas com status '+safeLabel+'" '+(unavailable?'disabled':'')+'></label><div class="aa-controller-status-enable"><label><input type="checkbox" '+(item.active&&!archived?'checked':'')+' '+(archived||unavailable?'disabled':'')+' onchange="aaControllerToggleStatus(\''+code+'\',this.checked)"> Disponível</label><small>'+availabilityHint+'</small></div></div><div class="aa-controller-status-row-actions"><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerUpdateStatus(\''+code+'\')" '+(unavailable?'disabled':'')+'>Salvar edição</button>'+rowAction+'</div><small class="aa-controller-status-code">Código interno: '+code+(archived?' · ARQUIVADO':'')+'</small></article>';
     }).join('');
-    out.innerHTML=controllerViewNav()+`<section class="aa-controller-status-settings"><article class="aa-card aa-controller-status-settings-card"><span class="aa-controller-overline">CONFIGURAÇÃO</span><h1>Gerenciar status do Controller</h1><p>Crie novos status, edite nomes e categorias, ative ou desative opções para os colaboradores e exclua status que não estejam em uso. Registros antigos permanecem preservados ao desativar um status.</p>${warning}<form class="aa-controller-status-create" onsubmit="aaControllerCreateStatus(event)"><label>Novo status<input name="label" type="text" maxlength="80" required placeholder="Ex.: Aguardando confirmação" ${unavailable?'disabled':''}></label><label>Categoria<select name="category" ${unavailable?'disabled':''}>${controllerStatusCategoryOptions('em_andamento')}</select></label><label>Cor da linha<input type="color" name="row_color" value="#E2F3E8" ${unavailable?'disabled':''}></label><button type="submit" class="aa-btn aa-btn-primary" ${unavailable?'disabled':''}>Adicionar status</button></form><div class="aa-controller-status-list">${rows||'<p>Nenhum status cadastrado.</p>'}</div><div class="aa-controller-status-actions"><span>Pendente e DISPONÍVEL são obrigatórios no Controller.</span></div></article></section>`;
+    out.innerHTML=controllerViewNav()+`<section class="aa-controller-status-settings"><article class="aa-card aa-controller-status-settings-card"><span class="aa-controller-overline">CONFIGURAÇÃO</span><h1>Gerenciar status do Controller</h1><p>Crie e edite qualquer status. Excluir arquiva o status para removê-lo das opções, preservando sua identificação nos atendimentos antigos; status arquivados podem ser restaurados.</p>${warning}<form class="aa-controller-status-create" onsubmit="aaControllerCreateStatus(event)"><label>Novo status<input name="label" type="text" maxlength="80" required placeholder="Ex.: Aguardando confirmação" ${unavailable?'disabled':''}></label><label>Categoria<select name="category" ${unavailable?'disabled':''}>${controllerStatusCategoryOptions('em_andamento')}</select></label><label>Cor da linha<input type="color" name="row_color" value="#E2F3E8" ${unavailable?'disabled':''}></label><button type="submit" class="aa-btn aa-btn-primary" ${unavailable?'disabled':''}>Adicionar status</button></form><div class="aa-controller-status-list">${rows||'<p>Nenhum status cadastrado.</p>'}</div><div class="aa-controller-status-actions"><span>O arquivamento remove o status das opções sem apagar seu histórico. Você pode restaurá-lo quando quiser.</span></div></article></section>`;
   }
   async function controllerRefreshStatusSettings(){await loadControllerStatusConfig(true);renderControllerStatusSettings();}
   window.aaControllerCreateStatus=async function(event){
@@ -5655,8 +5663,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   };
   window.aaControllerToggleStatus=async function(code,active){
     if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar'))return alert('Você não tem permissão para gerenciar os status.');
-    if(CONTROLLER_REQUIRED_STATUS_CODES.has(code)){await controllerRefreshStatusSettings();return alert('Pendente e DISPONÍVEL precisam permanecer ativos.');}
-    const item=controllerStatusDefinitions.find(row=>row.status_code===code);if(!item)return;
+    const item=controllerStatusDefinitions.find(row=>row.status_code===code);if(!item)return;if(item.archived){await controllerRefreshStatusSettings();return alert('Restaure este status antes de ativá-lo.');}
     try{
       const result=await controllerDb.from('controller_status_options').update({active:!!active}).eq('status_code',code);if(result.error)throw result.error;
       await controllerAudit(active?'Status ativado':'Status desativado',item.label,'Disponibilidade para seleção por colaboradores alterada.',String(item.active),String(!!active));
@@ -5665,16 +5672,22 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   };
   window.aaControllerDeleteStatus=async function(code){
     if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar'))return alert('Você não tem permissão para gerenciar os status.');
-    if(CONTROLLER_REQUIRED_STATUS_CODES.has(code))return alert('Pendente e DISPONÍVEL são status obrigatórios e não podem ser excluídos.');
-    const item=controllerStatusDefinitions.find(row=>row.status_code===code);if(!item)return;
+    const item=controllerStatusDefinitions.find(row=>row.status_code===code);if(!item||item.archived)return;
+    if(!window.confirm('Excluir “'+item.label+'” das opções? Ele será arquivado; os atendimentos antigos continuarão identificados e será possível restaurá-lo.'))return;
     try{
-      const used=await controllerDb.from('controller_page_records').select('id').or('status.eq.'+code+',status_original.eq.'+code).limit(1);if(used.error)throw used.error;
-      if(used.data?.length)return alert('Este status aparece em um ou mais atendimentos. Desative-o para impedir novos usos sem perder o histórico.');
-      if(!window.confirm('Excluir permanentemente o status “'+item.label+'”? Esta ação não pode ser desfeita.'))return;
-      const result=await controllerDb.from('controller_status_options').delete().eq('status_code',code);if(result.error)throw result.error;
-      await controllerAudit('Status excluído',item.label,'Status removido das opções do Controller.',item.label,'Excluído');
-      if(typeof aaToast==='function')aaToast('Status excluído.','success');await controllerRefreshStatusSettings();
-    }catch(error){alert('Não foi possível excluir o status. Detalhe: '+(error?.message||error));console.error(error);}
+      const result=await controllerDb.from('controller_status_options').update({active:false,archived:true}).eq('status_code',code);if(result.error)throw result.error;
+      await controllerAudit('Status arquivado',item.label,'Status retirado das opções do Controller; identificação e histórico preservados.',item.label,'Arquivado');
+      if(typeof aaToast==='function')aaToast('Status arquivado; histórico preservado.','success');await controllerRefreshStatusSettings();
+    }catch(error){alert('Não foi possível arquivar o status. Detalhe: '+(error?.message||error));console.error(error);}
+  };
+  window.aaControllerRestoreStatus=async function(code){
+    if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar'))return alert('Você não tem permissão para gerenciar os status.');
+    const item=controllerStatusDefinitions.find(row=>row.status_code===code);if(!item||!item.archived)return;
+    try{
+      const result=await controllerDb.from('controller_status_options').update({active:true,archived:false}).eq('status_code',code);if(result.error)throw result.error;
+      await controllerAudit('Status restaurado',item.label,'Status novamente disponível para os colaboradores.','Arquivado','Ativo');
+      if(typeof aaToast==='function')aaToast('Status restaurado.','success');await controllerRefreshStatusSettings();
+    }catch(error){alert('Não foi possível restaurar o status. Detalhe: '+(error?.message||error));console.error(error);}
   };
   window.aaControllerFilterDashboard=function(){
     if(!controllerAllowed()||!controllerCan('controller_dashboard_ver'))return;
