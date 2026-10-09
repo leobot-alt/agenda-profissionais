@@ -5528,21 +5528,27 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   }
   function controllerDashboardOperatorHourlyMarkup(records){
     const visibleRecords=(records||[]).filter(record=>controllerLiveShiftFilter==='all'||(controllerLeadershipShift(record).key||'outro')===controllerLiveShiftFilter);
-    const operators=new Map();
+    const operators=new Map(),hoursSet=new Set();
     visibleRecords.forEach(record=>{
       const owner=controllerDashboardOwner(record),hour=String(record.hora_atendimento||'').trim().slice(0,5)||'Sem horário';
+      hoursSet.add(hour);
       if(!operators.has(owner.key))operators.set(owner.key,{name:owner.name,total:0,hours:new Map()});
       const operator=operators.get(owner.key);operator.total++;operator.hours.set(hour,(operator.hours.get(hour)||0)+1);
     });
     const rows=[...operators.values()].sort((a,b)=>b.total-a.total||a.name.localeCompare(b.name,'pt-BR'));
-    const body=rows.map(operator=>{
-      const hourly=[...operator.hours.entries()].sort((a,b)=>a[0]==='Sem horário'?1:b[0]==='Sem horário'?-1:a[0].localeCompare(b[0],'pt-BR',{numeric:true})).map(([hour,count])=>controllerPageText(hour)+': '+count).join(' · ');
-      return '<tr><td><strong>'+controllerPageText(operator.name)+'</strong></td><td>'+hourly+'</td><td><strong>'+operator.total+'</strong></td></tr>';
+    const hourOrder=(a,b)=>a==='Sem horário'?1:b==='Sem horário'?-1:a.localeCompare(b,'pt-BR',{numeric:true});
+    const hours=[...hoursSet].sort(hourOrder),maxCell=Math.max(1,...rows.flatMap(operator=>hours.map(hour=>operator.hours.get(hour)||0)));
+    const countCell=count=>{const background=count?'rgba(59,130,196,'+(0.07+0.24*count/maxCell).toFixed(2)+')':'#F3F5F8';return '<td style="text-align:center"><span style="display:inline-block;min-width:34px;padding:4px 7px;border-radius:7px;background:'+background+';color:#33435B;font-weight:800;font-variant-numeric:tabular-nums">'+(count?count:'—')+'</span></td>';};
+    const header='<tr><th scope="col">Horário</th>'+rows.map(operator=>'<th scope="col">'+controllerPageText(operator.name)+'</th>').join('')+'<th scope="col">Total no horário</th></tr>';
+    const body=hours.map(hour=>{
+      const hourTotal=rows.reduce((total,operator)=>total+(operator.hours.get(hour)||0),0);
+      return '<tr><th scope="row">'+controllerPageText(hour)+'</th>'+rows.map(operator=>countCell(operator.hours.get(hour)||0)).join('')+'<td><strong>'+hourTotal+'</strong></td></tr>';
     }).join('');
+    const footer='<tr><th scope="row">Total por operador</th>'+rows.map(operator=>'<td><strong>'+operator.total+'</strong></td>').join('')+'<td><strong>'+visibleRecords.length+'</strong></td></tr>';
     const content=rows.length
-      ?'<div class="aa-table-scroll aa-controller-dashboard-table-scroll"><table class="aa-compact-table aa-controller-dashboard-table"><thead><tr><th>Operador responsável</th><th>Atendimentos por horário</th><th>Total no período</th></tr></thead><tbody>'+body+'</tbody><tfoot><tr><th colspan="2">Total de atendimentos</th><th>'+visibleRecords.length+'</th></tr></tfoot></table></div>'
+      ?'<div class="aa-table-scroll aa-controller-dashboard-table-scroll"><table class="aa-compact-table aa-controller-dashboard-table" style="min-width:'+Math.max(760,220+rows.length*120)+'px"><thead>'+header+'</thead><tbody>'+body+'</tbody><tfoot>'+footer+'</tfoot></table></div>'
       :'<div class="aa-controller-dashboard-empty">Nenhum atendimento encontrado para os filtros selecionados.</div>';
-    return '<section class="aa-card aa-controller-dashboard-table-card aa-controller-dashboard-wide"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">CARGA POR HORÁRIO</span><h2>Atendimentos por operador e hora</h2><p>Contagem por horário de início no período selecionado; os filtros de colaborador e turno também se aplicam.</p></div><span class="aa-controller-count-pill">'+visibleRecords.length+' atendimento(s)</span></header>'+content+'</section>';
+    return '<section class="aa-card aa-controller-dashboard-table-card aa-controller-dashboard-wide"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">CARGA POR HORÁRIO</span><h2>Carga horária por operador</h2><p>Cada linha é um horário; veja a quantidade por operador e o total daquele horário. A soma considera os filtros selecionados.</p></div><span class="aa-controller-count-pill">'+visibleRecords.length+' atendimento(s)</span></header>'+content+'</section>';
   }
   function controllerLiveBoardMarkup(records,statusLabels){
     const shiftKey=record=>controllerLeadershipShift(record).key||'outro';
