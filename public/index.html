@@ -5542,11 +5542,13 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const header='<tr><th scope="col">Horário</th>'+rows.map(operator=>'<th scope="col">'+controllerPageText(operator.name)+'</th>').join('')+'<th scope="col">Total no horário</th></tr>';
     const body=hours.map(hour=>{
       const hourTotal=rows.reduce((total,operator)=>total+(operator.hours.get(hour)||0),0);
-      return '<tr><th scope="row">'+controllerPageText(hour)+'</th>'+rows.map(operator=>countCell(operator.hours.get(hour)||0)).join('')+'<td><strong>'+hourTotal+'</strong></td></tr>';
+      return '<tr><th scope="row" style="position:static;top:auto;z-index:auto;min-width:96px;width:8%;background:#F3F6FA;color:#334861;text-transform:none;letter-spacing:0;font-size:12px;white-space:nowrap">'+controllerPageText(hour)+'</th>'+rows.map(operator=>countCell(operator.hours.get(hour)||0)).join('')+'<td style="text-align:center"><strong>'+hourTotal+'</strong></td></tr>';
     }).join('');
-    const footer='<tr><th scope="row">Total por operador</th>'+rows.map(operator=>'<td><strong>'+operator.total+'</strong></td>').join('')+'<td><strong>'+visibleRecords.length+'</strong></td></tr>';
+    const footer='<tr><td style="background:#F0F4FA;color:#334861;font-weight:800">Total por operador</td>'+rows.map(operator=>'<td style="background:#F0F4FA;text-align:center"><strong>'+operator.total+'</strong></td>').join('')+'<td style="background:#F0F4FA;text-align:center"><strong>'+visibleRecords.length+'</strong></td></tr>';
+    const operatorWidth=rows.length?Math.floor(79/rows.length*100)/100:79;
+    const colgroup='<colgroup><col style="width:8%">'+rows.map(()=>'<col style="width:'+operatorWidth+'%">').join('')+'<col style="width:13%"></colgroup>';
     const content=rows.length
-      ?'<div class="aa-table-scroll aa-controller-dashboard-table-scroll"><table class="aa-compact-table aa-controller-dashboard-table" style="min-width:'+Math.max(760,220+rows.length*120)+'px"><thead>'+header+'</thead><tbody>'+body+'</tbody><tfoot>'+footer+'</tfoot></table></div>'
+      ?'<div class="aa-table-scroll aa-controller-dashboard-table-scroll"><table class="aa-compact-table aa-controller-dashboard-table" style="width:100%;min-width:'+Math.max(760,220+rows.length*110)+'px;table-layout:fixed">'+colgroup+'<thead>'+header+'</thead><tbody>'+body+'</tbody><tfoot>'+footer+'</tfoot></table></div>'
       :'<div class="aa-controller-dashboard-empty">Nenhum atendimento encontrado para os filtros selecionados.</div>';
     return '<section class="aa-card aa-controller-dashboard-table-card aa-controller-dashboard-wide"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">CARGA POR HORÁRIO</span><h2>Carga horária por operador</h2><p>Cada linha é um horário; veja a quantidade por operador e o total daquele horário. A soma considera os filtros selecionados.</p></div><span class="aa-controller-count-pill">'+visibleRecords.length+' atendimento(s)</span></header>'+content+'</section>';
   }
