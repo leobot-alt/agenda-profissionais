@@ -5526,6 +5526,24 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     if(!values.length)return '<div class="aa-controller-dashboard-empty">Sem dados para o período selecionado.</div>';
     return values.map(item=>{const percent=total?item.count*100/total:0,width=item.count?Math.max(2,percent):0;return '<div class="aa-controller-dashboard-bar-row"><div class="aa-controller-dashboard-bar-meta"><strong>'+controllerPageText(item.label)+'</strong><span>'+item.count+' · '+percent.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%</span></div><div class="aa-controller-dashboard-bar-track"><i style="width:'+width.toFixed(2)+'%"></i></div></div>';}).join('');
   }
+  function controllerDashboardOperatorHourlyMarkup(records){
+    const visibleRecords=(records||[]).filter(record=>controllerLiveShiftFilter==='all'||(controllerLeadershipShift(record).key||'outro')===controllerLiveShiftFilter);
+    const operators=new Map();
+    visibleRecords.forEach(record=>{
+      const owner=controllerDashboardOwner(record),hour=String(record.hora_atendimento||'').trim().slice(0,5)||'Sem horário';
+      if(!operators.has(owner.key))operators.set(owner.key,{name:owner.name,total:0,hours:new Map()});
+      const operator=operators.get(owner.key);operator.total++;operator.hours.set(hour,(operator.hours.get(hour)||0)+1);
+    });
+    const rows=[...operators.values()].sort((a,b)=>b.total-a.total||a.name.localeCompare(b.name,'pt-BR'));
+    const body=rows.map(operator=>{
+      const hourly=[...operator.hours.entries()].sort((a,b)=>a[0]==='Sem horário'?1:b[0]==='Sem horário'?-1:a[0].localeCompare(b[0],'pt-BR',{numeric:true})).map(([hour,count])=>controllerPageText(hour)+': '+count).join(' · ');
+      return '<tr><td><strong>'+controllerPageText(operator.name)+'</strong></td><td>'+hourly+'</td><td><strong>'+operator.total+'</strong></td></tr>';
+    }).join('');
+    const content=rows.length
+      ?'<div class="aa-table-scroll aa-controller-dashboard-table-scroll"><table class="aa-compact-table aa-controller-dashboard-table"><thead><tr><th>Operador responsável</th><th>Atendimentos por horário</th><th>Total no período</th></tr></thead><tbody>'+body+'</tbody><tfoot><tr><th colspan="2">Total de atendimentos</th><th>'+visibleRecords.length+'</th></tr></tfoot></table></div>'
+      :'<div class="aa-controller-dashboard-empty">Nenhum atendimento encontrado para os filtros selecionados.</div>';
+    return '<section class="aa-card aa-controller-dashboard-table-card aa-controller-dashboard-wide"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">CARGA POR HORÁRIO</span><h2>Atendimentos por operador e hora</h2><p>Contagem por horário de início no período selecionado; os filtros de colaborador e turno também se aplicam.</p></div><span class="aa-controller-count-pill">'+visibleRecords.length+' atendimento(s)</span></header>'+content+'</section>';
+  }
   function controllerLiveBoardMarkup(records,statusLabels){
     const shiftKey=record=>controllerLeadershipShift(record).key||'outro';
     const filteredRecords=(records||[]).filter(record=>controllerLiveShiftFilter==='all'||shiftKey(record)===controllerLiveShiftFilter);
@@ -5582,6 +5600,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
       <header class="aa-card aa-controller-dashboard-header"><div class="aa-controller-dashboard-title"><span class="aa-controller-overline">MONITOR OPERACIONAL</span><h1>Monitor ao vivo</h1><p>Acompanhe os atendimentos por status e veja rapidamente o que precisa de atenção.</p><small class="aa-controller-live-last-update">Última atualização: ${dashboardUpdated}</small></div><div class="aa-controller-dashboard-period"><div class="aa-field"><label for="aa-controller-dashboard-from">Data inicial</label><input id="aa-controller-dashboard-from" type="date" value="${controllerPageText(controllerDashboardFrom)}" onchange="aaControllerChangeDashboardPeriod()"></div><div class="aa-field"><label for="aa-controller-dashboard-to">Data final</label><input id="aa-controller-dashboard-to" type="date" value="${controllerPageText(controllerDashboardTo)}" onchange="aaControllerChangeDashboardPeriod()"></div></div></header>
       <section class="aa-card aa-controller-dashboard-filter-card"><div class="aa-controller-dashboard-filters"><div class="aa-field"><label for="aa-controller-dashboard-collaborator">Colaborador</label><select id="aa-controller-dashboard-collaborator" onchange="aaControllerFilterDashboard()"><option value="">Todos os colaboradores</option>${collaboratorSelect}</select></div><div class="aa-controller-dashboard-filter-meta">${records.length} de ${source.length} atendimentos no filtro</div></div></section>
       ${controllerLiveBoardMarkup(records,statusLabels)}
+      ${controllerDashboardOperatorHourlyMarkup(records)}
       <section class="aa-controller-dashboard-stats">
         <article class="aa-controller-dashboard-stat aa-controller-dashboard-stat--total"><small>Total de atendimentos</small><strong>${records.length}</strong></article>
         <article class="aa-controller-dashboard-stat"><small>Colaboradores com atendimentos</small><strong>${activeCollaborators}</strong></article>
