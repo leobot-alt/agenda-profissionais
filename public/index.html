@@ -5477,6 +5477,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     if(normalized.includes('manha'))return {key:'manha',label:'Manhã',turno:turno||'Manhã'};
     if(normalized.includes('tarde'))return {key:'tarde',label:'Tarde',turno:turno||'Tarde'};
     if(normalized.includes('intermediario'))return {key:'intermediario',label:'Intermediário',turno:turno||'Intermediário'};
+    const range=normalized.match(/^\s*(\d{1,2})\s*h?\s*(?:-|–|—|a|as)\s*(\d{1,2})\s*h?/i);
+    if(range&&Number(range[1])>=10&&Number(range[1])<14&&Number(range[2])>=18)return {key:'intermediario',label:'Intermediário',turno};
     const match=turno.match(/^\s*(\d{1,2})\s*(?:h|:)?/i);
     if(match){const hour=Number(match[1]);return hour<12?{key:'manha',label:'Manhã',turno}:{key:'tarde',label:'Tarde',turno};}
     return {key:'outro',label:turno||'Sem turno informado',turno:turno||'Sem turno informado'};
