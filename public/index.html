@@ -5499,7 +5499,10 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     </section>`;
   }
   function controllerDashboardWorkflowStatus(record){
-    const status=controllerImportHeader(record?.status||'disponivel');
+    const currentStatus=String(record?.status||'disponivel').trim().toLowerCase();
+    const definition=controllerStatusDefinitions.find(item=>String(item.status_code||'').toLowerCase()===currentStatus);
+    if(definition&&['pendente','em_andamento','finalizado'].includes(definition.category))return definition.category;
+    const status=controllerImportHeader(currentStatus);
     if(!status||status==='disponivel'||status==='pendente'||status==='pending'||status==='aberto')return 'pendente';
     if(['atendido','atendida','finalizado','finalizada','concluido','concluida','falta','proffaltou','cancelado','cancelada','remanejado','remanejada'].includes(status))return 'finalizado';
     return 'em_andamento';
