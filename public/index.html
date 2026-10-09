@@ -4910,7 +4910,7 @@ window.aaPortalLoadEscala=async function(){
       const activeIds=new Set(activeUsers.map(user=>String(user.auth_user_id||user.authUserId||'')).filter(Boolean));
       const visibleScales=activeIds.size?monthScales.filter(item=>activeIds.has(String(item.usuario_auth_id))):monthScales;
       const optionUsers=activeUsers.length?activeUsers.map(user=>({id:String(user.auth_user_id||user.authUserId||''),name:user.nomeCompleto||user.username||user.email||user.auth_user_id})).filter(user=>user.id):visibleScales.map(item=>({id:String(item.usuario_auth_id||''),name:item.usuario_nome||item.usuario_email||item.usuario_auth_id}));
-      if(selector&&optionUsers.length){const previous=String(selector.value||'');selector.innerHTML=optionUsers.map(user=>`<option value="${user.id}">${user.name}</option>`).join('');targetUserId=optionUsers.some(user=>user.id===previous)?previous:optionUsers[0].id;selector.value=targetUserId;}
+      if(selector&&optionUsers.length){const previous=String(selector.value||'');const firstWithScale=optionUsers.find(user=>visibleScales.some(scale=>String(scale.usuario_auth_id)===user.id));selector.innerHTML=optionUsers.map(user=>`<option value="${user.id}">${user.name}</option>`).join('');targetUserId=optionUsers.some(user=>user.id===previous)?previous:(firstWithScale?.id||optionUsers[0].id);selector.value=targetUserId;}
       result={data:visibleScales.filter(item=>String(item.usuario_auth_id)===String(targetUserId)).slice(0,1),error:null};
     }else{
       if(!targetUserId){E.scale=null;E.accepted=null;E.dirty=false;render();if(box)box.innerHTML='<div class="aa-scale-empty">Não foi possível identificar o usuário da sessão. Saia e entre novamente no sistema.</div>';return;}
