@@ -4906,9 +4906,11 @@ window.aaPortalLoadEscala=async function(){
       result=await portalState().client.from('escalas_mensais').select('id,mes,usuario_auth_id,usuario_nome,usuario_email,dias').eq('mes',month).order('usuario_nome',{ascending:true}).limit(200);
       if(result.error)throw result.error;
       const monthScales=result.data||[];
-      const activeIds=new Set(users().map(user=>String(user.auth_user_id||user.authUserId||'' )).filter(Boolean));
+      const activeUsers=users().filter(user=>!aaIsHiddenOperationalUser(user));
+      const activeIds=new Set(activeUsers.map(user=>String(user.auth_user_id||user.authUserId||'')).filter(Boolean));
       const visibleScales=activeIds.size?monthScales.filter(item=>activeIds.has(String(item.usuario_auth_id))):monthScales;
-      if(selector&&visibleScales.length){selector.innerHTML=visibleScales.map(item=>`<option value="${item.usuario_auth_id}">${item.usuario_nome||item.usuario_email||item.usuario_auth_id}</option>`).join('');targetUserId=String(visibleScales[0].usuario_auth_id||'');selector.value=targetUserId;}
+      const optionUsers=activeUsers.length?activeUsers.map(user=>({id:String(user.auth_user_id||user.authUserId||''),name:user.nomeCompleto||user.username||user.email||user.auth_user_id})).filter(user=>user.id):visibleScales.map(item=>({id:String(item.usuario_auth_id||''),name:item.usuario_nome||item.usuario_email||item.usuario_auth_id}));
+      if(selector&&optionUsers.length){const previous=String(selector.value||'');selector.innerHTML=optionUsers.map(user=>`<option value="${user.id}">${user.name}</option>`).join('');targetUserId=optionUsers.some(user=>user.id===previous)?previous:optionUsers[0].id;selector.value=targetUserId;}
       result={data:visibleScales.filter(item=>String(item.usuario_auth_id)===String(targetUserId)).slice(0,1),error:null};
     }else{
       if(!targetUserId){E.scale=null;E.accepted=null;E.dirty=false;render();if(box)box.innerHTML='<div class="aa-scale-empty">Não foi possível identificar o usuário da sessão. Saia e entre novamente no sistema.</div>';return;}
