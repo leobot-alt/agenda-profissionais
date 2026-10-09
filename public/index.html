@@ -4901,9 +4901,17 @@ window.aaPortalLoadEscala=async function(){
   try{
     E.authUserId=await portalAuthUserId();
     let targetUserId=manager()?String(selector?.value||''):E.authUserId;
-    if(manager()&&!targetUserId){const firstUser=users()[0];targetUserId=String(firstUser?.auth_user_id||firstUser?.authUserId||'');if(selector&&targetUserId)selector.value=targetUserId;}
-    if(!targetUserId){E.scale=null;E.accepted=null;E.dirty=false;render();if(box)box.innerHTML='<div class="aa-scale-empty">Não foi possível identificar o usuário da sessão. Saia e entre novamente no sistema.</div>';return;}
-    const result=await portalState().client.from('escalas_mensais').select('id,mes,usuario_auth_id,usuario_nome,usuario_email,dias').eq('mes',month).eq('usuario_auth_id',targetUserId).limit(1);
+    let result;
+    if(manager()&&!targetUserId){
+      result=await portalState().client.from('escalas_mensais').select('id,mes,usuario_auth_id,usuario_nome,usuario_email,dias').eq('mes',month).order('usuario_nome',{ascending:true}).limit(200);
+      if(result.error)throw result.error;
+      const monthScales=result.data||[];
+      if(selector&&monthScales.length){selector.innerHTML=monthScales.map(item=>`<option value="${item.usuario_auth_id}">${item.usuario_nome||item.usuario_email||item.usuario_auth_id}</option>`).join('');targetUserId=String(monthScales[0].usuario_auth_id||'');selector.value=targetUserId;}
+      result={data:monthScales.filter(item=>String(item.usuario_auth_id)===String(targetUserId)).slice(0,1),error:null};
+    }else{
+      if(!targetUserId){E.scale=null;E.accepted=null;E.dirty=false;render();if(box)box.innerHTML='<div class="aa-scale-empty">Não foi possível identificar o usuário da sessão. Saia e entre novamente no sistema.</div>';return;}
+      result=await portalState().client.from('escalas_mensais').select('id,mes,usuario_auth_id,usuario_nome,usuario_email,dias').eq('mes',month).eq('usuario_auth_id',targetUserId).limit(1);
+    }
     if(result.error)throw result.error;
     E.scale=normalizeFolgas(result.data?.[0]||null);E.accepted=null;E.dirty=false;
     if(E.scale?.id){const acceptance=await portalState().client.from('escala_aceites').select('escala_id,usuario_auth_id,aceito_em,aceite').eq('escala_id',E.scale.id).eq('usuario_auth_id',targetUserId).limit(1);if(!acceptance.error)E.accepted=acceptance.data?.[0]||null;}
