@@ -5846,81 +5846,463 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     if(kind==='hour')controllerLeadershipHourFilter=String(document.getElementById('aa-controller-leadership-hour')?.value||'all');
     renderControllerLeadershipDashboard();
   };
-  let controllerHoursRecords=[];
-  let controllerHoursFrom=controllerDashboardInitialDate;
-  let controllerHoursTo=controllerDashboardInitialDate;
-  let controllerHoursCollaborator='';
-  let controllerHoursShift='all';
-  function controllerHoursMinutes(value){
-    const match=String(value||'').trim().match(/^(\d{1,2})(?::(\d{2}))?/);
-    if(!match)return null;
-    const hour=Number(match[1]),minute=Number(match[2]||0);
-    return hour>=0&&hour<24&&minute>=0&&minute<60?hour*60+minute:null;
-  }
-  function controllerHoursShiftOf(record){
-    const classified=controllerLeadershipShift(record);
-    if(classified.key!=='outro')return classified.key;
-    const minutes=controllerHoursMinutes(record?.hora_atendimento);
-    if(minutes===null)return 'sem_horario';
-    if(minutes<12*60)return 'manha';
-    if(minutes<18*60)return 'tarde';
-    return 'noite';
-  }
-  function controllerHoursShiftLabel(key){
-    return ({manha:'Manhã',tarde:'Tarde',intermediario:'Intermediário',noite:'Noite',sem_horario:'Sem horário'})[key]||'Todos os períodos';
-  }
-  function controllerHoursTimeLabel(value){
-    const match=String(value||'').trim().match(/^(\d{1,2})(?::(\d{2}))?/);
-    return match?String(match[1]).padStart(2,'0')+':'+String(match[2]||'00').padStart(2,'0'):'Sem horário';
-  }
-  function controllerHoursFiltered(){
-    return controllerHoursRecords.filter(record=>{
-      const owner=controllerDashboardOwner(record);
-      const ownerKey=String(record.page_id||owner.name||'');
-      return (!controllerHoursCollaborator||ownerKey===controllerHoursCollaborator) && (controllerHoursShift==='all'||controllerHoursShiftOf(record)===controllerHoursShift);
-    });
-  }
-  function controllerHoursGroup(records,keyFn){
-    const map=new Map();
-    records.forEach(record=>{const key=keyFn(record);if(!map.has(key))map.set(key,[]);map.get(key).push(record);});
-    return map;
-  }
-  function renderControllerHours(){
+  let controllerHoursToolMounted=false;
+  function mountControllerHoursTool(){
     const out=document.getElementById('aa-controller-view-subpaginas');
     if(!out)return;
-    const records=controllerHoursFiltered(),safe=controllerPageText;
-    const byShift=controllerHoursGroup(records,controllerHoursShiftOf);
-    const byHour=controllerHoursGroup(records,record=>controllerHoursTimeLabel(record.hora_atendimento));
-    const byCollaborator=controllerHoursGroup(records,record=>{const owner=controllerDashboardOwner(record);return String(record.page_id||owner.name);});
-    const shiftOrder=['manha','intermediario','tarde','noite','sem_horario'];
-    const total=controllerHoursRecords.length;
-    const shiftCards=shiftOrder.filter(key=>byShift.has(key)).map(key=>{
-      const count=byShift.get(key).length,percent=records.length?Math.round(count*100/records.length):0;
-      return '<article class="aa-controller-hours-card"><span>'+safe(controllerHoursShiftLabel(key))+'</span><strong>'+count+'</strong><small>'+percent+'% dos registros filtrados</small><div class="aa-controller-hours-progress"><i style="width:'+percent+'%"></i></div></article>';
-    }).join('');
-    const hourRows=Array.from(byHour.entries()).sort((a,b)=>a[0].localeCompare(b[0])).map(([hour,items])=>{
-      const statuses=controllerHoursGroup(items,r=>String(r.status||'Sem status'));
-      const detail=Array.from(statuses.entries()).sort((a,b)=>b[1].length-a[1].length).map(([status,rows])=>safe(status)+' ('+rows.length+')').join(' · ');
-      return '<tr><td><strong>'+safe(hour)+'</strong></td><td>'+items.length+'</td><td>'+detail+'</td></tr>';
-    }).join('');
-    const collaboratorRows=Array.from(byCollaborator.entries()).sort((a,b)=>b[1].length-a[1].length).map(([key,items])=>{
-      const owner=controllerDashboardOwner(items[0]);
-      const shifts=Array.from(controllerHoursGroup(items,controllerHoursShiftOf).entries()).sort((a,b)=>b[1].length-a[1].length).map(([shift,rows])=>safe(controllerHoursShiftLabel(shift))+' ('+rows.length+')').join(' · ');
-      return '<tr><td><strong>'+safe(owner.name)+'</strong><small>'+safe(owner.turno)+'</small></td><td>'+items.length+'</td><td>'+shifts+'</td></tr>';
-    }).join('');
-    const maxHour=Math.max(1,...Array.from(byHour.values()).map(items=>items.length));
-    const bars=Array.from(byHour.entries()).sort((a,b)=>a[0].localeCompare(b[0])).map(([hour,items])=>'<div class="aa-controller-hours-bar-row"><span>'+safe(hour)+'</span><div><i style="width:'+Math.round(items.length*100/maxHour)+'%"></i></div><strong>'+items.length+'</strong></div>').join('');
-    const collaborators=Array.from(new Map(controllerHoursRecords.map(record=>{const owner=controllerDashboardOwner(record);return [String(record.page_id||owner.name),owner];})).entries()).sort((a,b)=>a[1].name.localeCompare(b[1].name,'pt-BR'));
-    out.innerHTML=controllerViewNav()+'<section class="aa-controller-hours-page"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">ANÁLISE DE CAPACIDADE</span><h2>Divisão de horas</h2><p>Veja como os atendimentos estão distribuídos por período, horário e colaborador no intervalo selecionado.</p></div><span class="aa-controller-count-pill">'+total+' registro(s) carregado(s)</span></header><section class="aa-controller-hours-filters"><div class="aa-field"><label for="aa-controller-hours-from">Data inicial</label><input id="aa-controller-hours-from" type="date" value="'+safe(controllerHoursFrom)+'"></div><div class="aa-field"><label for="aa-controller-hours-to">Data final</label><input id="aa-controller-hours-to" type="date" value="'+safe(controllerHoursTo)+'"></div><div class="aa-field"><label for="aa-controller-hours-collaborator">Colaborador</label><select id="aa-controller-hours-collaborator"><option value="">Todos os colaboradores</option>'+collaborators.map(([key,owner])=>'<option value="'+safe(key)+'" '+(key===controllerHoursCollaborator?'selected':'')+'>'+safe(owner.name)+'</option>').join('')+'</select></div><div class="aa-field"><label for="aa-controller-hours-shift">Período</label><select id="aa-controller-hours-shift"><option value="all" '+(controllerHoursShift==='all'?'selected':'')+'>Todos os períodos</option><option value="manha" '+(controllerHoursShift==='manha'?'selected':'')+'>Manhã</option><option value="intermediario" '+(controllerHoursShift==='intermediario'?'selected':'')+'>Intermediário</option><option value="tarde" '+(controllerHoursShift==='tarde'?'selected':'')+'>Tarde</option><option value="noite" '+(controllerHoursShift==='noite'?'selected':'')+'>Noite</option><option value="sem_horario" '+(controllerHoursShift==='sem_horario'?'selected':'')+'>Sem horário</option></select></div><button type="button" class="aa-btn aa-btn-primary" onclick="aaControllerApplyHoursFilters()">Aplicar filtros</button></section><div class="aa-controller-hours-summary"><article><span>Registros filtrados</span><strong>'+records.length+'</strong></article><article><span>Colaboradores</span><strong>'+byCollaborator.size+'</strong></article><article><span>Horários distintos</span><strong>'+byHour.size+'</strong></article><article><span>Períodos com registros</span><strong>'+byShift.size+'</strong></article></div><section class="aa-controller-hours-shifts">'+(shiftCards||'<div class="aa-controller-empty"><strong>Nenhum registro encontrado</strong><span>Altere o intervalo ou os filtros para visualizar a divisão de horas.</span></div>')+'</section><section class="aa-controller-hours-grid"><article class="aa-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">DISTRIBUIÇÃO</span><h3>Registros por horário</h3></div></header><div class="aa-controller-hours-bars">'+(bars||'<p class="aa-controller-empty">Nenhum horário disponível.</p>')+'</div></article><article class="aa-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">EQUIPE</span><h3>Divisão por colaborador</h3></div></header><div class="aa-table-scroll"><table class="aa-compact-table"><thead><tr><th>Colaborador</th><th>Total</th><th>Períodos</th></tr></thead><tbody>'+(collaboratorRows||'<tr><td colspan="3">Nenhum colaborador encontrado.</td></tr>')+'</tbody></table></div></article></section><section class="aa-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">DETALHAMENTO</span><h3>Resumo por horário</h3></div></header><div class="aa-table-scroll"><table class="aa-compact-table"><thead><tr><th>Horário</th><th>Total</th><th>Status</th></tr></thead><tbody>'+(hourRows||'<tr><td colspan="3">Nenhum registro encontrado.</td></tr>')+'</tbody></table></div></section></section>';
-  }
-  window.aaControllerApplyHoursFilters=async function(){
-    if(!controllerAllowed()||!controllerCan('controller_dashboard_ver'))return;
-    const from=String(document.getElementById('aa-controller-hours-from')?.value||''),to=String(document.getElementById('aa-controller-hours-to')?.value||'');
-    if(from&&to&&from>to){alert('A data inicial deve ser anterior ou igual à data final.');return;}
-    controllerHoursFrom=from;controllerHoursTo=to;controllerHoursCollaborator=String(document.getElementById('aa-controller-hours-collaborator')?.value||'');controllerHoursShift=String(document.getElementById('aa-controller-hours-shift')?.value||'all');
-    const out=document.getElementById('aa-controller-view-subpaginas');if(out)out.innerHTML=controllerViewNav()+'<div class="aa-card aa-controller-loading"><span class="aa-controller-loading-dot"></span>Carregando divisão de horas...</div>';
-    try{controllerHoursRecords=await loadControllerDashboardRecords(controllerHoursFrom,controllerHoursTo);renderControllerHours();}catch(error){if(out)out.innerHTML=controllerViewNav()+'<div class="aa-error-msg">Não foi possível carregar a divisão de horas. Tente novamente.</div>';console.error('Erro ao carregar divisão de horas.',error);}
+    out.innerHTML=controllerViewNav()+`<div class="aa-controller-hours-tool"><h1>Divisor de relatório por operador</h1>
+<p class="sub">Cadastre a equipe uma vez, anexe o relatório e baixe a parte de cada colaborador.</p>
+
+<section>
+<h2>1. Equipe</h2>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<input type="text" id="novo" placeholder="Nome do colaborador" style="flex:1;min-width:160px;width:auto">
+<select id="novoT" style="width:auto"><option value="07">Turno 07h</option><option value="11">Turno 11h (intermediário)</option><option value="14">Turno 14h</option></select>
+<select id="novoF" style="width:auto"><option value="0">Colaborador</option><option value="1">Apoio (cobre pausas)</option></select>
+<input type="text" id="novoPi" placeholder="Pausa: início (11:00)" style="width:150px">
+<input type="text" id="novoPf" placeholder="fim (12:00)" style="width:110px">
+<button id="add">Adicionar</button>
+</div>
+<div id="equipe"></div>
+<div id="avEq" class="err"></div>
+<div class="hint">A equipe fica salva junto com o link. Desmarque quem não estiver trabalhando no dia. Qualquer pessoa pode ser o <b>apoio</b>: basta marcar a caixa "apoio" ao lado do nome (o nome não importa). O apoio não recebe a divisão normal, ele cobre as pausas (almoço ou janta) dos colaboradores do mesmo turno. Informe o início e o fim da pausa de cada pessoa, inclusive do apoio: nesse intervalo nenhum atendimento cai para ela. Quando o apoio está na própria pausa, ou o turno não tem apoio, os atendimentos de quem está em pausa são divididos entre os colaboradores presentes. Para quem vai dar <b>apoio na Poli</b>, marque a caixa "apoio na Poli" e informe o horário: nesse intervalo ela não recebe acompanhamentos, e o que seria dela é dividido entre as outras pessoas ativas do turno (o apoio de pausas não entra nessa divisão). As pausas e o apoio na Poli valem do início até antes do fim (11:00 às 12:00 cobre 11:00 e 11:30).</div>
+</section>
+
+<section>
+<h2>2. Relatório</h2>
+<input type="file" id="arq" accept=".xlsx,.xls,.xlsm,.csv">
+<div id="info" class="hint"></div>
+<div id="err" class="err"></div>
+</section>
+
+<section id="cfg" class="hide">
+<h2>3. Ajustes da divisão</h2>
+<div style="margin-bottom:10px"><label for="dataArq">Data do arquivo (o nome sai como Controller HH - dia-mês)</label><input type="date" id="dataArq"></div>
+<div class="hint" style="margin:0 0 10px">Colunas usadas (fixas): <b>Agenda</b> = profissional · <b>Hora</b> = horário · <b>Status</b> = status do horário.</div>
+<div class="row3">
+<div><label for="sab">Relatório de sábado</label><select id="sab"><option value="0">Não, dia de semana</option><option value="1">Sim, todos no mesmo horário</option></select></div>
+<div><label for="sabini">Sábado: início</label><input type="text" id="sabini" value="07:30"></div>
+<div><label for="sabfim">Sábado: fim (inclusive)</label><input type="text" id="sabfim" value="13:30"></div>
+</div>
+<div class="row3">
+<div><label for="mfim">Turno 07h acompanha até (inclusive)</label><input type="text" id="mfim" value="14:59"></div>
+<div><label for="tini">Turno 14h acompanha a partir de</label><input type="text" id="tini" value="15:00"></div>
+<div><label for="tfim">Turno 14h acompanha até (inclusive)</label><input type="text" id="tfim" value="23:59"></div>
+</div>
+<div class="row">
+<div><label for="iini">Turno 11h acompanha a partir de</label><input type="text" id="iini" value="11:00"></div>
+<div><label for="ifim">Turno 11h acompanha até (inclusive)</label><input type="text" id="ifim" value="20:59"></div>
+</div>
+<div class="row">
+<div>
+<label for="modo">Como distribuir dentro de cada turno</label>
+<select id="modo">
+<option value="blocos">Em blocos (linhas seguidas para cada um)</option>
+<option value="alt">Alternado (uma linha para cada, em rodízio)</option>
+</select>
+</div>
+<div>
+<label for="manter">Mesmo profissional com o mesmo colaborador</label>
+<select id="manter"><option value="1">Sim, o máximo possível (a divisão igual vem primeiro)</option><option value="0">Não, só dividir igual</option></select>
+</div>
+
+</div>
+<div class="hint">Regras já definidas e salvas: quem entra às 07h acompanha os atendimentos até as 14h (até 14:59), quem entra às 14h acompanha das 15h às 23h, e o turno intermediário (11h às 20h) acompanha das 11:00 às 20:59. Nos horários em que dois turnos se sobrepõem (por exemplo, 11h às 14:59), o horário é dividido igualmente entre as pessoas dos dois turnos. Atendimentos fora de todos esses horários vão para a aba "Sem acompanhamento". Em cada horário, os agendamentos são divididos igualmente entre quem acompanha, e os horários sem agendamento (status com Livre, Vago ou Disponível) também são divididos igualmente, à parte. Quando sobra, quem tem menos no total fica com a unidade a mais. Aos sábados, marque "Relatório de sábado": todos trabalham das 07:30 às 13:30, e os atendimentos desse horário são divididos igualmente entre todos os colaboradores marcados na equipe, de todos os turnos.</div>
+
+
+
+
+<div style="margin-top:14px"><button id="go">Dividir</button></div>
+</section>
+
+<section id="out" class="hide">
+<h2>4. Resultado</h2>
+<div id="lista"></div>
+<div style="margin-top:12px"><button id="todos">Baixar planilha (uma aba por colaborador)</button></div>
+<div id="msg" class="hint"></div>
+<div id="conf" style="margin-top:12px"></div>
+<div class="tw" id="prev"></div>
+</section></div>`;
+    (function(){
+var header=[], rows=[], nomeArq="relatorio", partes=[], dl=null;
+var $=function(i){return document.getElementById(i)};
+try{if(window.claude&&claude.use)claude.use("downloads").then(function(d){dl=d}).catch(function(){dl=null})}catch(e){dl=null}
+
+$("arq").addEventListener("change",function(e){
+  var f=e.target.files[0]; $("err").textContent=""; if(!f) return;
+  nomeArq=f.name.replace(/\.[^.]+$/,"");
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var wb=XLSX.read(new Uint8Array(r.result),{type:"array"});
+      var ws=wb.Sheets[wb.SheetNames[0]];
+      var aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false}).filter(function(l){return l.some(function(c){return String(c).trim()!==""})});
+      if(aoa.length<2){$("err").textContent="Não encontrei linhas de dados nessa planilha.";return}
+      header=aoa[0]; rows=aoa.slice(1);
+      $("info").textContent=rows.length+" linhas de dados, "+header.length+" colunas (aba \""+wb.SheetNames[0]+"\")"+(wb.SheetNames.length>1?". Só a primeira aba é usada.":".");
+      function norm(t){return String(t).normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase()}
+      function ix(n){for(var i=0;i<header.length;i++){if(norm(header[i])===norm(n))return i}return -1}
+      iProf=ix("Agenda"); iHora=ix("Hora"); iStat=ix("Status");
+      var falt=[]; if(iProf<0)falt.push("Agenda"); if(iHora<0)falt.push("Hora"); if(iStat<0)falt.push("Status");
+      if(falt.length){$("err").textContent="Não encontrei no relatório a coluna: "+falt.join(", ")+". Confira se os nomes das colunas são Agenda, Hora e Status.";$("cfg").classList.add("hide");$("out").classList.add("hide");return}
+      $("cfg").classList.remove("hide"); $("out").classList.add("hide");
+    }catch(x){$("err").textContent="Não consegui ler esse arquivo. Confira se é um Excel ou CSV válido."}
   };
+  r.readAsArrayBuffer(f);
+});
+
+var cols=[0,0], confer=[], equipe=[];
+try{equipe=JSON.parse(localStorage.getItem("equipe")||"[]")||[]}catch(e){equipe=[]}
+var dbDoc=null, ver=0, escrevendo=false, sujo=false;
+function aviso(t){var e=$("avEq"); if(e)e.textContent=t||""}
+function salvarDb(){
+  if(!dbDoc)return;
+  if(escrevendo){sujo=true;return}
+  escrevendo=true;
+  var p;
+  try{p=dbDoc.set({lista:equipe,ver:ver})}catch(e){escrevendo=false;return}
+  p.then(function(){escrevendo=false;aviso("");if(sujo){sujo=false;salvarDb()}})
+   .catch(function(e){escrevendo=false;sujo=false;aviso("Não consegui salvar essa alteração no link ("+((e&&e.code)||"erro")+"). Ela vale só neste navegador; confira se você está com permissão de edição.")});
+}
+function gravar(){ver=Date.now();try{localStorage.setItem("equipe",JSON.stringify(equipe))}catch(e){} salvarDb()}
+function ativos(t){return equipe.filter(function(c){return c.turno===t&&c.ativo})}
+function desenhar(){
+  var box=$("equipe"); box.innerHTML="";
+  if(!equipe.length){var h=document.createElement("div");h.className="hint";h.textContent="Nenhum colaborador cadastrado ainda.";box.appendChild(h);return}
+  ["07","11","14"].forEach(function(t){
+    var lista=equipe.filter(function(c){return c.turno===t});
+    if(!lista.length)return;
+    var tt=document.createElement("div");tt.className="hint";tt.style.marginTop="12px";
+    tt.textContent="Turno das "+t+"h ("+lista.filter(function(c){return c.ativo}).length+" ativos)";
+    box.appendChild(tt);
+    lista.forEach(function(c){
+      var d=document.createElement("div");d.className="res";
+      var l=document.createElement("label");l.style.cssText="display:flex;align-items:center;gap:8px;margin:0;flex:1";
+      var cb=document.createElement("input");cb.type="checkbox";cb.checked=c.ativo;
+      cb.addEventListener("change",function(){c.ativo=cb.checked;gravar();desenhar()});
+      var sp=document.createElement("span");sp.textContent=c.nome;
+      l.appendChild(cb);l.appendChild(sp);
+      var x=document.createElement("button");x.className="sec";x.textContent="Remover";
+      x.addEventListener("click",function(){equipe.splice(equipe.indexOf(c),1);gravar();desenhar()});
+      d.appendChild(l);
+      var lap=document.createElement("label");lap.style.cssText="display:flex;align-items:center;gap:4px;font-size:.85rem;margin:0 10px 0 0;white-space:nowrap";
+      var cap=document.createElement("input");cap.type="checkbox";cap.checked=!!c.apoio;
+      cap.addEventListener("change",function(){c.apoio=cap.checked;gravar();desenhar()});
+      lap.appendChild(cap);lap.appendChild(document.createTextNode("apoio"));
+      d.appendChild(lap);
+      {
+        var pz=document.createElement("div");pz.style.cssText="display:flex;align-items:center;gap:4px;font-size:.85rem;color:var(--mut);margin-right:8px";
+        pz.appendChild(document.createTextNode("pausa"));
+        [["pi","11:00"],["pf","12:00"]].forEach(function(k,ix){
+          if(ix)pz.appendChild(document.createTextNode("às"));
+          var inp=document.createElement("input");inp.type="text";inp.placeholder=k[1];inp.value=c[k[0]]||"";inp.style.cssText="width:68px;padding:5px 6px";
+          inp.addEventListener("change",function(){c[k[0]]=inp.value.trim();gravar()});
+          pz.appendChild(inp);
+        });
+        d.appendChild(pz);
+      }
+      var lpo=document.createElement("label");lpo.style.cssText="display:flex;align-items:center;gap:4px;font-size:.85rem;margin:0 10px 0 0;white-space:nowrap";
+      var cpo=document.createElement("input");cpo.type="checkbox";cpo.checked=!!c.po;
+      cpo.addEventListener("change",function(){c.po=cpo.checked;gravar();desenhar()});
+      lpo.appendChild(cpo);lpo.appendChild(document.createTextNode("apoio na Poli"));
+      d.appendChild(lpo);
+      if(c.po){
+        var pp=document.createElement("div");pp.style.cssText="display:flex;align-items:center;gap:4px;font-size:.85rem;color:var(--mut);margin-right:8px";
+        pp.appendChild(document.createTextNode("das"));
+        [["poi","19:00"],["pof","22:00"]].forEach(function(k,ix){
+          if(ix)pp.appendChild(document.createTextNode("às"));
+          var inp=document.createElement("input");inp.type="text";inp.placeholder=k[1];inp.value=c[k[0]]||"";inp.style.cssText="width:68px;padding:5px 6px";
+          inp.addEventListener("change",function(){c[k[0]]=inp.value.trim();gravar()});
+          pp.appendChild(inp);
+        });
+        d.appendChild(pp);
+      }
+      d.appendChild(x);box.appendChild(d);
+    });
+  });
+}
+function adicionar(){
+  var n=$("novo").value.trim(), t=$("novoT").value;
+  if(!n)return;
+  var dup=equipe.some(function(c){return c.turno===t&&c.nome.toLowerCase()===n.toLowerCase()});
+  if(!dup){equipe.push({nome:n,turno:t,ativo:true,apoio:$("novoF").value==="1",pi:$("novoPi").value.trim(),pf:$("novoPf").value.trim()});gravar();desenhar()}
+  $("novo").value="";$("novoPi").value="";$("novoPf").value="";$("novo").focus();
+}
+$("add").addEventListener("click",adicionar);
+$("novo").addEventListener("keydown",function(e){if(e.key==="Enter")adicionar()});
+desenhar();
+try{if(window.claude&&claude.use)claude.use("db").then(function(db){
+  if(!db)return; dbDoc=db.doc("config/equipe");
+  dbDoc.onSnapshot(function(snap){
+    var d=snap.exists?snap.data():null;
+    if(d&&Array.isArray(d.lista)){
+      if((d.ver||0)>=ver){equipe=d.lista;ver=d.ver||ver;try{localStorage.setItem("equipe",JSON.stringify(equipe))}catch(e){}desenhar()}
+    }
+    else if(equipe.length){gravar()}
+  },function(e){aviso("Não consegui ler a equipe salva no link ("+((e&&e.code)||"erro")+").")});
+}).catch(function(){})}catch(e){}
+var CFG=["mfim","tini","tfim","iini","ifim","sabini","sabfim","modo","manter"], cfgDoc=null;
+function cfgLer(){var o={};CFG.forEach(function(i){o[i]=$(i).value});return o}
+function cfgAplicar(o){if(o)CFG.forEach(function(i){if(o[i]!==undefined)$(i).value=o[i]})}
+function cfgGravar(){var o=cfgLer();try{localStorage.setItem("regras2",JSON.stringify(o))}catch(e){} if(cfgDoc){try{cfgDoc.set({v:o}).catch(function(){})}catch(e){}}}
+try{cfgAplicar(JSON.parse(localStorage.getItem("regras2")||"null"))}catch(e){}
+CFG.forEach(function(i){$(i).addEventListener("change",cfgGravar)});
+try{if(window.claude&&claude.use)claude.use("db").then(function(db){
+  if(!db)return; cfgDoc=db.doc("config/regras2");
+  cfgDoc.onSnapshot(function(snap){
+    var d=snap.exists?snap.data():null;
+    if(d&&d.v){cfgAplicar(d.v);try{localStorage.setItem("regras2",JSON.stringify(d.v))}catch(e){}}
+    else cfgGravar();
+  },function(){});
+}).catch(function(){})}catch(e){}
+function hora(v){
+  var t=String(v).trim().toLowerCase(), m=t.match(/(\d{1,2})\s*(?::|h)\s*(\d{2})?/);
+  if(!m) return null;
+  var h=+m[1]; if(/pm/.test(t)&&h<12)h+=12; if(/am/.test(t)&&h===12)h=0;
+  if(h>23) return null;
+  return h+(m[2]?(+m[2])/60:0);
+}
+function slotKey(v){var h=hora(v);return h===null?null:Math.round(h*60)}
+function rotulo(k){return k===null?"sem horário":("0"+Math.floor(k/60)).slice(-2)+":"+("0"+(k%60)).slice(-2)}
+var acol=-1, scolv=-1, iProf=-1, iHora=-1, iStat=-1;
+function isLivre(l){
+  if(scolv<0)return false;
+  var v=String(l[scolv]===undefined?"":l[scolv]).trim().toLowerCase();
+  return /livre|vag[oa]|dispon[ií]vel|sem agend/.test(v);
+}
+function pk(l){return String(l[cols[0]]).trim().toLowerCase()}
+function alocar(W,quota){
+  var R=W.length, K=quota.length, N=R+K+2, S=R+K, T=R+K+1, g=[], E=[], i, r, k;
+  for(i=0;i<N;i++)g.push([]);
+  function add(u,v,cap,cost){g[u].push(E.length);E.push({v:v,cap:cap,cost:cost});g[v].push(E.length);E.push({v:u,cap:0,cost:-cost})}
+  for(r=0;r<R;r++)add(S,r,1,0);
+  for(r=0;r<R;r++)for(k=0;k<K;k++)add(r,R+k,1,-W[r][k]);
+  for(k=0;k<K;k++)add(R+k,T,quota[k],0);
+  for(;;){
+    var dist=[], inq=[], prev=[], fila=[S];
+    for(i=0;i<N;i++){dist.push(Infinity);inq.push(false);prev.push(-1)}
+    dist[S]=0;
+    while(fila.length){
+      var u=fila.shift(); inq[u]=false;
+      g[u].forEach(function(ei){var e=E[ei]; if(e.cap>0&&dist[u]+e.cost<dist[e.v]){dist[e.v]=dist[u]+e.cost;prev[e.v]=ei;if(!inq[e.v]){inq[e.v]=true;fila.push(e.v)}}});
+    }
+    if(dist[T]===Infinity)break;
+    var v=T; while(v!==S){var ei=prev[v];E[ei].cap-=1;E[ei^1].cap+=1;v=E[ei^1].v}
+  }
+  var res=[];
+  for(r=0;r<R;r++){res.push(-1); g[r].forEach(function(ei){var e=E[ei]; if(e.v>=R&&e.v<R+K&&(ei%2===0)&&e.cap===0)res[r]=e.v-R})}
+  return res;
+}
+function distribuir(lista,elig,campo,o){
+  var n=elig.length, q=Math.floor(lista.length/n), extra=lista.length%n;
+  var quota=elig.map(function(){return q}), cnt=elig.map(function(){return 0}), resto=[];
+  var hc=elig.map(function(){return 0});
+  if(o.manter&&o.homeOf){lista.forEach(function(l){var i=elig.indexOf(o.homeOf(l)); if(i>=0)hc[i]++})}
+  var ordem=elig.map(function(c,i){return i}).sort(function(a,b){return elig[a][campo]-elig[b][campo]||elig[a].tot-elig[b].tot||hc[b]-hc[a]||a-b});
+  for(var e=0;e<extra;e++)quota[ordem[e]]++;
+  function dar(i,l){var c=elig[i];c.linhas.push(l);c[campo]++;c.tot++;cnt[i]++;if(o.manter)c.prefs[pk(l)]=(c.prefs[pk(l)]||0)+1}
+  if(o.manter&&lista.length){
+    var W=lista.map(function(l){return elig.map(function(c){return 10*(c.prefs[pk(l)]||0)+(o.homeOf&&o.homeOf(l)===c?3:0)})});
+    var atr=alocar(W,quota);
+    lista.forEach(function(l,r){dar(atr[r],l)});
+  }else resto=lista;
+  var c=0;
+  resto.forEach(function(l){
+    if(o.modo==="alt"){while(cnt[c%n]>=quota[c%n])c++; dar(c%n,l); c++}
+    else{while(cnt[c]>=quota[c])c++; dar(c,l)}
+  });
+  return cnt;
+}
+function dividirTudo(linhas,m,t,o){
+  var colabs=[], slots={}, ids=[], sem=[], fora=[], conf=[];
+  function minu(v){var h=hora(v);return h===null?null:Math.round(h*60)}
+  function criar(e,sh){
+    var pI=minu(e.pi), pF=minu(e.pf);
+    return {nome:e.nome,shift:sh,apoio:!!e.apoio,turno:o.sab?"sáb":sh+"h",
+      ini:o.sab?o.sabini:(sh==="07"?-1:(sh==="11"?o.iini:o.tini)),fim:o.sab?o.sabfim:(sh==="07"?o.mfim:(sh==="11"?o.ifim:o.tfim)),
+      pIni:(pI!==null&&pF!==null&&pF>pI)?pI:null,pFim:pF,pI:e.pi,pF:e.pf,
+      poIni:(e.po&&minu(e.poi)!==null&&minu(e.pof)!==null&&minu(e.pof)>minu(e.poi))?minu(e.poi):null,poFim:minu(e.pof),
+      linhas:[],tot:0,ta:0,tl:0,prefs:{}};
+  }
+  m.forEach(function(e){colabs.push(criar(e,"07"))});
+  (o.mid||[]).forEach(function(e){colabs.push(criar(e,"11"))});
+  t.forEach(function(e){colabs.push(criar(e,"14"))});
+  linhas.forEach(function(l){var k=slotKey(l[cols[1]]); if(k===null){sem.push(l);return} var id=String(k); if(!slots[id]){slots[id]={k:k,l:[]};ids.push(id)} slots[id].l.push(l)});
+  ids.sort(function(a,b){return slots[a].k-slots[b].k});
+  var casa={}, grp={};
+  function grupoDe(S){var sh={}; colabs.forEach(function(c){if(!c.apoio&&S.k>=c.ini&&S.k<=c.fim)sh[c.shift]=1}); return Object.keys(sh).sort().join(",")}
+  ids.forEach(function(id){
+    var S=slots[id]; S.g=grupoDe(S);
+    if(!o.manter||!S.g)return;
+    if(!grp[S.g]){var ms=S.g.split(",");grp[S.g]={membros:colabs.filter(function(c){return !c.apoio&&ms.indexOf(c.shift)>=0}),profs:{},cap:{}}}
+    var G=grp[S.g]; G.cap[id]=Math.ceil(S.l.length/G.membros.length);
+    S.l.forEach(function(l){var pn=pk(l); (G.profs[pn]=G.profs[pn]||[]).push(id)});
+  });
+  Object.keys(grp).forEach(function(g){
+    var G=grp[g], nomes=Object.keys(G.profs).sort(function(a,b){return G.profs[b].length-G.profs[a].length||(a<b?-1:1)});
+    var carga=G.membros.map(function(){return {}}), tot=G.membros.map(function(){return 0});
+    nomes.forEach(function(pn){
+      var sl=G.profs[pn], best=-1, bc=null;
+      G.membros.forEach(function(c,i){
+        var over=0, soma=0;
+        sl.forEach(function(id){var cur=carga[i][id]||0; soma+=cur; if(cur+1>G.cap[id])over++});
+        var custo=[over,soma,tot[i],i], melhor=false;
+        if(bc===null)melhor=true; else for(var x=0;x<4;x++){if(custo[x]!==bc[x]){melhor=custo[x]<bc[x];break}}
+        if(melhor){bc=custo;best=i}
+      });
+      sl.forEach(function(id){carga[best][id]=(carga[best][id]||0)+1});
+      tot[best]+=sl.length; casa[g+"|"+pn]=G.membros[best];
+    });
+  });
+  ids.forEach(function(id){
+    var S=slots[id]; o.homeOf=function(l){return casa[S.g+"|"+pk(l)]};
+    var dentro=colabs.filter(function(c){return S.k>=c.ini&&S.k<=c.fim});
+    function emP(c){return c.pIni!==null&&S.k>=c.pIni&&S.k<c.pFim}
+    function emPoli(c){return c.poIni!==null&&S.k>=c.poIni&&S.k<c.poFim}
+    var elig=dentro.filter(function(c){return !c.apoio&&!emPoli(c)}), ap=dentro.filter(function(c){return c.apoio&&!emP(c)&&!emPoli(c)});
+    if(!elig.length){fora=fora.concat(S.l);return}
+    if(!ap.length){
+      var presentes=elig.filter(function(c){return !emP(c)});
+      if(presentes.length)elig=presentes;
+    }
+    var ag=[], li=[]; S.l.forEach(function(l){(isLivre(l)?li:ag).push(l)});
+    var movAg=ap.map(function(){return 0}), movLi=ap.map(function(){return 0});
+    function cobrir(cnt,campo,mov,antes){
+      elig.forEach(function(c,i){
+        if(c.pIni===null||!(S.k>=c.pIni&&S.k<c.pFim))return;
+        var js=-1; ap.forEach(function(a,j){if(a.shift===c.shift&&(js<0||a.tot<ap[js].tot))js=j}); if(js<0)ap.forEach(function(a,j){if(js<0||a.tot<ap[js].tot)js=j});
+        if(js<0)return;
+        var sup=ap[js], novas=c.linhas.splice(antes[i]), n=novas.length;
+        if(!n)return;
+        novas.forEach(function(l){l.obs="Cobertura da pausa de "+c.nome+" ("+c.pI+" às "+c.pF+")"; sup.linhas.push(l)});
+        c.tot-=n; c[campo]-=n; sup.tot+=n; sup[campo]+=n; cnt[i]-=n; mov[js]+=n;
+      });
+    }
+    var a0=elig.map(function(c){return c.linhas.length});
+    var ca=distribuir(ag,elig,"ta",o); cobrir(ca,"ta",movAg,a0);
+    var a1=elig.map(function(c){return c.linhas.length});
+    var cl=distribuir(li,elig,"tl",o); cobrir(cl,"tl",movLi,a1);
+    var nomes=elig.map(function(c){return c.nome+" ("+c.turno+")"}), cAg=ca.slice(), cLi=cl.slice();
+    ap.forEach(function(a,j){if(movAg[j]||movLi[j]){nomes.push(a.nome+" (apoio)");cAg.push(movAg[j]);cLi.push(movLi[j])}});
+    conf.push({rot:rotulo(S.k),nomes:nomes,ag:cAg,li:cLi,temLivre:li.length>0});
+  });
+  return {colabs:colabs,sem:sem,fora:fora,conf:conf};
+}
+
+$("go").addEventListener("click",function(){
+  var m=ativos("07"), t=ativos("14"); $("err").textContent="";
+  if(!m.length&&!t.length&&!ativos("11").length){$("err").textContent="Adicione e marque pelo menos um colaborador na equipe.";return}
+  if(iProf<0||iHora<0||iStat<0){$("err").textContent="Anexe o relatório primeiro.";return}
+  cols=[iProf,iHora]; scolv=iStat; acol=-1;
+  function mi(id,d){var h=hora($(id).value);return h===null?d:Math.round(h*60)}
+  var o={mfim:mi("mfim",899),tini:mi("tini",900),tfim:mi("tfim",1439),manter:$("manter").value==="1",modo:$("modo").value,sab:$("sab").value==="1",sabini:mi("sabini",450),sabfim:mi("sabfim",810),iini:mi("iini",660),ifim:mi("ifim",1259),mid:ativos("11")}; ultimoSab=o.sab;
+  var r=dividirTudo(rows,m,t,o);
+  partes=r.colabs.map(function(c){return {nome:c.nome,turno:c.turno,apoio:c.apoio,linhas:c.linhas}});
+  if(r.fora.length) partes.push({nome:"Sem acompanhamento",linhas:r.fora});
+  if(r.sem.length) partes.push({nome:"Sem horário (revisar)",linhas:r.sem});
+  confer=r.conf;
+  mostrar();
+  var av=[]; if(r.fora.length)av.push(r.fora.length+" linhas fora dos horários de acompanhamento (aba \"Sem acompanhamento\")"); if(r.sem.length)av.push(r.sem.length+" linhas sem horário identificado (aba \"Sem horário (revisar)\")");
+  if(av.length)$("msg").textContent=av.join(". ")+".";
+});
+
+function mostrarConf(){
+  var box=$("conf"); box.innerHTML="";
+  if(!confer.length)return;
+  var h=document.createElement("div"); h.className="hint"; h.textContent="Conferência por horário"; box.appendChild(h);
+  confer.forEach(function(x){
+    var d=document.createElement("div"); d.className="hint";
+    var t=x.rot+" — agendados: "+x.nomes.map(function(n,i){return n+" "+x.ag[i]}).join(" · ");
+    if(x.temLivre)t+=" | sem agendamento: "+x.nomes.map(function(n,i){return n+" "+x.li[i]}).join(" · ");
+    d.textContent=t; box.appendChild(d);
+  });
+}
+
+function mostrar(){
+  var L=$("lista"); L.innerHTML="";
+  partes.forEach(function(p,i){
+    var d=document.createElement("div"); d.className="res";
+    var t=document.createElement("div"); var b=document.createElement("b"); b.textContent=nomeP(p)+(p.turno?" ("+p.turno+")":"");
+    t.appendChild(b); t.appendChild(document.createTextNode(p.linhas.length+" atendimentos"));
+    d.appendChild(t); L.appendChild(d);
+  });
+  var tb=document.createElement("table"), hd="<tr>";
+  cabSaida().forEach(function(h){hd+="<th></th>"}); hd+="</tr>"; tb.innerHTML=hd;
+  Array.prototype.forEach.call(tb.querySelectorAll("th"),function(th,i){th.textContent=cabSaida()[i]});
+  $("prev").innerHTML="";
+  if(partes[0].linhas.length){
+    partes[0].linhas.slice(0,5).forEach(function(l){
+      var tr=document.createElement("tr");
+      linhaSaida(l).forEach(function(v){var td=document.createElement("td");td.textContent=v;tr.appendChild(td)});
+      tb.appendChild(tr);
+    });
+    var c=document.createElement("div"); c.className="hint"; c.textContent="Prévia: primeiras linhas de "+partes[0].nome;
+    $("prev").appendChild(c); $("prev").appendChild(tb);
+  }
+  $("out").classList.remove("hide"); $("msg").textContent=""; mostrarConf();
+}
+
+function aba(nome,used){
+  var s=String(nome).replace(/[\[\]:*?\/\\]/g,"-").slice(0,31)||"Colaborador", b=s, k=2;
+  while(used[s]){s=b.slice(0,28)+" "+k++}
+  used[s]=1; return s;
+}
+function txt(v){return v===undefined||v===null?"":v}
+function cabSaida(){return ["Agenda","Hora","Status","Observação"]}
+function linhaSaida(l){return [txt(l[iProf]),txt(l[iHora]),txt(l[iStat]),txt(l.obs)]}
+function nomeP(p){return p.nome+(p.apoio?" (apoio)":"")}
+var ultimoSab=false;
+function pct(n,t){return t?(n/t*100).toFixed(1).replace(".",",")+"%":"0,0%"}
+function barra(n,max){var k=max?Math.round(n/max*20):0;return new Array(k+1).join("\u2588")}
+
+var BORDA={top:{style:"thin"},left:{style:"thin"},bottom:{style:"thin"},right:{style:"thin"}};
+var VERDE="FF9BBB59", AZUL="FF4F81BD";
+function cel(ws,r,c,v,o){
+  o=o||{};
+  var x=ws.getCell(r,c);
+  x.value=v;
+  x.font={name:"Calibri",size:o.sz||12,bold:!!o.b,color:{argb:o.fc||"FF000000"}};
+  x.alignment={horizontal:o.al||"center",vertical:"center"};
+  if(o.fill)x.fill={type:"pattern",pattern:"solid",fgColor:{argb:o.fill}};
+  if(o.bd!==false)x.border=BORDA;
+  return x;
+}
+function mesc(ws,r,c1,c2,v,o){cel(ws,r,c1,v,o); if(c2>c1)ws.mergeCells(r,c1,r,c2)}
+
+function abaColab(wb,p,used){
+  var sheet=aba(p.nome,used), data=[cabSaida()];
+  p.linhas.forEach(function(l){data.push(linhaSaida(l))});
+  var ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:50},{wch:12},{wch:18},{wch:30}];
+  XLSX.utils.book_append_sheet(wb,ws,sheet);
+}
+function construir(){
+  var wb=XLSX.utils.book_new(), used={};
+  partes.forEach(function(p){abaColab(wb,p,used)});
+  return wb;
+}
+function nomeArquivo(){
+  var d=$("dataArq").value, dd, mm;
+  if(d){var p=d.split("-");dd=p[2];mm=p[1]}
+  else{var n=new Date();dd=("0"+n.getDate()).slice(-2);mm=("0"+(n.getMonth()+1)).slice(-2)}
+  return "Controller HH - "+dd+"-"+mm+".xlsx";
+}
+function salvar(wb,arquivo){
+  try{XLSX.writeFile(wb,arquivo);$("msg").textContent="Arquivo baixado: "+arquivo}
+  catch(e){$("msg").textContent="Não foi possível baixar o arquivo."}
+}
+$("todos").addEventListener("click",function(){
+  var wb;
+  try{wb=construir()}catch(e){$("msg").textContent="Não consegui montar a planilha: "+(e&&e.message);return}
+  salvar(wb,nomeArquivo());
+});
+(function(){var n=new Date();$("dataArq").value=n.getFullYear()+"-"+("0"+(n.getMonth()+1)).slice(-2)+"-"+("0"+n.getDate()).slice(-2)})();
+
+    })();
+    controllerHoursToolMounted=true;
+  }
+  function renderControllerHours(){mountControllerHoursTool();}
+  window.aaControllerApplyHoursFilters=function(){mountControllerHoursTool();};
   window.aaControllerSwitchView=async function(view){
     if(!controllerAllowed())return;
     if(view==='dashboard'&&!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para visualizar o painel de acompanhamento.');return;}
@@ -5935,12 +6317,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     await loadControllerStatusConfig();
     if(controllerView==='status'){renderControllerStatusSettings();return;}
     await loadControllerPages();
-    if(controllerView==='hours'){
-      const out=document.getElementById('aa-controller-view-subpaginas');if(out)out.innerHTML=controllerViewNav()+'<div class="aa-card">Carregando divisão de horas...</div>';
-      try{controllerHoursRecords=await loadControllerDashboardRecords(controllerHoursFrom,controllerHoursTo);renderControllerHours();}
-      catch(error){if(out)out.innerHTML=controllerViewNav()+'<div class="aa-error-msg">Não foi possível carregar a divisão de horas. Tente novamente.</div>';console.error('Erro ao abrir a divisão de horas.',error);}
-      return;
-    }
+    if(controllerView==='hours'){renderControllerHours();return;}
     if(controllerView==='leadership'){
       const out=document.getElementById('aa-controller-view-subpaginas');if(out)out.innerHTML=controllerViewNav()+'<div class="aa-card">Carregando acompanhamento detalhado...</div>';
       controllerStartLeadershipRefresh();
@@ -6055,7 +6432,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   const client=()=>window.__aaSupabaseClient;
   const session=()=>typeof window.__aaGetPresenceSession==='function'?window.__aaGetPresenceSession():null;
   const safe=v=>typeof aaHtmlSafe==='function'?aaHtmlSafe(v==null?'':String(v)):String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const labels={dashboard:'Dashboard',agendas:'Agendas Ativas',banco:'Banco de Dados',ajustes:'Ajuste de Agenda',controller:'Controller', 'controller:subpaginas':'Controller · Acompanhamento individual', 'controller:dashboard':'Controller · Painel geral', 'controller:professional-search':'Controller · Pesquisa de profissional', 'controller:leadership':'Controller · Visão da liderança', 'controller:status':'Controller · Configuração de status',portal:'Portal',controler:'Administração',historico:'Histórico',permissoes:'Administração · Usuários e permissões',operacoes:'Administração · Operações',perfis:'Administração · Perfis de acesso',config:'Administração · Configurações'};
+  const labels={dashboard:'Dashboard',agendas:'Agendas Ativas',banco:'Banco de Dados',ajustes:'Ajuste de Agenda',controller:'Controller', 'controller:subpaginas':'Controller · Acompanhamento individual', 'controller:dashboard':'Controller · Painel geral', 'controller:professional-search':'Controller · Pesquisa de profissional', 'controller:leadership':'Controller · Visão da liderança', 'controller:hours':'Controller · Divisão de horas', 'controller:status':'Controller · Configuração de status',portal:'Portal',controler:'Administração',historico:'Histórico',permissoes:'Administração · Usuários e permissões',operacoes:'Administração · Operações',perfis:'Administração · Perfis de acesso',config:'Administração · Configurações'};
   const pageLabel=tab=>labels[String(tab||'')]||labels[String(tab||'').split(':')[0]]||String(tab||'Sistema');
   const lastSeenLabel=value=>{if(!value)return 'Sem registro';const date=new Date(value);if(Number.isNaN(date.getTime()))return 'Sem registro';return date.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});};
   let selectedEmails=new Set(),filterMode='all';
@@ -6081,8 +6458,35 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 </script><style id="aa-controller-live-board-styles">.aa-controller-live-last-update{display:block;margin-top:8px;color:#16815A;font-weight:800}.aa-controller-live-board{margin:16px 0;padding:18px;border:1px solid #D9D0F2;background:#FCFBFF}.aa-controller-live-connection{color:#16815A;font-size:11px;font-weight:900;white-space:nowrap}.aa-controller-live-columns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.aa-controller-live-column{min-width:0;border:1px solid #E5E0EF;border-radius:12px;background:#fff;overflow:hidden}.aa-controller-live-column>header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 13px;border-bottom:1px solid #EEEAF5}.aa-controller-live-column>header h3{margin:0;color:#2D3850;font-size:14px}.aa-controller-live-column>header small{display:block;margin-top:3px;color:#8992A2;font-size:10px}.aa-controller-live-column>header>strong{min-width:28px;padding:5px 8px;border-radius:999px;background:#F0EBFC;color:#4B32A8;text-align:center}.aa-controller-live-column--pendente{border-top:3px solid #E2A52A}.aa-controller-live-column--em_andamento{border-top:3px solid #3B82C4}.aa-controller-live-column--finalizado{border-top:3px solid #25A36F}.aa-controller-live-list{display:flex;flex-direction:column;gap:7px;max-height:360px;overflow:auto;padding:9px}.aa-controller-live-item{padding:9px 10px;border:1px solid #ECE8F5;border-radius:9px;background:#FAF9FD}.aa-controller-live-item-head{display:flex;justify-content:space-between;gap:8px;margin-bottom:5px}.aa-controller-live-item-head strong{color:#2F75B5;font-size:14px}.aa-controller-live-item-head span{color:#5B43A6;font-size:10px;font-weight:900;text-align:right}.aa-controller-live-item>b{display:block;color:#303B50;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.aa-controller-live-item small{display:block;margin-top:3px;color:#747F90;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.aa-controller-live-item .aa-controller-live-updated{color:#9299A5}.aa-controller-live-empty{padding:22px 8px;color:#9299A5;font-size:11px;text-align:center}@media(max-width:860px){.aa-controller-live-columns{grid-template-columns:1fr}.aa-controller-live-list{max-height:260px}}</style>
 <style id="aa-controller-live-shift-styles">.aa-controller-live-shift{margin-top:16px;padding:13px;border:1px solid #E5E0EF;border-radius:12px;background:#fff}.aa-controller-live-shift-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:11px}.aa-controller-live-shift-head h3{margin:0;color:#352275;font-size:16px}.aa-controller-live-shift-head p{margin:4px 0 0;color:#7A8492;font-size:11px}.aa-controller-live-shift-head>strong{padding:5px 9px;border-radius:999px;background:#F0EBFC;color:#4B32A8;font-size:11px;white-space:nowrap}.aa-controller-live-shift .aa-controller-live-columns{margin-top:0}.aa-controller-live-shift .aa-controller-live-column{background:#FCFBFF}@media(max-width:640px){.aa-controller-live-shift-head{flex-direction:column}.aa-controller-live-shift-head>strong{align-self:flex-start}}</style>
 <style id="aa-controller-live-filter-styles">.aa-controller-live-controls{display:flex;align-items:end;justify-content:flex-end;gap:8px;flex-wrap:wrap}.aa-controller-live-controls label{display:block;color:#6B7280;font-size:10px;font-weight:900;text-transform:uppercase}.aa-controller-live-controls select{min-width:145px;padding:8px 10px;border:1px solid #CFC5EA;border-radius:8px;background:#fff;color:#3F3563;font-weight:800}.aa-controller-live-controls .aa-controller-live-connection{align-self:center}.aa-controller-live-item small strong{color:#566278;font-weight:900}.aa-controller-live-no-filter-results{margin-top:14px;padding:20px;border:1px dashed #CFC5EA;border-radius:10px}@media(max-width:640px){.aa-controller-live-controls{justify-content:flex-start;align-items:flex-start;flex-direction:column}.aa-controller-live-controls .aa-controller-live-connection{align-self:flex-start}}</style>
-<style id="aa-controller-hours-styles">
-.aa-controller-hours-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:12px;align-items:end;margin:16px 0;padding:16px;border:1px solid #E4DFF0;border-radius:14px;background:#FCFBFF}.aa-controller-hours-filters .aa-field label{display:block;margin-bottom:5px;color:#667085;font-size:10px;font-weight:900;text-transform:uppercase}.aa-controller-hours-filters input,.aa-controller-hours-filters select{width:100%;min-height:38px;padding:8px 10px;border:1px solid #D7D1E6;border-radius:9px;background:#fff;color:#334155}.aa-controller-hours-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}.aa-controller-hours-summary article,.aa-controller-hours-card{padding:15px;border:1px solid #E5E0EF;border-radius:12px;background:#fff}.aa-controller-hours-summary span,.aa-controller-hours-card span{display:block;color:#758399;font-size:11px;font-weight:800}.aa-controller-hours-summary strong{display:block;margin-top:6px;color:#3F2A86;font-size:27px}.aa-controller-hours-shifts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:16px 0}.aa-controller-hours-card strong{display:block;margin:7px 0 2px;color:#2F75B5;font-size:25px}.aa-controller-hours-card small{color:#7B8798;font-size:10px}.aa-controller-hours-progress{height:5px;margin-top:10px;overflow:hidden;border-radius:5px;background:#EEF0F5}.aa-controller-hours-progress i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,#8B5CF6,#3BA5D7)}.aa-controller-hours-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}.aa-controller-hours-bars{display:grid;gap:9px;padding:15px}.aa-controller-hours-bar-row{display:grid;grid-template-columns:50px 1fr 32px;align-items:center;gap:8px;color:#657187;font-size:11px}.aa-controller-hours-bar-row>div{height:10px;overflow:hidden;border-radius:8px;background:#EEF0F5}.aa-controller-hours-bar-row i{display:block;height:100%;border-radius:8px;background:#6F55C8}.aa-controller-hours-bar-row strong{text-align:right;color:#3B4670}.aa-controller-hours-page .aa-compact-table small{display:block;margin-top:3px;color:#8691A1;font-size:10px}.aa-controller-hours-page .aa-controller-section-heading h2,.aa-controller-hours-page .aa-controller-section-heading h3{margin:2px 0;color:#352275}.aa-controller-hours-page .aa-controller-section-heading p{margin:5px 0 0;color:#728096;font-size:12px}@media(max-width:900px){.aa-controller-hours-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.aa-controller-hours-filters .aa-btn{width:100%}.aa-controller-hours-shifts{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:650px){.aa-controller-hours-filters,.aa-controller-hours-grid{grid-template-columns:1fr}.aa-controller-hours-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.aa-controller-hours-shifts{grid-template-columns:repeat(2,minmax(0,1fr))}}
-</style>
+<style id="aa-controller-hours-attached-style">.aa-controller-hours-tool{--bg:#f6f4fc;--card:#fff;--tx:#1c1a2e;--mut:#6a6783;--ac:#6d4fe0;--acx:#fff;--bd:#e0dcf0;--warn:#c0392b;box-sizing:border-box}
+.aa-controller-hours-tool{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 "Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif}
+.aa-controller-hours-tool{max-width:860px;margin:0 auto;padding:20px 16px 48px}
+.aa-controller-hours-tool h1{font-size:1.4rem;margin:0 0 4px}
+.aa-controller-hours-tool p.sub{margin:0 0 20px;color:var(--mut)}
+.aa-controller-hours-tool section{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}
+.aa-controller-hours-tool h2{font-size:.95rem;margin:0 0 10px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+.aa-controller-hours-tool label{display:block;font-size:.9rem;margin:10px 0 4px}
+.aa-controller-hours-tool .aa-controller-hours-tool textarea,.aa-controller-hours-tool select,.aa-controller-hours-tool input[type=file],.aa-controller-hours-tool input[type=text],.aa-controller-hours-tool input[type=date]{width:100%;padding:9px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+.aa-controller-hours-tool textarea{min-height:110px;resize:vertical}
+.aa-controller-hours-tool .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:560px){.aa-controller-hours-tool .row{grid-template-columns:1fr}}
+.aa-controller-hours-tool button{font:inherit;border:0;border-radius:999px;padding:9px 18px;background:linear-gradient(90deg,#8A5CF2,#4F7FF0 55%,#1A7FC8);color:#fff;cursor:pointer;font-weight:600}
+.aa-controller-hours-tool button.sec{background:transparent;color:var(--ac);border:1px solid var(--ac)}
+.aa-controller-hours-tool .brand{display:block;width:100%;border-radius:16px;margin:0 0 18px}
+.aa-controller-hours-tool section{box-shadow:0 1px 0 rgba(109,79,224,.06)}
+.aa-controller-hours-tool h1{background:linear-gradient(90deg,#B66DF0,#6D7BF5 55%,#16B3E0);-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-block}
+.aa-controller-hours-tool button:disabled{opacity:.45;cursor:not-allowed}
+.aa-controller-hours-tool .hint{font-size:.85rem;color:var(--mut);margin-top:6px}
+.aa-controller-hours-tool .err{color:var(--warn);font-size:.9rem;margin-top:8px}
+.aa-controller-hours-tool .res{flex-wrap:wrap;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--bd)}
+.res:first-child{border-top:0}
+.res b{display:block}
+.aa-controller-hours-tool .tw{overflow-x:auto;margin-top:10px}
+.aa-controller-hours-tool table{border-collapse:collapse;font-size:.85rem;width:100%}
+.aa-controller-hours-tool th,td{border:1px solid var(--bd);padding:4px 8px;text-align:left;white-space:nowrap}
+.aa-controller-hours-tool th{background:var(--bg)}
+.aa-controller-hours-tool .hide{display:none}
+.aa-controller-hours-tool .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:560px){.aa-controller-hours-tool .row3{grid-template-columns:1fr}}</style>
 </body>
 </html>
