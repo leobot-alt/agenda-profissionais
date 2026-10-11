@@ -5462,7 +5462,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   }
   function controllerViewNav(){
     const dashboardAllowed=controllerCan('controller_dashboard_ver'),leadershipAllowed=controllerLeadershipAdminAllowed(),settingsAllowed=controllerCan('controller_subpaginas_gerenciar');
-    return '<nav class="aa-controller-nav" aria-label="Navegação do Controller">'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='dashboard'?'active':'')+'" aria-current="'+(controllerView==='dashboard'?'page':'false')+'" onclick="aaControllerSwitchView(\'dashboard\')">Monitor ao vivo</button>':'')+'<button type="button" class="aa-controller-tab '+(controllerView==='subpaginas'?'active':'')+'" aria-current="'+(controllerView==='subpaginas'?'page':'false')+'" onclick="aaControllerSwitchView(\'subpaginas\')">Atendimentos por colaborador</button>'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='professional-search'?'active':'')+'" aria-current="'+(controllerView==='professional-search'?'page':'false')+'" onclick="aaControllerSwitchView(\'professional-search\')">Buscar profissional</button>':'')+(leadershipAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='leadership'?'active':'')+'" aria-current="'+(controllerView==='leadership'?'page':'false')+'" onclick="aaControllerSwitchView(\'leadership\')">Visão da liderança</button>':'')+(settingsAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='status'?'active':'')+'" aria-current="'+(controllerView==='status'?'page':'false')+'" onclick="aaControllerSwitchView(\'status\')">Configurar status</button>':'')+'</nav>';
+    return '<nav class="aa-controller-nav" aria-label="Navegação do Controller">'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='dashboard'?'active':'')+'" aria-current="'+(controllerView==='dashboard'?'page':'false')+'" onclick="aaControllerSwitchView(\'dashboard\')">Monitor ao vivo</button>':'')+'<button type="button" class="aa-controller-tab '+(controllerView==='subpaginas'?'active':'')+'" aria-current="'+(controllerView==='subpaginas'?'page':'false')+'" onclick="aaControllerSwitchView(\'subpaginas\')">Atendimentos por colaborador</button>'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='professional-search'?'active':'')+'" aria-current="'+(controllerView==='professional-search'?'page':'false')+'" onclick="aaControllerSwitchView(\'professional-search\')">Buscar profissional</button>':'')+(leadershipAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='leadership'?'active':'')+'" aria-current="'+(controllerView==='leadership'?'page':'false')+'" onclick="aaControllerSwitchView(\'leadership\')">Visão da liderança</button>':'')+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='hours'?'active':'')+'" aria-current="'+(controllerView==='hours'?'page':'false')+'" onclick="aaControllerSwitchView(\'hours\')">Divisão de horas</button>':'')+(settingsAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='status'?'active':'')+'" aria-current="'+(controllerView==='status'?'page':'false')+'" onclick="aaControllerSwitchView(\'status\')">Configurar status</button>':'')+'</nav>';
   }
   function controllerDashboardPage(record){
     return controllerPages.find(page=>String(page.id)===String(record?.page_id||''))||null;
@@ -5846,19 +5846,101 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     if(kind==='hour')controllerLeadershipHourFilter=String(document.getElementById('aa-controller-leadership-hour')?.value||'all');
     renderControllerLeadershipDashboard();
   };
+  let controllerHoursRecords=[];
+  let controllerHoursFrom=controllerDashboardInitialDate;
+  let controllerHoursTo=controllerDashboardInitialDate;
+  let controllerHoursCollaborator='';
+  let controllerHoursShift='all';
+  function controllerHoursMinutes(value){
+    const match=String(value||'').trim().match(/^(\d{1,2})(?::(\d{2}))?/);
+    if(!match)return null;
+    const hour=Number(match[1]),minute=Number(match[2]||0);
+    return hour>=0&&hour<24&&minute>=0&&minute<60?hour*60+minute:null;
+  }
+  function controllerHoursShiftOf(record){
+    const classified=controllerLeadershipShift(record);
+    if(classified.key!=='outro')return classified.key;
+    const minutes=controllerHoursMinutes(record?.hora_atendimento);
+    if(minutes===null)return 'sem_horario';
+    if(minutes<12*60)return 'manha';
+    if(minutes<18*60)return 'tarde';
+    return 'noite';
+  }
+  function controllerHoursShiftLabel(key){
+    return ({manha:'Manhã',tarde:'Tarde',intermediario:'Intermediário',noite:'Noite',sem_horario:'Sem horário'})[key]||'Todos os períodos';
+  }
+  function controllerHoursTimeLabel(value){
+    const match=String(value||'').trim().match(/^(\d{1,2})(?::(\d{2}))?/);
+    return match?String(match[1]).padStart(2,'0')+':'+String(match[2]||'00').padStart(2,'0'):'Sem horário';
+  }
+  function controllerHoursFiltered(){
+    return controllerHoursRecords.filter(record=>{
+      const owner=controllerDashboardOwner(record);
+      const ownerKey=String(record.page_id||owner.name||'');
+      return (!controllerHoursCollaborator||ownerKey===controllerHoursCollaborator) && (controllerHoursShift==='all'||controllerHoursShiftOf(record)===controllerHoursShift);
+    });
+  }
+  function controllerHoursGroup(records,keyFn){
+    const map=new Map();
+    records.forEach(record=>{const key=keyFn(record);if(!map.has(key))map.set(key,[]);map.get(key).push(record);});
+    return map;
+  }
+  function renderControllerHours(){
+    const out=document.getElementById('aa-controller-view-subpaginas');
+    if(!out)return;
+    const records=controllerHoursFiltered(),safe=controllerPageText;
+    const byShift=controllerHoursGroup(records,controllerHoursShiftOf);
+    const byHour=controllerHoursGroup(records,record=>controllerHoursTimeLabel(record.hora_atendimento));
+    const byCollaborator=controllerHoursGroup(records,record=>{const owner=controllerDashboardOwner(record);return String(record.page_id||owner.name);});
+    const shiftOrder=['manha','intermediario','tarde','noite','sem_horario'];
+    const total=controllerHoursRecords.length;
+    const shiftCards=shiftOrder.filter(key=>byShift.has(key)).map(key=>{
+      const count=byShift.get(key).length,percent=records.length?Math.round(count*100/records.length):0;
+      return '<article class="aa-controller-hours-card"><span>'+safe(controllerHoursShiftLabel(key))+'</span><strong>'+count+'</strong><small>'+percent+'% dos registros filtrados</small><div class="aa-controller-hours-progress"><i style="width:'+percent+'%"></i></div></article>';
+    }).join('');
+    const hourRows=Array.from(byHour.entries()).sort((a,b)=>a[0].localeCompare(b[0])).map(([hour,items])=>{
+      const statuses=controllerHoursGroup(items,r=>String(r.status||'Sem status'));
+      const detail=Array.from(statuses.entries()).sort((a,b)=>b[1].length-a[1].length).map(([status,rows])=>safe(status)+' ('+rows.length+')').join(' · ');
+      return '<tr><td><strong>'+safe(hour)+'</strong></td><td>'+items.length+'</td><td>'+detail+'</td></tr>';
+    }).join('');
+    const collaboratorRows=Array.from(byCollaborator.entries()).sort((a,b)=>b[1].length-a[1].length).map(([key,items])=>{
+      const owner=controllerDashboardOwner(items[0]);
+      const shifts=Array.from(controllerHoursGroup(items,controllerHoursShiftOf).entries()).sort((a,b)=>b[1].length-a[1].length).map(([shift,rows])=>safe(controllerHoursShiftLabel(shift))+' ('+rows.length+')').join(' · ');
+      return '<tr><td><strong>'+safe(owner.name)+'</strong><small>'+safe(owner.turno)+'</small></td><td>'+items.length+'</td><td>'+shifts+'</td></tr>';
+    }).join('');
+    const maxHour=Math.max(1,...Array.from(byHour.values()).map(items=>items.length));
+    const bars=Array.from(byHour.entries()).sort((a,b)=>a[0].localeCompare(b[0])).map(([hour,items])=>'<div class="aa-controller-hours-bar-row"><span>'+safe(hour)+'</span><div><i style="width:'+Math.round(items.length*100/maxHour)+'%"></i></div><strong>'+items.length+'</strong></div>').join('');
+    const collaborators=Array.from(new Map(controllerHoursRecords.map(record=>{const owner=controllerDashboardOwner(record);return [String(record.page_id||owner.name),owner];})).entries()).sort((a,b)=>a[1].name.localeCompare(b[1].name,'pt-BR'));
+    out.innerHTML=controllerViewNav()+'<section class="aa-controller-hours-page"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">ANÁLISE DE CAPACIDADE</span><h2>Divisão de horas</h2><p>Veja como os atendimentos estão distribuídos por período, horário e colaborador no intervalo selecionado.</p></div><span class="aa-controller-count-pill">'+total+' registro(s) carregado(s)</span></header><section class="aa-controller-hours-filters"><div class="aa-field"><label for="aa-controller-hours-from">Data inicial</label><input id="aa-controller-hours-from" type="date" value="'+safe(controllerHoursFrom)+'"></div><div class="aa-field"><label for="aa-controller-hours-to">Data final</label><input id="aa-controller-hours-to" type="date" value="'+safe(controllerHoursTo)+'"></div><div class="aa-field"><label for="aa-controller-hours-collaborator">Colaborador</label><select id="aa-controller-hours-collaborator"><option value="">Todos os colaboradores</option>'+collaborators.map(([key,owner])=>'<option value="'+safe(key)+'" '+(key===controllerHoursCollaborator?'selected':'')+'>'+safe(owner.name)+'</option>').join('')+'</select></div><div class="aa-field"><label for="aa-controller-hours-shift">Período</label><select id="aa-controller-hours-shift"><option value="all" '+(controllerHoursShift==='all'?'selected':'')+'>Todos os períodos</option><option value="manha" '+(controllerHoursShift==='manha'?'selected':'')+'>Manhã</option><option value="intermediario" '+(controllerHoursShift==='intermediario'?'selected':'')+'>Intermediário</option><option value="tarde" '+(controllerHoursShift==='tarde'?'selected':'')+'>Tarde</option><option value="noite" '+(controllerHoursShift==='noite'?'selected':'')+'>Noite</option><option value="sem_horario" '+(controllerHoursShift==='sem_horario'?'selected':'')+'>Sem horário</option></select></div><button type="button" class="aa-btn aa-btn-primary" onclick="aaControllerApplyHoursFilters()">Aplicar filtros</button></section><div class="aa-controller-hours-summary"><article><span>Registros filtrados</span><strong>'+records.length+'</strong></article><article><span>Colaboradores</span><strong>'+byCollaborator.size+'</strong></article><article><span>Horários distintos</span><strong>'+byHour.size+'</strong></article><article><span>Períodos com registros</span><strong>'+byShift.size+'</strong></article></div><section class="aa-controller-hours-shifts">'+(shiftCards||'<div class="aa-controller-empty"><strong>Nenhum registro encontrado</strong><span>Altere o intervalo ou os filtros para visualizar a divisão de horas.</span></div>')+'</section><section class="aa-controller-hours-grid"><article class="aa-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">DISTRIBUIÇÃO</span><h3>Registros por horário</h3></div></header><div class="aa-controller-hours-bars">'+(bars||'<p class="aa-controller-empty">Nenhum horário disponível.</p>')+'</div></article><article class="aa-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">EQUIPE</span><h3>Divisão por colaborador</h3></div></header><div class="aa-table-scroll"><table class="aa-compact-table"><thead><tr><th>Colaborador</th><th>Total</th><th>Períodos</th></tr></thead><tbody>'+(collaboratorRows||'<tr><td colspan="3">Nenhum colaborador encontrado.</td></tr>')+'</tbody></table></div></article></section><section class="aa-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">DETALHAMENTO</span><h3>Resumo por horário</h3></div></header><div class="aa-table-scroll"><table class="aa-compact-table"><thead><tr><th>Horário</th><th>Total</th><th>Status</th></tr></thead><tbody>'+(hourRows||'<tr><td colspan="3">Nenhum registro encontrado.</td></tr>')+'</tbody></table></div></section></section>';
+  }
+  window.aaControllerApplyHoursFilters=async function(){
+    if(!controllerAllowed()||!controllerCan('controller_dashboard_ver'))return;
+    const from=String(document.getElementById('aa-controller-hours-from')?.value||''),to=String(document.getElementById('aa-controller-hours-to')?.value||'');
+    if(from&&to&&from>to){alert('A data inicial deve ser anterior ou igual à data final.');return;}
+    controllerHoursFrom=from;controllerHoursTo=to;controllerHoursCollaborator=String(document.getElementById('aa-controller-hours-collaborator')?.value||'');controllerHoursShift=String(document.getElementById('aa-controller-hours-shift')?.value||'all');
+    const out=document.getElementById('aa-controller-view-subpaginas');if(out)out.innerHTML=controllerViewNav()+'<div class="aa-card aa-controller-loading"><span class="aa-controller-loading-dot"></span>Carregando divisão de horas...</div>';
+    try{controllerHoursRecords=await loadControllerDashboardRecords(controllerHoursFrom,controllerHoursTo);renderControllerHours();}catch(error){if(out)out.innerHTML=controllerViewNav()+'<div class="aa-error-msg">Não foi possível carregar a divisão de horas. Tente novamente.</div>';console.error('Erro ao carregar divisão de horas.',error);}
+  };
   window.aaControllerSwitchView=async function(view){
     if(!controllerAllowed())return;
     if(view==='dashboard'&&!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para visualizar o painel de acompanhamento.');return;}
     if(view==='professional-search'&&!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para pesquisar profissionais no Controller.');return;}
+    if(view==='hours'&&!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para visualizar a divisão de horas.');return;}
     if(view==='leadership'&&!controllerLeadershipAdminAllowed()){alert('Apenas ADM e ADM geral podem acessar o acompanhamento da liderança.');return;}
     if(view==='status'&&!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para configurar os status do Controller.');return;}
     controllerStopLeadershipRefresh();controllerStopDashboardRefresh();
-    controllerView=view==='dashboard'?'dashboard':view==='professional-search'?'professional-search':view==='leadership'?'leadership':view==='status'?'status':'subpaginas';
+    controllerView=view==='dashboard'?'dashboard':view==='professional-search'?'professional-search':view==='leadership'?'leadership':view==='hours'?'hours':view==='status'?'status':'subpaginas';
     const immediateOut=document.getElementById('aa-controller-view-subpaginas');
-    if(immediateOut)immediateOut.innerHTML=controllerViewNav()+'<div class="aa-card aa-controller-loading"><span class="aa-controller-loading-dot"></span>Carregando '+(controllerView==='dashboard'?'a visão geral':controllerView==='professional-search'?'a busca de profissionais':controllerView==='leadership'?'a visão da liderança':controllerView==='status'?'a configuração de status':'os atendimentos')+'...</div>';
+    if(immediateOut)immediateOut.innerHTML=controllerViewNav()+'<div class="aa-card aa-controller-loading"><span class="aa-controller-loading-dot"></span>Carregando '+(controllerView==='dashboard'?'a visão geral':controllerView==='professional-search'?'a busca de profissionais':controllerView==='leadership'?'a visão da liderança':controllerView==='hours'?'a divisão de horas':controllerView==='status'?'a configuração de status':'os atendimentos')+'...</div>';
     await loadControllerStatusConfig();
     if(controllerView==='status'){renderControllerStatusSettings();return;}
     await loadControllerPages();
+    if(controllerView==='hours'){
+      const out=document.getElementById('aa-controller-view-subpaginas');if(out)out.innerHTML=controllerViewNav()+'<div class="aa-card">Carregando divisão de horas...</div>';
+      try{controllerHoursRecords=await loadControllerDashboardRecords(controllerHoursFrom,controllerHoursTo);renderControllerHours();}
+      catch(error){if(out)out.innerHTML=controllerViewNav()+'<div class="aa-error-msg">Não foi possível carregar a divisão de horas. Tente novamente.</div>';console.error('Erro ao abrir a divisão de horas.',error);}
+      return;
+    }
     if(controllerView==='leadership'){
       const out=document.getElementById('aa-controller-view-subpaginas');if(out)out.innerHTML=controllerViewNav()+'<div class="aa-card">Carregando acompanhamento detalhado...</div>';
       controllerStartLeadershipRefresh();
@@ -5999,5 +6081,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 </script><style id="aa-controller-live-board-styles">.aa-controller-live-last-update{display:block;margin-top:8px;color:#16815A;font-weight:800}.aa-controller-live-board{margin:16px 0;padding:18px;border:1px solid #D9D0F2;background:#FCFBFF}.aa-controller-live-connection{color:#16815A;font-size:11px;font-weight:900;white-space:nowrap}.aa-controller-live-columns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.aa-controller-live-column{min-width:0;border:1px solid #E5E0EF;border-radius:12px;background:#fff;overflow:hidden}.aa-controller-live-column>header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 13px;border-bottom:1px solid #EEEAF5}.aa-controller-live-column>header h3{margin:0;color:#2D3850;font-size:14px}.aa-controller-live-column>header small{display:block;margin-top:3px;color:#8992A2;font-size:10px}.aa-controller-live-column>header>strong{min-width:28px;padding:5px 8px;border-radius:999px;background:#F0EBFC;color:#4B32A8;text-align:center}.aa-controller-live-column--pendente{border-top:3px solid #E2A52A}.aa-controller-live-column--em_andamento{border-top:3px solid #3B82C4}.aa-controller-live-column--finalizado{border-top:3px solid #25A36F}.aa-controller-live-list{display:flex;flex-direction:column;gap:7px;max-height:360px;overflow:auto;padding:9px}.aa-controller-live-item{padding:9px 10px;border:1px solid #ECE8F5;border-radius:9px;background:#FAF9FD}.aa-controller-live-item-head{display:flex;justify-content:space-between;gap:8px;margin-bottom:5px}.aa-controller-live-item-head strong{color:#2F75B5;font-size:14px}.aa-controller-live-item-head span{color:#5B43A6;font-size:10px;font-weight:900;text-align:right}.aa-controller-live-item>b{display:block;color:#303B50;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.aa-controller-live-item small{display:block;margin-top:3px;color:#747F90;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.aa-controller-live-item .aa-controller-live-updated{color:#9299A5}.aa-controller-live-empty{padding:22px 8px;color:#9299A5;font-size:11px;text-align:center}@media(max-width:860px){.aa-controller-live-columns{grid-template-columns:1fr}.aa-controller-live-list{max-height:260px}}</style>
 <style id="aa-controller-live-shift-styles">.aa-controller-live-shift{margin-top:16px;padding:13px;border:1px solid #E5E0EF;border-radius:12px;background:#fff}.aa-controller-live-shift-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:11px}.aa-controller-live-shift-head h3{margin:0;color:#352275;font-size:16px}.aa-controller-live-shift-head p{margin:4px 0 0;color:#7A8492;font-size:11px}.aa-controller-live-shift-head>strong{padding:5px 9px;border-radius:999px;background:#F0EBFC;color:#4B32A8;font-size:11px;white-space:nowrap}.aa-controller-live-shift .aa-controller-live-columns{margin-top:0}.aa-controller-live-shift .aa-controller-live-column{background:#FCFBFF}@media(max-width:640px){.aa-controller-live-shift-head{flex-direction:column}.aa-controller-live-shift-head>strong{align-self:flex-start}}</style>
 <style id="aa-controller-live-filter-styles">.aa-controller-live-controls{display:flex;align-items:end;justify-content:flex-end;gap:8px;flex-wrap:wrap}.aa-controller-live-controls label{display:block;color:#6B7280;font-size:10px;font-weight:900;text-transform:uppercase}.aa-controller-live-controls select{min-width:145px;padding:8px 10px;border:1px solid #CFC5EA;border-radius:8px;background:#fff;color:#3F3563;font-weight:800}.aa-controller-live-controls .aa-controller-live-connection{align-self:center}.aa-controller-live-item small strong{color:#566278;font-weight:900}.aa-controller-live-no-filter-results{margin-top:14px;padding:20px;border:1px dashed #CFC5EA;border-radius:10px}@media(max-width:640px){.aa-controller-live-controls{justify-content:flex-start;align-items:flex-start;flex-direction:column}.aa-controller-live-controls .aa-controller-live-connection{align-self:flex-start}}</style>
+<style id="aa-controller-hours-styles">
+.aa-controller-hours-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:12px;align-items:end;margin:16px 0;padding:16px;border:1px solid #E4DFF0;border-radius:14px;background:#FCFBFF}.aa-controller-hours-filters .aa-field label{display:block;margin-bottom:5px;color:#667085;font-size:10px;font-weight:900;text-transform:uppercase}.aa-controller-hours-filters input,.aa-controller-hours-filters select{width:100%;min-height:38px;padding:8px 10px;border:1px solid #D7D1E6;border-radius:9px;background:#fff;color:#334155}.aa-controller-hours-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}.aa-controller-hours-summary article,.aa-controller-hours-card{padding:15px;border:1px solid #E5E0EF;border-radius:12px;background:#fff}.aa-controller-hours-summary span,.aa-controller-hours-card span{display:block;color:#758399;font-size:11px;font-weight:800}.aa-controller-hours-summary strong{display:block;margin-top:6px;color:#3F2A86;font-size:27px}.aa-controller-hours-shifts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:16px 0}.aa-controller-hours-card strong{display:block;margin:7px 0 2px;color:#2F75B5;font-size:25px}.aa-controller-hours-card small{color:#7B8798;font-size:10px}.aa-controller-hours-progress{height:5px;margin-top:10px;overflow:hidden;border-radius:5px;background:#EEF0F5}.aa-controller-hours-progress i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,#8B5CF6,#3BA5D7)}.aa-controller-hours-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}.aa-controller-hours-bars{display:grid;gap:9px;padding:15px}.aa-controller-hours-bar-row{display:grid;grid-template-columns:50px 1fr 32px;align-items:center;gap:8px;color:#657187;font-size:11px}.aa-controller-hours-bar-row>div{height:10px;overflow:hidden;border-radius:8px;background:#EEF0F5}.aa-controller-hours-bar-row i{display:block;height:100%;border-radius:8px;background:#6F55C8}.aa-controller-hours-bar-row strong{text-align:right;color:#3B4670}.aa-controller-hours-page .aa-compact-table small{display:block;margin-top:3px;color:#8691A1;font-size:10px}.aa-controller-hours-page .aa-controller-section-heading h2,.aa-controller-hours-page .aa-controller-section-heading h3{margin:2px 0;color:#352275}.aa-controller-hours-page .aa-controller-section-heading p{margin:5px 0 0;color:#728096;font-size:12px}@media(max-width:900px){.aa-controller-hours-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.aa-controller-hours-filters .aa-btn{width:100%}.aa-controller-hours-shifts{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:650px){.aa-controller-hours-filters,.aa-controller-hours-grid{grid-template-columns:1fr}.aa-controller-hours-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.aa-controller-hours-shifts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
 </body>
 </html>
