@@ -5123,6 +5123,15 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
       return typeof window.__aaIsLeadershipAdmin==='function'&&window.__aaIsLeadershipAdmin()===true;
     }catch(error){return false;}
   }
+  function controllerHoursAllowed(){
+    try{
+      const profile=(typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile)||null;
+      if(!profile||profile.ativo===false||profile.removido===true)return false;
+      const raw=String(profile.perfil||'').trim().toLowerCase();
+      const perfil=typeof normalizePerfil==='function'?normalizePerfil(raw):raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'_');
+      return ['administrador','administrador_geral','gestao'].includes(perfil);
+    }catch(error){return false;}
+  }
   function controllerPageText(value){return typeof aaHtmlSafe==='function'?aaHtmlSafe(value==null?'':String(value)):String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   let controllerPagesLoaded=false,controllerPagesLoading=null;
   async function loadControllerPages(force){if(controllerPagesLoaded&&!force)return controllerPages;if(controllerPagesLoading)return controllerPagesLoading;controllerPagesLoading=(async()=>{try{if(!controllerDb?.from)throw new Error('Cliente Supabase indisponível.');const result=await controllerDb.from('controller_subpages').select('id,nome,descricao,criada_em,turno').order('criada_em',{ascending:true});if(result.error)throw result.error;controllerPages=(result.data||[]).map(p=>({id:p.id,nome:p.nome,descricao:p.descricao||'',turno:p.turno||'',criadaEm:p.criada_em}));controllerPagesLoaded=true;}catch(e){if(!controllerPagesLoaded)controllerPages=[];console.warn('Não foi possível carregar as áreas de acompanhamento do Controller.',e);}return controllerPages;})().finally(()=>{controllerPagesLoading=null;});return controllerPagesLoading;}
@@ -5462,7 +5471,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   }
   function controllerViewNav(){
     const dashboardAllowed=controllerCan('controller_dashboard_ver'),leadershipAllowed=controllerLeadershipAdminAllowed(),settingsAllowed=controllerCan('controller_subpaginas_gerenciar');
-    return '<nav class="aa-controller-nav" aria-label="Navegação do Controller">'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='dashboard'?'active':'')+'" aria-current="'+(controllerView==='dashboard'?'page':'false')+'" onclick="aaControllerSwitchView(\'dashboard\')">Monitor ao vivo</button>':'')+'<button type="button" class="aa-controller-tab '+(controllerView==='subpaginas'?'active':'')+'" aria-current="'+(controllerView==='subpaginas'?'page':'false')+'" onclick="aaControllerSwitchView(\'subpaginas\')">Atendimentos por colaborador</button>'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='professional-search'?'active':'')+'" aria-current="'+(controllerView==='professional-search'?'page':'false')+'" onclick="aaControllerSwitchView(\'professional-search\')">Buscar profissional</button>':'')+(leadershipAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='leadership'?'active':'')+'" aria-current="'+(controllerView==='leadership'?'page':'false')+'" onclick="aaControllerSwitchView(\'leadership\')">Visão da liderança</button>':'')+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='hours'?'active':'')+'" aria-current="'+(controllerView==='hours'?'page':'false')+'" onclick="aaControllerSwitchView(\'hours\')">Divisão de horas</button>':'')+(settingsAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='status'?'active':'')+'" aria-current="'+(controllerView==='status'?'page':'false')+'" onclick="aaControllerSwitchView(\'status\')">Configurar status</button>':'')+'</nav>';
+    return '<nav class="aa-controller-nav" aria-label="Navegação do Controller">'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='dashboard'?'active':'')+'" aria-current="'+(controllerView==='dashboard'?'page':'false')+'" onclick="aaControllerSwitchView(\'dashboard\')">Monitor ao vivo</button>':'')+'<button type="button" class="aa-controller-tab '+(controllerView==='subpaginas'?'active':'')+'" aria-current="'+(controllerView==='subpaginas'?'page':'false')+'" onclick="aaControllerSwitchView(\'subpaginas\')">Atendimentos por colaborador</button>'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='professional-search'?'active':'')+'" aria-current="'+(controllerView==='professional-search'?'page':'false')+'" onclick="aaControllerSwitchView(\'professional-search\')">Buscar profissional</button>':'')+(leadershipAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='leadership'?'active':'')+'" aria-current="'+(controllerView==='leadership'?'page':'false')+'" onclick="aaControllerSwitchView(\'leadership\')">Visão da liderança</button>':'')+(controllerHoursAllowed()?'<button type="button" class="aa-controller-tab '+(controllerView==='hours'?'active':'')+'" aria-current="'+(controllerView==='hours'?'page':'false')+'" onclick="aaControllerSwitchView(\'hours\')">Divisão de horas</button>':'')+(settingsAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='status'?'active':'')+'" aria-current="'+(controllerView==='status'?'page':'false')+'" onclick="aaControllerSwitchView(\'status\')">Configurar status</button>':'')+'</nav>';
   }
   function controllerDashboardPage(record){
     return controllerPages.find(page=>String(page.id)===String(record?.page_id||''))||null;
@@ -5850,6 +5859,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   function mountControllerHoursTool(){
     const out=document.getElementById('aa-controller-view-subpaginas');
     if(!out)return;
+    if(!controllerHoursAllowed()){out.innerHTML=controllerViewNav()+'<div class="aa-error-msg">A Divisão de horas está disponível somente para ADM, ADM Geral e Gestão.</div>';return;}
     out.innerHTML=controllerViewNav()+`<div class="aa-controller-hours-tool"><h1>Divisor de relatório por operador</h1>
 <p class="sub">Cadastre a equipe uma vez, anexe o relatório e baixe a parte de cada colaborador.</p>
 
@@ -6307,7 +6317,7 @@ $("todos").addEventListener("click",function(){
     if(!controllerAllowed())return;
     if(view==='dashboard'&&!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para visualizar o painel de acompanhamento.');return;}
     if(view==='professional-search'&&!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para pesquisar profissionais no Controller.');return;}
-    if(view==='hours'&&!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para visualizar a divisão de horas.');return;}
+    if(view==='hours'&&!controllerHoursAllowed()){alert('A Divisão de horas está disponível somente para ADM, ADM Geral e Gestão.');return;}
     if(view==='leadership'&&!controllerLeadershipAdminAllowed()){alert('Apenas ADM e ADM geral podem acessar o acompanhamento da liderança.');return;}
     if(view==='status'&&!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para configurar os status do Controller.');return;}
     controllerStopLeadershipRefresh();controllerStopDashboardRefresh();
