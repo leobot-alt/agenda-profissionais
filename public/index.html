@@ -5127,9 +5127,11 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     try{
       const profile=(typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile)||null;
       if(!profile||profile.ativo===false||profile.removido===true)return false;
-      const raw=String(profile.perfil||'').trim().toLowerCase();
+      const raw=String(profile.perfil||profile.perfilNome||profile.role||profile.tipoPerfil||'').trim().toLowerCase();
       const perfil=raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'_');
-      return ['adm','administrador','admin','admgeral','adm_geral','administrador_geral','gestao','gestor'].includes(perfil);
+      const perfilPermitido=['adm','administrador','admin','admgeral','adm_geral','administrador_geral','gestao','gestor'].includes(perfil);
+      const permissaoAdministrativa=typeof window.__aaIsLeadershipAdmin==='function'&&window.__aaIsLeadershipAdmin()===true;
+      return perfilPermitido||permissaoAdministrativa;
     }catch(error){return false;}
   }
   function controllerPageText(value){return typeof aaHtmlSafe==='function'?aaHtmlSafe(value==null?'':String(value)):String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
