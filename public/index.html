@@ -5129,7 +5129,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
       if(!profile||profile.ativo===false||profile.removido===true)return false;
       const raw=String(profile.perfil||'').trim().toLowerCase();
       const perfil=typeof normalizePerfil==='function'?normalizePerfil(raw):raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'_');
-      return ['administrador','administrador_geral','gestao'].includes(perfil);
+      return ['adm','administrador','admin','admgeral','adm_geral','administrador_geral','gestao'].includes(perfil);
     }catch(error){return false;}
   }
   function controllerPageText(value){return typeof aaHtmlSafe==='function'?aaHtmlSafe(value==null?'':String(value)):String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -5871,7 +5871,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 <select id="novoF" style="width:auto"><option value="0">Colaborador</option><option value="1">Apoio (cobre pausas)</option></select>
 <input type="text" id="novoPi" placeholder="Pausa: início (11:00)" style="width:150px">
 <input type="text" id="novoPf" placeholder="fim (12:00)" style="width:110px">
-<button id="add">Adicionar</button>
+<button id="add">Adicionar</button><button id="carregarEscala" type="button" class="sec">Carregar da escala lançada</button>
 </div>
 <div id="equipe"></div>
 <div id="avEq" class="err"></div>
@@ -6040,7 +6040,39 @@ function adicionar(){
 }
 $("add").addEventListener("click",adicionar);
 $("novo").addEventListener("keydown",function(e){if(e.key==="Enter")adicionar()});
+async function carregarEquipeDaEscala(){
+  var avisoEl=$("avEq"), button=$("carregarEscala");
+  if(button)button.disabled=true;
+  if(avisoEl)avisoEl.textContent="Carregando profissionais com escala lançada...";
+  try{
+    var ref=$("dataArq").value||new Date().toISOString().slice(0,10), month=ref.slice(0,7), client=window.__aaSupabaseClient;
+    if(!client||!client.from)throw new Error("Banco de dados indisponível.");
+    var result=await client.from("escalas_mensais").select("id,mes,usuario_auth_id,usuario_nome,usuario_email,dias").eq("mes",month).order("usuario_nome",{ascending:true}).limit(200);
+    if(result.error)throw result.error;
+    var rows=result.data||[], imported=0;
+    rows.forEach(function(row){
+      var days=Array.isArray(row.dias)?row.dias:[], day=days.find(function(d){return String(d.data||d.iso||"")===ref;});
+      if(!day)day=days.find(function(d){return String(d.tipo||"").toLowerCase()!=="folga";});
+      if(!day||String(day.tipo||"").toLowerCase()==="folga")return;
+      var name=String(row.usuario_nome||row.usuario_email||"").trim(); if(!name)return;
+      var entrance=hora(day.entrada), shift=entrance===null?"07":entrance<9?"07":entrance<13?"11":"14";
+      var existing=equipe.find(function(c){return String(c.auth_user_id||"")===String(row.usuario_auth_id||"")||c.nome.toLowerCase()===name.toLowerCase();});
+      var item=existing||{nome:name,turno:shift,ativo:true,apoio:false,auth_user_id:row.usuario_auth_id||""};
+      item.nome=name;item.turno=shift;item.ativo=true;item.auth_user_id=row.usuario_auth_id||item.auth_user_id||"";
+      item.pi=String(day.inicioAlmoco||day.inicio_almoco||day.inicioAlmoço||"").trim();
+      item.pf=String(day.fimAlmoco||day.fim_almoco||day.fimAlmoço||"").trim();
+      if(!existing)equipe.push(item);
+      imported++;
+    });
+    if(!imported){if(avisoEl)avisoEl.textContent="Não há profissionais com escala lançada para "+month+".";return;}
+    gravar();desenhar();
+    if(avisoEl)avisoEl.textContent=imported+" profissional(is) carregado(s) da escala lançada de "+month+".";
+  }catch(error){if(avisoEl)avisoEl.textContent="Não foi possível carregar a equipe da escala: "+(error&&error.message||"erro desconhecido");console.error(error)}
+  finally{if(button)button.disabled=false;}
+}
+$("carregarEscala").addEventListener("click",carregarEquipeDaEscala);
 desenhar();
+if(!equipe.length)carregarEquipeDaEscala();
 try{if(window.claude&&claude.use)claude.use("db").then(function(db){
   if(!db)return; dbDoc=db.doc("config/equipe");
   dbDoc.onSnapshot(function(snap){
