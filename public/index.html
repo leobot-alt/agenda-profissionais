@@ -5128,8 +5128,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
       const profile=(typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile)||null;
       if(!profile||profile.ativo===false||profile.removido===true)return false;
       const raw=String(profile.perfil||'').trim().toLowerCase();
-      const perfil=typeof normalizePerfil==='function'?normalizePerfil(raw):raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'_');
-      return ['adm','administrador','admin','admgeral','adm_geral','administrador_geral','gestao'].includes(perfil);
+      const perfil=raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'_');
+      return ['adm','administrador','admin','admgeral','adm_geral','administrador_geral','gestao','gestor'].includes(perfil);
     }catch(error){return false;}
   }
   function controllerPageText(value){return typeof aaHtmlSafe==='function'?aaHtmlSafe(value==null?'':String(value)):String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
