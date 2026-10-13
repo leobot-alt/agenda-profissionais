@@ -527,6 +527,7 @@
           <button class="aa-tab" data-rhtab="banco" onclick="aaSwitchRHTab('banco')">Banco de Dados</button>
           <button class="aa-tab" data-rhtab="ajustes" onclick="aaSwitchRHTab('ajustes')">Ajuste de Agenda</button>
           <button class="aa-tab" data-rhtab="controller" onclick="aaControllerOpen()">Controller</button>
+          <button class="aa-tab" data-rhtab="operational-report" onclick="aaSwitchRHTab('operational-report')">Relatório Operacional</button>
           <button class="aa-tab" data-rhtab="portal" onclick="aaSwitchRHTab('portal')">Portal</button>
           <button class="aa-tab" data-rhtab="controler" onclick="aaSwitchRHTab('controler')">Administração</button>
         <section id="aa-presence-sidebar" class="aa-presence-sidebar" hidden aria-live="polite"><div class="aa-presence-sidebar-head"><strong>Equipe conectada</strong><span id="aa-presence-sidebar-count">0 online</span></div><button type="button" class="aa-presence-filter-toggle" onclick="window.aaPresenceToggleFilter()">Selecionar usuários</button><div id="aa-presence-filter" class="aa-presence-filter" hidden><div class="aa-presence-filter-actions"><button type="button" onclick="window.aaPresenceSelectAll(true)">Todos</button><button type="button" onclick="window.aaPresenceSelectAll(false)">Limpar</button></div><div id="aa-presence-filter-list" class="aa-presence-filter-list"></div></div><div id="aa-presence-sidebar-list" class="aa-presence-sidebar-list"><div class="aa-presence-sidebar-empty">Carregando...</div></div></section>
@@ -819,6 +820,12 @@
               <button class="aa-tab" data-controlertab="agendas2" onclick="aaSwitchControlerTab('agendas2')">Agendas desativadas</button>
             </div>
             <div id="aa-controler-body"></div>
+          </div>
+        </div>
+        <div class="aa-rh-subpanel" id="aa-rhtab-operational-report" style="display:none;">
+          <div class="aa-card" style="min-height:360px;">
+            <div class="aa-lookup-head"><div><span class="aa-controller-overline">PAINEL OPERACIONAL</span><h2 style="margin:4px 0 0;">Relatório Operacional</h2><p class="aa-hint" style="margin-top:8px;">Esta página está pronta para receber os indicadores e relatórios operacionais.</p></div></div>
+            <div class="aa-empty-state" style="margin-top:24px;">Conteúdo operacional será adicionado nesta página.</div>
           </div>
         </div>
         <div class="aa-rh-subpanel" id="aa-rhtab-controller" style="display:none;">
@@ -4798,7 +4805,7 @@ window.aaRenderProfissionaisList=function(){
     if(parts[0]!=='painel')return;
     routing=true;originalTab('painel');routing=false;
     if(!rhAuthenticated)return;
-    const target={profissionais:'banco',usuarios:'permissoes',ajustes:'ajustes',operacoes:'operacoes',perfis:'perfis',config:'config',historico:'historico',portal:'portal',controller:'controller'}[parts[1]];
+    const target={profissionais:'banco',usuarios:'permissoes',ajustes:'ajustes',operacoes:'operacoes',perfis:'perfis',config:'config',historico:'historico',portal:'portal',controller:'controller','relatorio-operacional':'operational-report'}[parts[1]];
     if(target&&typeof window.aaSwitchRHTab==='function'){routing=true;window.aaSwitchRHTab(target);routing=false;}
   }
   window.addEventListener('hashchange',apply);
@@ -6476,7 +6483,7 @@ $("todos").addEventListener("click",function(){
   const client=()=>window.__aaSupabaseClient;
   const session=()=>typeof window.__aaGetPresenceSession==='function'?window.__aaGetPresenceSession():null;
   const safe=v=>typeof aaHtmlSafe==='function'?aaHtmlSafe(v==null?'':String(v)):String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const labels={dashboard:'Dashboard',agendas:'Agendas Ativas',banco:'Banco de Dados',ajustes:'Ajuste de Agenda',controller:'Controller', 'controller:subpaginas':'Controller · Acompanhamento individual', 'controller:dashboard':'Controller · Painel geral', 'controller:professional-search':'Controller · Pesquisa de profissional', 'controller:leadership':'Controller · Visão da liderança', 'controller:hours':'Controller · Divisão de horas', 'controller:status':'Controller · Configuração de status',portal:'Portal',controler:'Administração',historico:'Histórico',permissoes:'Administração · Usuários e permissões',operacoes:'Administração · Operações',perfis:'Administração · Perfis de acesso',config:'Administração · Configurações'};
+  const labels={dashboard:'Dashboard',agendas:'Agendas Ativas',banco:'Banco de Dados',ajustes:'Ajuste de Agenda',controller:'Controller', 'operational-report':'Relatório Operacional', 'controller:subpaginas':'Controller · Acompanhamento individual', 'controller:dashboard':'Controller · Painel geral', 'controller:professional-search':'Controller · Pesquisa de profissional', 'controller:leadership':'Controller · Visão da liderança', 'controller:hours':'Controller · Divisão de horas', 'controller:status':'Controller · Configuração de status',portal:'Portal',controler:'Administração',historico:'Histórico',permissoes:'Administração · Usuários e permissões',operacoes:'Administração · Operações',perfis:'Administração · Perfis de acesso',config:'Administração · Configurações'};
   const pageLabel=tab=>labels[String(tab||'')]||labels[String(tab||'').split(':')[0]]||String(tab||'Sistema');
   const lastSeenLabel=value=>{if(!value)return 'Sem registro';const date=new Date(value);if(Number.isNaN(date.getTime()))return 'Sem registro';return date.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});};
   let selectedEmails=new Set(),filterMode='all';
@@ -6532,5 +6539,24 @@ $("todos").addEventListener("click",function(){
 .aa-controller-hours-tool .hide{display:none}
 .aa-controller-hours-tool .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 @media(max-width:560px){.aa-controller-hours-tool .row3{grid-template-columns:1fr}}</style>
+<script id="aa-operational-report-routing">
+(function(){
+  const originalSwitch=window.aaSwitchRHTab;
+  const originalApply=window.aaApplyRHPermissionsUI;
+  function showOperationalReport(){
+    if(typeof rhAuthenticated!=='undefined'&&!rhAuthenticated)return;
+    const mount=document.getElementById('aa-rh-page-mount'),cache=document.getElementById('aa-rh-page-cache'),panel=document.getElementById('aa-rhtab-operational-report');
+    if(!panel)return;
+    if(cache&&panel.parentElement!==cache)cache.appendChild(panel);
+    document.querySelectorAll('[data-rhtab]').forEach(button=>button.classList.toggle('active',button.dataset.rhtab==='operational-report'));
+    document.querySelectorAll('#aa-rh-authed-content .aa-rh-subpanel').forEach(item=>{item.style.display='none';item.hidden=true;});
+    if(mount)mount.appendChild(panel);
+    panel.hidden=false;panel.removeAttribute('aria-hidden');panel.style.display='block';
+    if(location.hash!=='#/painel/relatorio-operacional')history.replaceState(null,'','#/painel/relatorio-operacional');
+  }
+  window.aaSwitchRHTab=function(tab){if(tab==='operational-report'){showOperationalReport();return;}return originalSwitch.apply(this,arguments);};
+  window.aaApplyRHPermissionsUI=function(){if(typeof originalApply==='function')originalApply.apply(this,arguments);const button=document.querySelector('[data-rhtab="operational-report"]');if(button)button.style.display='';};
+})();
+</script>
 </body>
 </html>
