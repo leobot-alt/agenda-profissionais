@@ -6587,12 +6587,29 @@ $("todos").addEventListener("click",function(){
 .aa-controller-hours-tool .hide{display:none}
 .aa-controller-hours-tool .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 @media(max-width:560px){.aa-controller-hours-tool .row3{grid-template-columns:1fr}}</style>
-<style id="aa-operational-report-menu-style">#aa-rh-authed-content .aa-rh-sidebar-nav [data-rhtab="operational-report"]{display:flex!important;}</style>
 <script id="aa-operational-report-routing">
 (function(){
   const originalSwitch=window.aaSwitchRHTab;
   const originalApply=window.aaApplyRHPermissionsUI;
+  const reportRoute='#/painel/relatorio-operacional';
+  function reportAllowed(){
+    if(typeof rhAuthenticated==='undefined'||!rhAuthenticated)return false;
+    const profile=typeof rhCurrentProfile!=='undefined'?rhCurrentProfile:null,role=typeof normalizePerfil==='function'?normalizePerfil(profile&&profile.perfil):String(profile&&profile.perfil||'').trim().toLowerCase().replace(/\s+/g,'_'),email=String(typeof rhCurrentUser!=='undefined'?rhCurrentUser:'').trim().toLowerCase(),principal=String(window.__AA_ADMIN_EMAIL||'adm@adm.com').trim().toLowerCase();
+    if(!['administrador','administrador_geral'].includes(role)&&email!==principal)return false;
+    return !profile||(!profile.removido&&profile.ativo!==false&&(typeof perfilAtivo!=='function'||perfilAtivo(profile.perfil)));
+  }
+  function denyOperationalReport(){
+    const button=document.querySelector('[data-rhtab="operational-report"]');if(button)button.style.display='none';
+    const mount=document.getElementById('aa-rh-page-mount'),cache=document.getElementById('aa-rh-page-cache'),panel=document.getElementById('aa-rhtab-operational-report');
+    if(panel){panel.hidden=true;panel.setAttribute('aria-hidden','true');panel.style.display='none';if(cache&&panel.parentElement!==cache)cache.appendChild(panel);}
+    if(typeof rhAuthenticated!=='undefined'&&rhAuthenticated&&typeof originalSwitch==='function'){
+      const first=typeof window.aaFirstAllowedRHTab==='function'?window.aaFirstAllowedRHTab():null;
+      originalSwitch.call(window,first&&first!=='operational-report'?first:'dashboard');
+    }
+    if(location.hash.toLowerCase()===reportRoute)history.replaceState(null,'','#/painel');
+  }
   function showOperationalReport(){
+    if(!reportAllowed()){denyOperationalReport();return;}
     if(typeof rhAuthenticated!=='undefined'&&!rhAuthenticated)return;
     const mount=document.getElementById('aa-rh-page-mount'),cache=document.getElementById('aa-rh-page-cache'),panel=document.getElementById('aa-rhtab-operational-report');
     if(!panel)return;
@@ -6601,10 +6618,15 @@ $("todos").addEventListener("click",function(){
     document.querySelectorAll('#aa-rh-authed-content .aa-rh-subpanel').forEach(item=>{item.style.display='none';item.hidden=true;});
     if(mount)mount.appendChild(panel);
     panel.hidden=false;panel.removeAttribute('aria-hidden');panel.style.display='block';
-    if(location.hash!=='#/painel/relatorio-operacional')history.replaceState(null,'','#/painel/relatorio-operacional');
+    if(location.hash!==reportRoute)history.replaceState(null,'',reportRoute);
   }
   window.aaSwitchRHTab=function(tab){if(tab==='operational-report'){showOperationalReport();return;}return originalSwitch.apply(this,arguments);};
-  window.aaApplyRHPermissionsUI=function(){if(typeof originalApply==='function')originalApply.apply(this,arguments);const button=document.querySelector('[data-rhtab="operational-report"]');if(button)button.style.display='';};
+  window.aaApplyRHPermissionsUI=function(){
+    if(typeof originalApply==='function')originalApply.apply(this,arguments);
+    const button=document.querySelector('[data-rhtab="operational-report"]'),allowed=reportAllowed();
+    if(button)button.style.display=allowed?'':'none';
+    if(!allowed&&location.hash.toLowerCase()===reportRoute)denyOperationalReport();
+  };
 })();
 </script>
 </body>
