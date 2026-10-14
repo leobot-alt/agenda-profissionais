@@ -5404,7 +5404,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   };
   function renderControllerPages(){
     const out=document.getElementById('aa-controller-view-subpaginas');if(!out)return;
-    const list=controllerPages.map(page=>`<article class="aa-controller-collaborator-card"><div class="aa-controller-collaborator-main"><span class="aa-controller-avatar" aria-hidden="true">${controllerPageText(String(page.nome||'?').trim().charAt(0).toLocaleUpperCase('pt-BR'))}</span><div class="aa-controller-collaborator-copy"><h3>${controllerPageText(page.nome)}</h3><p>${controllerPageText(page.descricao||'Acompanhamentos atribuídos a este colaborador.')}</p><p><strong>Turno:</strong> ${controllerPageText(page.turno||'Não informado')}</p></div></div><div class="aa-controller-page-actions">${controllerCan('controller_subpaginas_gerenciar')?`<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerEditShift('${controllerPageText(page.id)}')">Editar turno</button>`:''}<button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaControllerOpenPage('${controllerPageText(page.id)}')">Abrir acompanhamento</button><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeletePage('${controllerPageText(page.id)}')">Excluir</button></div></article>`).join('');
+    const list=controllerPages.map(page=>`<article class="aa-controller-collaborator-card"><div class="aa-controller-collaborator-main"><span class="aa-controller-avatar" aria-hidden="true">${controllerPageText(String(page.nome||'?').trim().charAt(0).toLocaleUpperCase('pt-BR'))}</span><div class="aa-controller-collaborator-copy"><h3>${controllerPageText(page.nome)}</h3><p>${controllerPageText(page.descricao||'Acompanhamentos atribuídos a este colaborador.')}</p><p><strong>Turno:</strong> ${controllerPageText(page.turno||'Não informado')}</p></div></div><div class="aa-controller-page-actions">${controllerLeadershipAdminAllowed()?`<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerEditPageName('${controllerPageText(page.id)}')">Editar nome</button>`:''}${controllerCan('controller_subpaginas_gerenciar')?`<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerEditShift('${controllerPageText(page.id)}')">Editar turno</button>`:''}<button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaControllerOpenPage('${controllerPageText(page.id)}')">Abrir acompanhamento</button><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeletePage('${controllerPageText(page.id)}')">Excluir</button></div></article>`).join('');
     out.innerHTML=controllerViewNav()+`<section class="aa-controller-workspace">
       <form onsubmit="aaControllerImportPlanilha(event)" class="aa-card aa-controller-import-card">
         <div class="aa-controller-card-heading"><div><span class="aa-controller-overline">ROTINA DO DIA</span><h2>Importar atendimentos</h2></div><span class="aa-controller-step">01</span></div>
@@ -6412,6 +6412,23 @@ $("todos").addEventListener("click",function(){
     const page={id:'controller-'+Date.now().toString(36)+Math.random().toString(36).slice(0,7),nome:name,descricao:description,turno,criadaEm:new Date().toISOString()};
     try{const result=await controllerDb.from('controller_subpages').insert({id:page.id,nome:page.nome,descricao:page.descricao,turno:page.turno,criada_em:page.criadaEm});if(result.error)throw result.error;controllerPages.push(page);await controllerAudit('Subpágina criada',page.nome,'Colaborador adicionado ao Controller; turno: '+(page.turno||'não informado'),'','Criado');renderControllerPages();if(typeof aaToast==='function')aaToast('Área de acompanhamento criada com sucesso.','success');}
     catch(e){alert('Não foi possível adicionar o colaborador agora: '+(e?.message||'verifique sua sessão e tente novamente.'));console.error('Erro ao adicionar colaborador ao Controller:',e);}
+  };
+  window.aaControllerEditPageName=async function(id){
+    if(!controllerAllowed()||!controllerLeadershipAdminAllowed()){alert('Apenas os perfis Administrador e Administrador geral podem alterar o nome do colaborador.');return;}
+    const page=controllerPages.find(item=>String(item.id)===String(id));if(!page)return;
+    const value=window.prompt('Informe o nome desta área de acompanhamento. Ele também será usado na aba correspondente da planilha (até 80 caracteres).',page.nome||'');if(value===null)return;
+    const nome=String(value||'').trim();
+    if(!nome)return alert('Informe um nome para a área de acompanhamento.');
+    if(nome.length>80)return alert('O nome deve ter no máximo 80 caracteres.');
+    const before=String(page.nome||'');if(nome===before)return;
+    const normalizedName=nome.toLocaleLowerCase('pt-BR');
+    if(controllerPages.some(item=>String(item.id)!==String(id)&&String(item.nome||'').trim().toLocaleLowerCase('pt-BR')===normalizedName))return alert('Já existe um acompanhamento cadastrado com esse nome.');
+    try{
+      const result=await controllerDb.from('controller_subpages').update({nome}).eq('id',String(id));if(result.error)throw result.error;
+      page.nome=nome;renderControllerPages();
+      try{await controllerAudit('Nome da subpágina alterado',nome,'Nome da área de acompanhamento e da aba correspondente da planilha atualizado.',before,nome);}catch(auditError){console.warn('O nome foi atualizado, mas não foi possível registrar a auditoria.',auditError);}
+      if(typeof aaToast==='function')aaToast('Nome do colaborador atualizado.','success');
+    }catch(error){alert('Não foi possível atualizar o nome: '+(error?.message||'verifique sua sessão e tente novamente.'));console.error('Erro ao atualizar o nome da área de acompanhamento:',error);}
   };
   window.aaControllerEditShift=async function(id){
     if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para alterar o turno.');return;}
