@@ -1,0 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700&family=Source+Serif+4:wght@400;600&display=swap');
+
+#aa-operational-report-app{--ar-bg:#f4f3f8;--ar-panel:#fff;--ar-ink:#1d1b2b;--ar-mute:#6b6880;--ar-line:#dcd9e8;--ar-brand:#7048dc;--ar-blue:#159fce;color:var(--ar-ink);font-family:Montserrat,system-ui,sans-serif;font-size:14px;line-height:1.5}
+#aa-operational-report-app *{box-sizing:border-box}
+.aa-report-toolbar{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:0 0 14px;padding:16px;border:1px solid #ded8f0;border-radius:14px;background:linear-gradient(110deg,#faf8ff,#f4f8ff)}
+.aa-report-toolbar h2{margin:0;color:#263a5c;font-size:20px}.aa-report-toolbar p{margin:4px 0 0;color:#6b6880;font-size:12px;max-width:620px}
+.aa-report-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.aa-report-btn{border:1px solid #dcd9e8;border-radius:8px;background:#fff;color:#3e3761;padding:9px 12px;font:700 12px Montserrat,system-ui,sans-serif;cursor:pointer;transition:transform .15s,box-shadow .15s,filter .15s}
+.aa-report-btn:hover{filter:brightness(.97);transform:translateY(-1px);box-shadow:0 4px 10px rgba(48,38,80,.1)}.aa-report-btn:focus-visible{outline:3px solid rgba(21,159,206,.28);outline-offset:2px}
+.aa-report-btn-primary{background:linear-gradient(100deg,#9b5de5,#3e9dda);border-color:transparent;color:#fff}.aa-report-btn-danger{color:#b34355;border-color:#efd0d6}
+.aa-report-security-note{margin:0 0 14px;padding:10px 13px;border:1px solid #e9e1bf;border-radius:9px;background:#fffaf0;color:#6b5a2a;font-size:12px}
+.aa-report-status{min-height:20px;margin:0 0 10px;font-size:12px;font-weight:700;color:#157456}.aa-report-status[data-kind="error"]{color:#b34355}.aa-report-status:empty{display:none}
+.aa-report-layout{display:grid;grid-template-columns:minmax(300px,.92fr) minmax(0,1.08fr);gap:16px;align-items:start}
+.aa-report-editor{display:flex;flex-direction:column;gap:12px;min-width:0}
+.aa-report-editor fieldset{min-width:0;margin:0;padding:13px;border:1px solid var(--ar-line);border-radius:10px;background:var(--ar-panel)}
+.aa-report-editor legend{padding:0 6px;color:#302b45;font-weight:800;font-size:13px}
+.aa-report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 10px}
+.aa-report-field{min-width:0}.aa-report-field label,.aa-report-editor label{display:block;margin:7px 0 3px;color:var(--ar-mute);font-size:11px;font-weight:700}
+.aa-report-editor input,.aa-report-editor textarea,.aa-report-editor select,.aa-report-dialog input{width:100%;min-width:0;border:1px solid var(--ar-line);border-radius:7px;background:#fbfaff;color:var(--ar-ink);padding:8px 9px;font:13px Montserrat,system-ui,sans-serif}
+.aa-report-editor textarea{min-height:76px;resize:vertical}.aa-report-editor input:focus,.aa-report-editor textarea:focus,.aa-report-editor select:focus,.aa-report-dialog input:focus{outline:3px solid rgba(112,72,220,.15);border-color:#9275dc}
+.aa-report-hint{margin:5px 0 0;color:#7c788d;font-size:11px}
+.aa-report-operator{margin-top:10px;padding:10px;border:1px solid var(--ar-line);border-radius:9px;background:#faf9fd}
+.aa-report-operator-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
+.aa-report-nps{display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:3px;margin-top:4px}
+.aa-report-nps button{min-width:0;padding:6px 1px;border:1px solid var(--ar-line);border-radius:6px;background:#fff;color:#454057;font:700 11px Montserrat,system-ui,sans-serif;cursor:pointer}
+.aa-report-nps button.is-selected{background:var(--ar-brand);border-color:var(--ar-brand);color:#fff}
+.aa-report-preview-wrap{min-width:0;position:sticky;top:12px}
+.aa-report-preview{width:100%;max-width:794px;min-height:600px;margin:0 auto;padding:38px 44px;background:#fff;color:#111;box-shadow:0 2px 14px rgba(40,30,80,.15);font:15px/1.6 'Source Serif 4',Georgia,serif;overflow-wrap:anywhere}
+.aa-report-preview .aa-report-logo{display:block;width:190px;height:auto;margin:0 auto 8px;object-fit:contain}.aa-report-preview .aa-report-footer-logo{display:block;width:170px;height:auto;margin:8px auto 0;object-fit:contain}
+.aa-report-preview h2{text-align:center;margin:6px 0 20px;font:700 19px 'Source Serif 4',Georgia,serif;color:#16131d}
+.aa-report-preview h3{margin:22px 0 6px;font:700 16px 'Source Serif 4',Georgia,serif;color:#191622;break-after:avoid}
+.aa-report-preview h4{margin:14px 0 2px;font:700 14px 'Source Serif 4',Georgia,serif;color:#191622;break-after:avoid}
+.aa-report-preview p{margin:0 0 8px;text-align:justify;white-space:pre-wrap}
+.aa-report-meta{display:grid;grid-template-columns:1fr 1fr;gap:4px 18px;margin-bottom:10px;font-size:13px}
+.aa-report-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px;margin:12px 0}
+.aa-report-kpi{padding:8px 10px;border:1px solid #d9d4ee;border-radius:7px;background:#f7f5fd}.aa-report-kpi b{display:block;color:#5b34d6;font:700 19px Montserrat,system-ui,sans-serif}.aa-report-kpi span{color:#555;font:11px Montserrat,system-ui,sans-serif}
+.aa-report-chip{display:inline-block;margin-left:7px;padding:2px 7px;border-radius:10px;color:#fff;font:700 10px Montserrat,system-ui,sans-serif;vertical-align:middle}
+.aa-report-nps-box{display:flex;flex-wrap:wrap;align-items:center;gap:16px;padding:12px 14px;border:1px solid #d9d4ee;border-radius:8px;background:#f7f5fd}
+.aa-report-nps-big{font:700 38px/1 Montserrat,system-ui,sans-serif}.aa-report-nps-small{display:block;color:#444;font:11px Montserrat,system-ui,sans-serif}
+.aa-report-bar{display:flex;width:100%;height:12px;overflow:hidden;border-radius:7px;background:#e5e2f0}.aa-report-bar i{display:block;height:100%}
+.aa-report-legend{margin-top:12px;color:#333;font:11px/1.45 Montserrat,system-ui,sans-serif}.aa-report-legend div{display:flex;align-items:baseline;gap:7px;margin:3px 0}.aa-report-legend i{width:10px;height:10px;flex:0 0 auto;border-radius:2px;transform:translateY(1px)}
+.aa-report-impl-image{display:block;max-width:100%;max-height:360px;margin:8px auto;border:1px solid #ddd;object-fit:contain}
+.aa-report-foot{margin-top:30px;text-align:center;color:#6b4fd0;font:11px Montserrat,system-ui,sans-serif;break-inside:avoid}
+.aa-report-saved{margin:0 0 14px;padding:14px;border:1px solid #ded8f0;border-radius:12px;background:#fff}.aa-report-saved h3{margin:0 0 8px;color:#263a5c;font-size:15px}
+.aa-report-saved-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #efedf4}.aa-report-saved-row:first-of-type{border-top:0}.aa-report-saved-title{font-weight:800;color:#302b45}.aa-report-saved-meta{display:block;margin-top:2px;color:#7c788d;font-size:11px}.aa-report-saved-actions{display:flex;gap:6px;flex-wrap:wrap}
+.aa-report-dialog{width:min(490px,calc(100vw - 28px));max-height:calc(100vh - 28px);padding:0;border:0;border-radius:14px;box-shadow:0 18px 60px rgba(25,20,45,.28);color:var(--ar-ink)}.aa-report-dialog::backdrop{background:rgba(24,20,38,.48)}.aa-report-dialog form{padding:20px}.aa-report-dialog h3{margin:0 0 6px;color:#263a5c;font-size:17px}.aa-report-dialog p{margin:0 0 12px;color:var(--ar-mute);font-size:12px}.aa-report-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.aa-report-dialog-error{min-height:18px;margin-top:8px;color:#b34355;font-size:12px;font-weight:700}
+@media(max-width:980px){.aa-report-layout{grid-template-columns:1fr}.aa-report-preview-wrap{position:static}.aa-report-preview{max-width:100%}}
+@media(max-width:560px){.aa-report-toolbar{padding:12px}.aa-report-toolbar h2{font-size:17px}.aa-report-actions{width:100%}.aa-report-actions .aa-report-btn{flex:1 1 130px}.aa-report-grid{grid-template-columns:1fr 1fr}.aa-report-preview{padding:24px 18px}.aa-report-saved-row{align-items:flex-start;flex-direction:column}.aa-report-nps{gap:2px}.aa-report-nps button{font-size:10px;padding:6px 0}}
+@page{size:A4;margin:12mm}
+@media print{
+  body *{visibility:hidden!important}
+  #aa-operational-report-preview,#aa-operational-report-preview *{visibility:visible!important}
+  #aa-operational-report-preview{position:fixed!important;inset:0!important;width:100%!important;max-width:none!important;min-height:0!important;margin:0!important;padding:0!important;box-shadow:none!important;background:#fff!important;color:#111!important;overflow:visible!important;font-size:11pt!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #aa-operational-report-preview h3,#aa-operational-report-preview h4{break-after:avoid;page-break-after:avoid}
+  #aa-operational-report-preview .aa-report-kpi,#aa-operational-report-preview .aa-report-nps-box,#aa-operational-report-preview .aa-report-foot{break-inside:avoid;page-break-inside:avoid}
+  #aa-operational-report-preview img{max-width:100%!important}
+}
