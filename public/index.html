@@ -5015,6 +5015,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 .aa-controller-section-heading{align-items:flex-start}
 .aa-controller-count-pill,.aa-controller-pending-hint{flex:0 0 auto;padding:7px 11px;border:1px solid #E1E7EF;border-radius:999px;background:#F7F9FC;color:#596A80;font-size:11px;font-weight:800;white-space:nowrap}
 .aa-controller-collaborator-list{display:grid;gap:10px}
+.aa-controller-archived-list{display:grid;gap:10px;padding:14px 16px}.aa-controller-archived-note{display:inline-block;margin-top:4px;color:#77849A;font-size:11px;font-weight:700}.aa-controller-collaborator-card--archived{background:#F8F9FB;border-style:dashed}
 .aa-controller-collaborator-card{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:15px 16px;border:1px solid #E5EAF1;border-radius:13px;background:#FCFDFE;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease}
 .aa-controller-collaborator-card:hover{transform:translateY(-1px);border-color:#C9D5E4;box-shadow:0 5px 14px rgba(30,48,78,.06)}
 .aa-controller-collaborator-main{display:flex;align-items:center;gap:12px;min-width:0}
@@ -5143,7 +5144,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   }
   function controllerPageText(value){return typeof aaHtmlSafe==='function'?aaHtmlSafe(value==null?'':String(value)):String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   let controllerPagesLoaded=false,controllerPagesLoading=null;
-  async function loadControllerPages(force){if(controllerPagesLoaded&&!force)return controllerPages;if(controllerPagesLoading)return controllerPagesLoading;controllerPagesLoading=(async()=>{try{if(!controllerDb?.from)throw new Error('Cliente Supabase indisponível.');const result=await controllerDb.from('controller_subpages').select('id,nome,descricao,criada_em,turno').order('criada_em',{ascending:true});if(result.error)throw result.error;controllerPages=(result.data||[]).map(p=>({id:p.id,nome:p.nome,descricao:p.descricao||'',turno:p.turno||'',criadaEm:p.criada_em}));controllerPagesLoaded=true;}catch(e){if(!controllerPagesLoaded)controllerPages=[];console.warn('Não foi possível carregar as áreas de acompanhamento do Controller.',e);}return controllerPages;})().finally(()=>{controllerPagesLoading=null;});return controllerPagesLoading;}
+  async function loadControllerPages(force){if(controllerPagesLoaded&&!force)return controllerPages;if(controllerPagesLoading)return controllerPagesLoading;controllerPagesLoading=(async()=>{try{if(!controllerDb?.from)throw new Error('Cliente Supabase indisponível.');const result=await controllerDb.from('controller_subpages').select('id,nome,descricao,criada_em,turno,arquivada').order('criada_em',{ascending:true});if(result.error)throw result.error;controllerPages=(result.data||[]).map(p=>({id:p.id,nome:p.nome,descricao:p.descricao||'',turno:p.turno||'',arquivada:p.arquivada===true,criadaEm:p.criada_em}));controllerPagesLoaded=true;}catch(e){if(!controllerPagesLoaded)controllerPages=[];console.warn('Não foi possível carregar as áreas de acompanhamento do Controller.',e);}return controllerPages;})().finally(()=>{controllerPagesLoading=null;});return controllerPagesLoading;}
   async function saveControllerPages(){const rows=controllerPages.map(p=>({id:String(p.id),nome:String(p.nome||'').trim(),descricao:String(p.descricao||''),criada_em:p.criadaEm||new Date().toISOString()}));if(rows.length){const result=await controllerDb.from('controller_subpages').upsert(rows,{onConflict:'id'});if(result.error)throw result.error;}}
   async function controllerAudit(action,target,details,beforeValue,afterValue){
     if(typeof aaLogChange!=='function')return;
@@ -5228,7 +5229,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   function controllerImportHeader(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'');}
   function controllerImportStatus(value){const v=controllerImportHeader(value);if(v.includes('desmarcadopro'))return 'desmarcado_pro';if(v.includes('desmarcado'))return 'desmarcado';if(v.includes('horarioreserv')||v.includes('lideranca'))return 'horario_reservado_lideranca';if(v.includes('atendido')||v.includes('realizado'))return 'atendido';if(v.includes('proffaltou')||v.includes('profissionalfaltou'))return 'pro_faltou';if(v.includes('faltou')||v.includes('falta'))return 'faltou';if(v.includes('bloquead'))return 'bloqueado';if(v.includes('cancel'))return 'cancelado';if(v.includes('remanej'))return 'remanejar';if(v.includes('pendente')||v.includes('pending'))return 'pendente';if(v.includes('disponivel')||!v)return 'disponivel';return 'pendente';}
   function controllerImportTime(value){if(value instanceof Date&&!isNaN(value))return value.toTimeString().slice(0,5);if(typeof value==='number'&&isFinite(value)){const fraction=value%1;const total=Math.round(fraction*24*60);return String(Math.floor(total/60)%24).padStart(2,'0')+':'+String(total%60).padStart(2,'0');}const v=String(value||'').trim().replace('.',':');const m=v.match(/(\d{1,2}):(\d{2})/);return m?m[1].padStart(2,'0')+':'+m[2]:'';}
-  function controllerPageByName(value){const n=controllerImportHeader(value);return controllerPages.find(p=>controllerImportHeader(p.nome)===n)||controllerPages.find(p=>{const pn=controllerImportHeader(p.nome);return pn&&n&&(pn.includes(n)||n.includes(pn));});}
+  function controllerPageByName(value,includeArchived){const n=controllerImportHeader(value),pages=controllerPages.filter(page=>includeArchived||!page.arquivada);return pages.find(page=>controllerImportHeader(page.nome)===n)||pages.find(page=>{const pn=controllerImportHeader(page.nome);return pn&&n&&(pn.includes(n)||n.includes(pn));});}
+  function controllerSortPages(pages){return [...(pages||[])].sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR',{sensitivity:'base',numeric:true}));}
   function controllerRenderDayDate(value){return String(value||'').split('-').reverse().join('/')}
   function controllerNormalizeProfessionalName(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');}
   function controllerFilteredPageRecords(){
@@ -5249,7 +5251,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
       return String(a.profissional||'').localeCompare(String(b.profissional||''),'pt-BR',{sensitivity:'base'})||String(a.id||'').localeCompare(String(b.id||''));
     });
   }
-  window.aaControllerDownloadTemplate=function(){if(!window.XLSX)return alert('A biblioteca da planilha ainda não foi carregada.');const book=XLSX.utils.book_new();const pages=controllerPages.length?controllerPages:[{nome:'NOME DO RESPONSAVEL'}];pages.forEach(page=>{const rows=[['Agenda','Hora','Status','Observação']];const ws=XLSX.utils.aoa_to_sheet(rows);XLSX.utils.book_append_sheet(book,ws,String(page.nome||'Responsavel').slice(0,31));});XLSX.writeFile(book,'modelo-conferencia-atendimentos.xlsx');};
+  window.aaControllerDownloadTemplate=function(){if(!window.XLSX)return alert('A biblioteca da planilha ainda não foi carregada.');const book=XLSX.utils.book_new();const pages=controllerSortPages(controllerPages.filter(page=>!page.arquivada)),templatePages=pages.length?pages:[{nome:'NOME DO RESPONSAVEL'}];templatePages.forEach(page=>{const rows=[['Agenda','Hora','Status','Observação']];const ws=XLSX.utils.aoa_to_sheet(rows);XLSX.utils.book_append_sheet(book,ws,String(page.nome||'Responsavel').slice(0,31));});XLSX.writeFile(book,'modelo-conferencia-atendimentos.xlsx');};
   function renderControllerPageDetail(){
     const out=document.getElementById('aa-controller-view-subpaginas'),page=controllerPages.find(item=>String(item.id)===String(controllerActivePageId));if(!out||!page)return;
     const canEdit=controllerCan('controller_status_atual_editar'),canDeleteRecords=controllerCan('controller_registros_excluir');
@@ -5379,11 +5381,12 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     try{
       const auth=await controllerDb.auth.getUser();if(auth.error)throw auth.error;const creatorId=auth.data?.user?.id;if(!creatorId)throw new Error('Sessão autenticada indisponível. Faça login novamente.');const data=await file.arrayBuffer(),book=XLSX.read(data,{type:'array',cellDates:true}),records=[],errors=[],createdPages=[];
       for(const sheetName of book.SheetNames){
-        let page=controllerPageByName(sheetName);
+        let page=controllerPageByName(sheetName,true);
+        if(page?.arquivada){errors.push('Aba "'+sheetName+'" corresponde à área arquivada "'+page.nome+'"; restaure-a antes de importar.');continue;}
         if(!page){
           const name=String(sheetName||'').trim().slice(0,80);
           if(!name){errors.push('Uma aba sem nome foi ignorada.');continue;}
-          page={id:'controller-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),nome:name,descricao:'Criada automaticamente pela importação da planilha.',criadaEm:new Date().toISOString()};
+          page={id:'controller-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),nome:name,descricao:'Criada automaticamente pela importação da planilha.',arquivada:false,criadaEm:new Date().toISOString()};
           const pageResult=await controllerDb.from('controller_subpages').insert({id:page.id,nome:page.nome,descricao:page.descricao,criada_em:page.criadaEm});
           if(pageResult.error)throw pageResult.error;
           controllerPages.push(page);createdPages.push(page.nome);await controllerAudit('Subpágina criada pela importação',page.nome,'Nova área de acompanhamento criada automaticamente ao importar a planilha.','','Criada');
@@ -5402,9 +5405,20 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
       const input=document.getElementById('aa-controller-import-file');if(input)input.value='';renderControllerPages();
     }catch(e){alert('Não foi possível importar a planilha: '+(e?.message||''));console.error('Importação Controller:',e);}
   };
+  function controllerPageCardMarkup(page,archived){
+    const id=controllerPageText(page.id),name=controllerPageText(page.nome),initial=controllerPageText(String(page.nome||'?').trim().charAt(0).toLocaleUpperCase('pt-BR'));
+    const nameAction=!archived&&controllerLeadershipAdminAllowed()?`<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerEditPageName('${id}')">Editar nome</button>`:'';
+    const shiftAction=controllerCan('controller_subpaginas_gerenciar')?`<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerEditShift('${id}')">Editar turno</button>`:'';
+    const archivedActions=controllerCan('controller_subpaginas_gerenciar')?`<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerRestorePage('${id}')">Restaurar</button><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeletePage('${id}')">Excluir</button>`:'';
+    const activeActions=`<button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaControllerOpenPage('${id}')">Abrir acompanhamento</button>${controllerCan('controller_subpaginas_gerenciar')?`<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerArchivePage('${id}')">Arquivar</button><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeletePage('${id}')">Excluir</button>`:''}`;
+    return `<article class="aa-controller-collaborator-card${archived?' aa-controller-collaborator-card--archived':''}"><div class="aa-controller-collaborator-main"><span class="aa-controller-avatar" aria-hidden="true">${initial}</span><div class="aa-controller-collaborator-copy"><h3>${name}</h3><p>${controllerPageText(page.descricao||'Acompanhamentos atribuídos a este colaborador.')}</p><p><strong>Turno:</strong> ${controllerPageText(page.turno||'Não informado')}</p>${archived?'<small class="aa-controller-archived-note">Arquivado; histórico preservado.</small>':''}</div></div><div class="aa-controller-page-actions">${archived?archivedActions:nameAction+shiftAction+activeActions}</div></article>`;
+  }
   function renderControllerPages(){
     const out=document.getElementById('aa-controller-view-subpaginas');if(!out)return;
-    const list=controllerPages.map(page=>`<article class="aa-controller-collaborator-card"><div class="aa-controller-collaborator-main"><span class="aa-controller-avatar" aria-hidden="true">${controllerPageText(String(page.nome||'?').trim().charAt(0).toLocaleUpperCase('pt-BR'))}</span><div class="aa-controller-collaborator-copy"><h3>${controllerPageText(page.nome)}</h3><p>${controllerPageText(page.descricao||'Acompanhamentos atribuídos a este colaborador.')}</p><p><strong>Turno:</strong> ${controllerPageText(page.turno||'Não informado')}</p></div></div><div class="aa-controller-page-actions">${controllerLeadershipAdminAllowed()?`<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerEditPageName('${controllerPageText(page.id)}')">Editar nome</button>`:''}${controllerCan('controller_subpaginas_gerenciar')?`<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerEditShift('${controllerPageText(page.id)}')">Editar turno</button>`:''}<button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaControllerOpenPage('${controllerPageText(page.id)}')">Abrir acompanhamento</button><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeletePage('${controllerPageText(page.id)}')">Excluir</button></div></article>`).join('');
+    const activePages=controllerSortPages(controllerPages.filter(page=>!page.arquivada));
+    const archivedPages=controllerSortPages(controllerPages.filter(page=>page.arquivada));
+    const list=activePages.map(page=>controllerPageCardMarkup(page,false)).join('');
+    const archivedList=archivedPages.map(page=>controllerPageCardMarkup(page,true)).join('');
     out.innerHTML=controllerViewNav()+`<section class="aa-controller-workspace">
       <form onsubmit="aaControllerImportPlanilha(event)" class="aa-card aa-controller-import-card">
         <div class="aa-controller-card-heading"><div><span class="aa-controller-overline">ROTINA DO DIA</span><h2>Importar atendimentos</h2></div><span class="aa-controller-step">01</span></div>
@@ -5428,12 +5442,17 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
         </form>
       </details>
       <section class="aa-controller-pages-section">
-        <header class="aa-controller-section-heading"><div><span class="aa-controller-overline">ÁREAS DE TRABALHO</span><h2>Colaboradores</h2><p>Abra o nome desejado para conferir e atualizar os atendimentos do dia.</p></div><span class="aa-controller-count-pill">${controllerPages.length} colaborador(es)</span></header>
-        <div class="aa-controller-collaborator-list">${list||'<div class="aa-controller-empty"><strong>Nenhum colaborador cadastrado</strong><span>Use “Gerenciar colaboradores” para criar a primeira área de acompanhamento.</span></div>'}</div>
+        <header class="aa-controller-section-heading"><div><span class="aa-controller-overline">ÁREAS DE TRABALHO</span><h2>Colaboradores</h2><p>As áreas ativas ficam em ordem alfabética. Abra o nome desejado para conferir os atendimentos.</p></div><span class="aa-controller-count-pill">${activePages.length} área(s) ativa(s)</span></header>
+        <div class="aa-controller-collaborator-list">${list||'<div class="aa-controller-empty"><strong>Nenhuma área ativa</strong><span>Use “Gerenciar colaboradores” para criar uma área ou restaure uma área arquivada.</span></div>'}</div>
       </section>
+      <details class="aa-controller-management aa-controller-archived-management">
+        <summary><span><strong>Áreas arquivadas</strong><small>Histórico preservado; restaure para voltar a importar atendimentos</small></span><span class="aa-controller-count-pill">${archivedPages.length}</span></summary>
+        <div class="aa-controller-archived-list">${archivedList||'<div class="aa-controller-empty"><strong>Nenhuma área arquivada</strong><span>Áreas arquivadas aparecerão aqui.</span></div>'}</div>
+      </details>
     </section>`;
     const importForm=out.querySelector('form[onsubmit^="aaControllerImportPlanilha"]');if(importForm)importForm.style.display=controllerCan('controller_importar')?'':'none';
-    const management=out.querySelector('.aa-controller-management');if(management)management.style.display=controllerCan('controller_subpaginas_gerenciar')?'':'none';
+    const management=out.querySelector('.aa-controller-management:not(.aa-controller-archived-management)');if(management)management.style.display=controllerCan('controller_subpaginas_gerenciar')?'':'none';
+    const archivedSection=out.querySelector('.aa-controller-archived-management');if(archivedSection)archivedSection.style.display=controllerCan('controller_subpaginas_gerenciar')?'':'none';
     if(!controllerCan('controller_subpaginas_gerenciar'))out.querySelectorAll('.aa-btn-danger').forEach(btn=>btn.style.display='none');
   }
   async function loadControllerDashboardRecords(from,to){
@@ -6409,7 +6428,7 @@ $("todos").addEventListener("click",function(){
     if(event)event.preventDefault();if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para gerenciar áreas de acompanhamento.');return;}
     const name=String(document.getElementById('aa-controller-new-name')?.value||'').trim(),description=String(document.getElementById('aa-controller-new-description')?.value||'').trim(),turno=String(document.getElementById('aa-controller-new-shift')?.value||'').trim().slice(0,60);
     if(!name)return;if(controllerPages.some(p=>String(p.nome).toLowerCase()===name.toLowerCase()))return alert('Já existe um acompanhamento cadastrado para este colaborador.');
-    const page={id:'controller-'+Date.now().toString(36)+Math.random().toString(36).slice(0,7),nome:name,descricao:description,turno,criadaEm:new Date().toISOString()};
+    const page={id:'controller-'+Date.now().toString(36)+Math.random().toString(36).slice(0,7),nome:name,descricao:description,turno,arquivada:false,criadaEm:new Date().toISOString()};
     try{const result=await controllerDb.from('controller_subpages').insert({id:page.id,nome:page.nome,descricao:page.descricao,turno:page.turno,criada_em:page.criadaEm});if(result.error)throw result.error;controllerPages.push(page);await controllerAudit('Subpágina criada',page.nome,'Colaborador adicionado ao Controller; turno: '+(page.turno||'não informado'),'','Criado');renderControllerPages();if(typeof aaToast==='function')aaToast('Área de acompanhamento criada com sucesso.','success');}
     catch(e){alert('Não foi possível adicionar o colaborador agora: '+(e?.message||'verifique sua sessão e tente novamente.'));console.error('Erro ao adicionar colaborador ao Controller:',e);}
   };
@@ -6438,6 +6457,18 @@ $("todos").addEventListener("click",function(){
     try{const before=String(page.turno||'');const result=await controllerDb.from('controller_subpages').update({turno}).eq('id',String(id));if(result.error)throw result.error;if(before!==turno)await controllerAudit('Turno da subpágina alterado',page.nome,'Turno do colaborador atualizado.',before,turno);page.turno=turno;renderControllerPages();if(typeof aaToast==='function')aaToast('Turno atualizado.','success');}
     catch(error){alert('Não foi possível atualizar o turno: '+(error?.message||''));console.error('Erro ao atualizar o turno do Controller:',error);}
   };
+  async function controllerSetPageArchived(id,archived){
+    if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para arquivar ou restaurar áreas de acompanhamento.');return;}
+    const page=controllerPages.find(item=>String(item.id)===String(id));if(!page||Boolean(page.arquivada)===Boolean(archived))return;
+    try{
+      const result=await controllerDb.from('controller_subpages').update({arquivada:Boolean(archived)}).eq('id',String(id));if(result.error)throw result.error;
+      page.arquivada=Boolean(archived);renderControllerPages();
+      try{await controllerAudit(archived?'Área de acompanhamento arquivada':'Área de acompanhamento restaurada',page.nome,archived?'Área removida da lista ativa; histórico de atendimentos preservado.':'Área restaurada à lista ativa para novos acompanhamentos.',archived?'Ativa':'Arquivada',archived?'Arquivada':'Ativa');}catch(auditError){console.warn('A área foi atualizada, mas não foi possível registrar a auditoria.',auditError);}
+      if(typeof aaToast==='function')aaToast(archived?'Área arquivada; histórico preservado.':'Área restaurada.','success');
+    }catch(error){alert('Não foi possível '+(archived?'arquivar':'restaurar')+' a área: '+(error?.message||'verifique sua sessão e tente novamente.'));console.error('Erro ao atualizar o arquivamento da área do Controller:',error);}
+  }
+  window.aaControllerArchivePage=function(id){return controllerSetPageArchived(id,true);};
+  window.aaControllerRestorePage=function(id){return controllerSetPageArchived(id,false);};
   window.aaControllerDeletePage=async function(id){if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para gerenciar áreas de acompanhamento.');return;}const page=controllerPages.find(p=>String(p.id)===String(id));if(!page||!confirm('Excluir a área de acompanhamento “'+page.nome+'”?'))return;const old=controllerPages.slice();controllerPages=controllerPages.filter(p=>String(p.id)!==String(id));try{const result=await controllerDb.from('controller_subpages').delete().eq('id',String(id));if(result.error)throw result.error;await controllerAudit('Subpágina excluída',page.nome,'Acompanhamento e atendimentos vinculados excluídos.','Ativo','Excluído');renderControllerPages();if(typeof aaToast==='function')aaToast('Área de acompanhamento excluída.','success');}catch(e){controllerPages=old;renderControllerPages();alert('Não foi possível excluir a área de acompanhamento agora.');console.error(e);}};
   const oldSwitch=window.aaSwitchRHTab;
   window.aaSwitchRHTab=function(tab){if(tab==='controller'){window.aaControllerOpen();return;}const panel=document.getElementById('aa-rhtab-controller');if(panel)panel.style.display='none';return oldSwitch(tab);};
