@@ -4384,8 +4384,30 @@ const aaOriginalRenderDashboard=window.aaRenderDashboard;window.aaRenderDashboar
     aaDownloadText('relatorio-ajustes-'+new Date().toISOString().slice(0,10)+'.csv',String.fromCharCode(0xFEFF)+rows.map(row=>row.map(esc).join(';')).join('\n'),'text/csv;charset=utf-8');aaToast(results.length+' ajuste(s) exportado(s).','success');
   };
   function aaAjustePlanilhaRows(records){
-    const esc=value=>String(value??'').replace(/"/g,'""').replace(/\r?\n/g,' '),rows=[['Ajuste','Status','Profissional','User Medicina','Solicitante','Operação','Mês','Data criação','Descrição','Responsável decisão','Data decisão','Justificativa','Última edição por','Última edição em','Histórico de movimentação']];
-    (records||[]).forEach(item=>{const decision=item.decisao||{},history=aaAjusteEventoLista(item).map(event=>event.label+' — '+event.by+' — '+ajusteDataHoraLabel(event.when)+(event.note?' — '+event.note:'')).join(' | ');rows.push([item.id,ajusteStatusLabel(item.status),item.profissionalNome||'',item.profissionalUsuario||'',item.solicitanteNome||item.solicitanteEmail||'',operacaoLabel(item.operacao),ajusteMesLabel(item.mesReferencia),ajusteDataHoraLabel(item.criadoEm||item.createdAt),item.descricao||'',decision.por||item.finalizacao?.por||item.cancelamento?.por||'',ajusteDataHoraLabel(decision.em||item.finalizacao?.em||item.cancelamento?.em),decision.observacao||decision.motivo||item.finalizacao?.observacao||item.cancelamento?.motivo||'',item.ultimaEdicao?.por||'',ajusteDataHoraLabel(item.ultimaEdicao?.em),history]);});
+    const esc=value=>String(value??'').replace(/"/g,'""').replace(/\r?\n/g,' '),rows=[['Data criação','Status','Profissional','User Medicina','Solicitante','Operação','Mês Referente','Descrição','Ajuste','Responsável decisão','Data decisão','Justificativa']];
+    const ordered=(records||[]).map((item,index)=>({item,index})).sort((a,b)=>{
+      const timeA=Date.parse(a.item.criadoEm||a.item.createdAt||'');
+      const timeB=Date.parse(b.item.criadoEm||b.item.createdAt||'');
+      const safeA=Number.isFinite(timeA)?timeA:0,safeB=Number.isFinite(timeB)?timeB:0;
+      return (safeA-safeB)||(a.index-b.index);
+    });
+    ordered.forEach(({item})=>{
+      const decision=item.decisao||{};
+      rows.push([
+        ajusteDataHoraLabel(item.criadoEm||item.createdAt)||ajusteDataLabel(item.dataSolicitacao),
+        ajusteStatusLabel(item.status),
+        item.profissionalNome||'',
+        item.profissionalUsuario||'',
+        item.solicitanteNome||item.solicitanteEmail||'',
+        operacaoLabel(item.operacao),
+        ajusteMesLabel(item.mesReferencia),
+        item.descricao||'',
+        item.id||'',
+        decision.por||item.finalizacao?.por||item.cancelamento?.por||'',
+        ajusteDataHoraLabel(decision.em||item.finalizacao?.em||item.cancelamento?.em),
+        decision.observacao||decision.motivo||item.finalizacao?.observacao||item.cancelamento?.motivo||''
+      ]);
+    });
     return rows.map(row=>row.map(value=>'"'+esc(value)+'"').join(';')).join('\n');
   }
   window.aaBackupAjustesPlanilha=async function(){
