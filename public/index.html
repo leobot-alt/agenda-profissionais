@@ -759,6 +759,16 @@
           </div>
         </div>
         <div class="aa-rh-subpanel" id="aa-rhtab-config" style="display:none;">
+          <div class="aa-card" data-permission-any="config_ver,config_nacionais_editar">
+            <h2>Período disponível para envio de agendas</h2>
+            <p class="aa-hint">Defina o ano e o trimestre que ficarão liberados no formulário público. O profissional poderá confirmar o cadastro, mas não conseguirá enviar agenda para outro período.</p>
+            <div class="aa-field-row" style="grid-template-columns:180px minmax(220px,1fr) auto;align-items:end;">
+              <div class="aa-field"><label>Ano liberado</label><input type="number" id="aa-agenda-envio-ano" min="2025" max="2035"></div>
+              <div class="aa-field"><label>Trimestre liberado</label><select id="aa-agenda-envio-trimestre"></select></div>
+              <button data-permission-action="config_nacionais_editar" type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaSalvarPeriodoAgenda()">Salvar período</button>
+            </div>
+            <div id="aa-agenda-envio-periodo-status" class="aa-hint" style="margin:10px 0 0;"></div>
+          </div>
           <div class="aa-card">
             <h2>Feriados nacionais</h2>
             
@@ -1369,7 +1379,31 @@ async function loadCompanyHolidays(){
 async function saveCompanyHolidays(){const rows=(companyHolidays||[]).filter(x=>x).map((h,i)=>({id:String(h.id||('FECH-'+i+'-'+h.de+'-'+h.ate)),de:h.de||null,ate:h.ate||null,motivo:String(h.motivo||''),dados:h,created_at:h.createdAt||new Date().toISOString()}));const result=await supabase.from('fechamentos_empresa').upsert(rows,{onConflict:'id'});if(result.error)throw result.error;await storageSetRetry('config:feriados',JSON.stringify(companyHolidays),true);}
 
 function isCompanyHoliday(iso){ return companyHolidays.find(h=> iso>=h.de && iso<=h.ate); }
-
+const AGENDA_ENVIO_CONFIG_KEY='config:agenda_envio_periodo';
+let agendaEnvioConfig={ano:new Date().getFullYear(),trimestreId:TRIMESTRES[Math.floor(new Date().getMonth()/3)]?.id||'jan_mar'};
+function agendaEnvioConfigValida(value){ const ano=Number(value&&value.ano),trimestreId=String(value&&value.trimestreId||''); return Number.isInteger(ano)&&ano>=2025&&ano<=2035&&TRIMESTRES.some(t=>t.id===trimestreId); }
+async function loadAgendaEnvioConfig(){
+  try{const res=await cloudGet(AGENDA_ENVIO_CONFIG_KEY,true),parsed=res&&res.value?JSON.parse(res.value):null;if(agendaEnvioConfigValida(parsed))agendaEnvioConfig={ano:Number(parsed.ano),trimestreId:String(parsed.trimestreId)};}
+  catch(e){console.warn('Não foi possível carregar o período disponível para envio; usando o período atual.',e);}
+  return agendaEnvioConfig;
+}
+function agendaEnvioTrimestre(){return TRIMESTRES.find(t=>t.id===agendaEnvioConfig.trimestreId)||TRIMESTRES[0];}
+function agendaEnvioMeses(){return agendaEnvioTrimestre().months.map(m=>pad2(m));}
+function agendaEnvioLabel(){const t=agendaEnvioTrimestre();return t.label+' de '+agendaEnvioConfig.ano;}
+function aaRenderPeriodoAgendaConfig(){
+  const year=document.getElementById('aa-agenda-envio-ano'),select=document.getElementById('aa-agenda-envio-trimestre'),status=document.getElementById('aa-agenda-envio-periodo-status');
+  if(year)year.value=agendaEnvioConfig.ano;
+  if(select){select.innerHTML=TRIMESTRES.map(t=>'<option value="'+t.id+'">'+t.label+'</option>').join('');select.value=agendaEnvioConfig.trimestreId;}
+  if(status)status.textContent='Período atualmente liberado: '+agendaEnvioLabel()+'.';
+}
+window.aaSalvarPeriodoAgenda=async function(){
+  if(!aaRequire('config_nacionais_editar'))return;
+  const ano=Number(document.getElementById('aa-agenda-envio-ano')?.value),trimestreId=String(document.getElementById('aa-agenda-envio-trimestre')?.value||'');
+  if(!agendaEnvioConfigValida({ano,trimestreId})){alert('Informe um ano entre 2025 e 2035 e selecione um trimestre.');return;}
+  const anterior={...agendaEnvioConfig},anteriorLabel=agendaEnvioLabel();agendaEnvioConfig={ano,trimestreId};
+  try{await storageSetRetry(AGENDA_ENVIO_CONFIG_KEY,JSON.stringify(agendaEnvioConfig),true);await aaLogChange('Alteração do período de envio de agendas','Configurações',agendaEnvioLabel(),undefined,anteriorLabel,agendaEnvioLabel());aaRenderPeriodoAgendaConfig();aaToast('Período de envio salvo: '+agendaEnvioLabel()+'.','success');}
+  catch(e){agendaEnvioConfig=anterior;aaRenderPeriodoAgendaConfig();alert('Não foi possível salvar o período de envio agora.');console.error(e);}
+};
 // ---------- National holidays (feriados nacionais) ----------
 function easterDate(year){
   // Algoritmo de Meeus/Jones/Butcher
@@ -1528,7 +1562,11 @@ function aaConfigureProfessionalMode(){
   const stepHint=document.getElementById('aa-step2-hint');
   const stepWindow=document.getElementById('aa-step2-window');
   const monthSelect=document.getElementById('aa-in-mes');
-  if(monthSelect && !monthSelect.options.length) monthSelect.innerHTML=MESES_NOMES.map((m,i)=>'<option value="'+pad2(i+1)+'">'+m+'</option>').join('');
+  const envioMeses=new Set(agendaEnvioMeses());
+  if(monthSelect) monthSelect.innerHTML=MESES_NOMES.map((m,i)=>({value:pad2(i+1),label:m})).filter(item=>envioMeses.has(item.value)).map(item=>'<option value="'+item.value+'">'+item.label+'</option>').join('');
+  const anoInput=document.getElementById('aa-in-ano'); if(anoInput){anoInput.value=String(agendaEnvioConfig.ano);anoInput.readOnly=true;}
+  const trimestreSelect=document.getElementById('aa-in-trimestre'); if(trimestreSelect){trimestreSelect.innerHTML='<option value="'+agendaEnvioConfig.trimestreId+'">'+agendaEnvioTrimestre().label+'</option>';trimestreSelect.value=agendaEnvioConfig.trimestreId;trimestreSelect.disabled=true;}
+  if(monthSelect&&psiq)monthSelect.value=envioMeses.values().next().value||'';
   if(triWrap) triWrap.style.display=psiq?'none':'block';
   if(mesWrap) mesWrap.style.display=psiq?'block':'none';
   if(hint) hint.style.display=psiq?'block':'none';
@@ -1566,7 +1604,7 @@ window.aaBuscarCadastro = async function(){
     '<button class="aa-btn aa-btn-primary" onclick="aaConfirmarIdentidade(\'enviar\')">Confirmar</button></div>'+
     '<div class="aa-error-msg" id="aa-confirma-err"></div></div>';
 };
-window.aaConfirmarIdentidade = function(origem){
+window.aaConfirmarIdentidade = async function(origem){
   const inputId = origem==='consultar' ? 'aa-confirma-identidade-c' : 'aa-confirma-identidade';
   const errId = origem==='consultar' ? 'aa-confirma-err-c' : 'aa-confirma-err';
   const val = document.getElementById(inputId).value.trim();
@@ -1575,6 +1613,7 @@ window.aaConfirmarIdentidade = function(origem){
   const ok = !!pendingCandidato.secondary && pendingCandidato.secondary.key!==findIdentityFieldKey(pendingCandidato.raw,pendingCandidato.found) && valuesMatchField(pendingCandidato.secondary.key, val, pendingCandidato.found);
   if(!ok){ err.textContent = 'O dado informado não confere. Tente novamente.'; return; }
   err.textContent = '';
+  await loadAgendaEnvioConfig();
   if(origem==='consultar'){
     aaFinalizeLookupPorCadastro(pendingCandidato.found);
   } else {
@@ -2382,6 +2421,9 @@ window.aaGoStep = function(step){
     const trimestreId=document.getElementById('aa-in-trimestre')?.value||'';
     if(!state.ano || (!psiq && !trimestreId) || (psiq && !mesSelecionado)){
       err.textContent = psiq ? 'Preencha ano e mês antes de continuar.' : 'Preencha ano e trimestre antes de continuar.'; return;
+    }
+    if(Number(state.ano)!==Number(agendaEnvioConfig.ano)||(!psiq&&trimestreId!==agendaEnvioConfig.trimestreId)||(psiq&&!agendaEnvioMeses().includes(mesSelecionado))){
+      err.textContent='O período disponível para envio é '+agendaEnvioLabel()+'.'; return;
     }
     if(psiq){
       state.trimestreId='mensal'; state.mesSelecionado=mesSelecionado; state.periodoMeses=[state.ano+'-'+mesSelecionado];
@@ -3903,7 +3945,7 @@ window.aaSwitchControlerTab=function(tab){
   if(tab==='permissoes')Promise.all([loadRHUsers(),loadPerfis(),loadOperacoes()]).then(()=>aaRenderPermissoes());
   if(tab==='operacoes')Promise.all([loadOperacoes(),loadRHUsers(),loadProfissionais(),loadAllSubmissions()]).then(()=>aaRenderOperacoes());
   if(tab==='perfis')Promise.all([loadPerfis(),loadOperacoes()]).then(()=>{aaRenderPerfis();});
-  if(tab==='config')Promise.all([loadCompanyHolidays()]).then(()=>{window.aaRenderNationalHolidays();renderFeriadosList();});
+  if(tab==='config')Promise.all([loadCompanyHolidays(),loadAgendaEnvioConfig()]).then(()=>{aaRenderPeriodoAgendaConfig();window.aaRenderNationalHolidays();renderFeriadosList();});
   if(tab==='historico')Promise.all([loadHistorico(),loadRHUsers()]).then(()=>aaRenderHistorico());
   if(tab==='agendas2')window.aaLoadAdminData().then(()=>aaRenderAdminList2()).catch(function(e){const el=document.getElementById('aa-admin-list-wrap-2');if(el)el.innerHTML='<div class="aa-error-msg">Não foi possível carregar as agendas desativadas agora.</div>';console.error(e);});
 };
