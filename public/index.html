@@ -2144,6 +2144,7 @@ async function aaCheckCurrentUserAccess(){
 function aaCan(permission){ const root=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').toLowerCase()===String((window.__AA_ADMIN_EMAIL || 'adm@adm.com')||'').toLowerCase(); return rhAuthenticated && (root||rhCurrentPermissions.includes(permission)) && (!rhCurrentProfile || (rhCurrentProfile.ativo!==false && perfilAtivo(rhCurrentProfile.perfil))); }
 window.__aaCanPermission = permission => aaCan(permission);
 window.__aaIsLeadershipAdmin = () => { const role=normalizePerfil(rhCurrentProfile&&rhCurrentProfile.perfil),email=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase(),principal=String(window.__AA_ADMIN_EMAIL||'adm@adm.com').trim().toLowerCase(); return rhAuthenticated&&(['administrador','administrador_geral'].includes(role)||email===principal)&&aaCan('controller_dashboard_ver'); };
+window.__aaCanUseOperationalReport = () => { const profile=rhCurrentProfile,role=normalizePerfil(profile&&profile.perfil),email=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase(),principal=String(window.__AA_ADMIN_EMAIL||'adm@adm.com').trim().toLowerCase(); if(!rhAuthenticated||(!['administrador','administrador_geral'].includes(role)&&email!==principal))return false; return !profile||(!profile.removido&&profile.ativo!==false&&perfilAtivo(profile.perfil)); };
 window.__aaGetPresenceSession = () => {
   if(!rhAuthenticated)return null;
   const current=rhCurrentProfile||{},principal=String(window.__AA_ADMIN_EMAIL||'adm@adm.com').trim().toLowerCase(),email=String(rhCurrentUser||current.username||'').trim().toLowerCase();
@@ -6574,7 +6575,7 @@ $("todos").addEventListener("click",function(){
   const originalApply=window.aaApplyRHPermissionsUI;
   const reportRoute='#/painel/relatorio-operacional';
   function reportAllowed(){
-    return typeof window.__aaIsLeadershipAdmin==='function'&&window.__aaIsLeadershipAdmin()===true;
+    return typeof window.__aaCanUseOperationalReport==='function'&&window.__aaCanUseOperationalReport()===true;
   }
   window.__aaOperationalReportAllowed=reportAllowed;
   function denyOperationalReport(){
