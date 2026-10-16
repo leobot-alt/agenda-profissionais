@@ -6574,10 +6574,7 @@ $("todos").addEventListener("click",function(){
   const originalApply=window.aaApplyRHPermissionsUI;
   const reportRoute='#/painel/relatorio-operacional';
   function reportAllowed(){
-    if(typeof rhAuthenticated==='undefined'||!rhAuthenticated)return false;
-    const profile=typeof rhCurrentProfile!=='undefined'?rhCurrentProfile:null,role=typeof normalizePerfil==='function'?normalizePerfil(profile&&profile.perfil):String(profile&&profile.perfil||'').trim().toLowerCase().replace(/\s+/g,'_'),email=String(typeof rhCurrentUser!=='undefined'?rhCurrentUser:'').trim().toLowerCase(),principal=String(window.__AA_ADMIN_EMAIL||'adm@adm.com').trim().toLowerCase();
-    if(!['administrador','administrador_geral'].includes(role)&&email!==principal)return false;
-    return !profile||(!profile.removido&&profile.ativo!==false&&(typeof perfilAtivo!=='function'||perfilAtivo(profile.perfil)));
+    return typeof window.__aaIsLeadershipAdmin==='function'&&window.__aaIsLeadershipAdmin()===true;
   }
   window.__aaOperationalReportAllowed=reportAllowed;
   function denyOperationalReport(){
