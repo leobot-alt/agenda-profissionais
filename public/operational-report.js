@@ -5,11 +5,12 @@
   const db=window.__aaSupabaseClient;
   const $=id=>document.getElementById(id);
   const form=$('aa-report-form'),operatorsEl=$('aa-report-operators'),leadershipEl=$('aa-report-leadership'),preview=$('aa-operational-report-preview');
-  const savedPanel=$('aa-report-saved-panel'),savedList=$('aa-report-saved-list'),statusEl=$('aa-report-status');
+  const layout=$('aa-report-layout'),readonlyBar=$('aa-report-readonly-bar'),savedToggle=$('aa-report-saved-toggle'),operatorRoster=$('aa-report-operator-roster'),rosterFilter=$('aa-report-roster-filter'),rosterCounts=$('aa-report-roster-counts');
+  const savedPanel=$('aa-report-saved-panel'),savedList=$('aa-report-saved-list'),statusEl=$('aa-report-status'),pageTitle=$('aa-report-title'),pageSubtitle=$('aa-report-subtitle');
   const saveDialog=$('aa-report-save-dialog'),openDialog=$('aa-report-open-dialog');
   const KDF_ITERATIONS=310000,MAX_REPORT_BYTES=5*1024*1024,MAX_IMAGE_CHARS=4*1024*1024;
   const blank=()=>({setor:'RH Clínico',operacao:'IAMSPE',cargo:'Sub-líder',sublider:'Fernando Martins',periodo:'',psicologos:'',psiquiatras:'',horas:'',meta:'',contratacoes:'',distratos:'',avaliacao:'',implantacao:'',imagem:'',ops:[],leadershipFeedback:[],conclusao:''});
-  let state=blank(),activeCreatorId='',unlockReportId='',usersLoadPromise=null,initializingPromise=null,draftDirty=false,reportUsers=[],usersLoaded=false;
+  let state=blank(),activeCreatorId='',unlockReportId='',usersLoadPromise=null,initializingPromise=null,draftDirty=false,reportUsers=[],usersLoaded=false,savedListMode=false,readOnlyReportView=false;
 
   function allowed(){return typeof window.__aaOperationalReportAllowed==='function'&&window.__aaOperationalReportAllowed()===true;}
   function text(value,max=10000){return String(value==null?'':value).slice(0,max);}
@@ -20,6 +21,19 @@
   function openModal(dialog){if(dialog&&typeof dialog.showModal==='function')dialog.showModal();else if(dialog)dialog.setAttribute('open','');}
   function closeModal(dialog){if(dialog&&typeof dialog.close==='function')dialog.close();else if(dialog)dialog.removeAttribute('open');}
   function setBusy(button,busy,label){if(!button)return;button.disabled=!!busy;if(label)button.textContent=busy?'Processando…':label;}
+  function updateHeaderMode(){
+    if(pageTitle)pageTitle.textContent=savedListMode?'Meus relatórios':readOnlyReportView?'Relatório operacional — visualização':'Gerador de Relatório Operacional';
+    if(pageSubtitle)pageSubtitle.textContent=savedListMode?'Acesse somente os relatórios salvos por esta conta.':readOnlyReportView?'Este relatório está em modo somente leitura. Use “Editar relatório” para voltar ao formulário.':'Preencha os dados e acompanhe a prévia. Relatórios salvos ficam criptografados com a senha definida; a senha não é enviada nem armazenada pelo sistema.';
+  }
+  function setSavedListMode(show){
+    savedListMode=!!show;savedPanel.hidden=!savedListMode;layout.hidden=savedListMode;
+    root.classList.toggle('aa-report-list-mode',savedListMode);root.classList.toggle('aa-report-readonly-mode',readOnlyReportView&&!savedListMode);
+    readonlyBar.hidden=savedListMode||!readOnlyReportView;savedToggle.textContent=savedListMode?'Voltar ao relatório':'Meus relatórios';updateHeaderMode();
+  }
+  function setReadOnlyMode(show){
+    readOnlyReportView=!!show;layout.hidden=savedListMode;
+    root.classList.toggle('aa-report-readonly-mode',readOnlyReportView&&!savedListMode);readonlyBar.hidden=savedListMode||!readOnlyReportView;updateHeaderMode();
+  }
   const LEADERSHIP_PROFILES=new Set(['administrador','administrador_geral','gestao']);
   function currentUsers(){return reportUsers;}
   function operatorUsers(){return currentUsers().filter(user=>!LEADERSHIP_PROFILES.has(user.profile));}
@@ -58,11 +72,26 @@
   }
   function renderOperators(){
     const users=operatorUsers();
-    if(!state.ops.length){operatorsEl.innerHTML='<p class="aa-report-hint">'+(users.length?'Nenhum operador adicionado ainda. Use “Adicionar operador”.':'Nenhum usuário ativo elegível encontrado no cadastro.')+'</p>';return;}
+    if(!state.ops.length){operatorsEl.innerHTML='<p class="aa-report-hint">'+(users.length?'Nenhum operador adicionado ainda. Use “Adicionar operador”.':'Nenhum usuário ativo elegível encontrado no cadastro.')+'</p>';renderFeedbackRoster();return;}
     operatorsEl.innerHTML=state.ops.map((item,index)=>{
       const scoreButtons=Array.from({length:11},(_,score)=>'<button type="button" data-score="'+score+'" data-index="'+index+'" class="'+(String(item.nps)===String(score)?'is-selected':'')+'" aria-pressed="'+(String(item.nps)===String(score))+'" aria-label="Nota '+score+'">'+score+'</button>').join('');
-      return '<div class="aa-report-operator"><div class="aa-report-operator-head"><div><label for="aa-report-user-'+index+'">Nome do usuário cadastrado</label><select id="aa-report-user-'+index+'" data-operator-index="'+index+'" data-operator-field="usuarioId">'+optionMarkup(item,users)+'</select></div><button type="button" class="aa-report-btn aa-report-btn-danger" data-report-action="remove-operator" data-index="'+index+'">Remover</button></div><label for="aa-report-feedback-'+index+'">Feedback do gestor sobre o operador</label><textarea id="aa-report-feedback-'+index+'" data-operator-index="'+index+'" data-operator-field="texto" placeholder="Pontos fortes, entregas e oportunidades de desenvolvimento…">'+esc(item.texto)+'</textarea><label>Nota NPS sobre este operador (0 a 10)</label><div class="aa-report-nps">'+scoreButtons+'</div><label for="aa-report-comment-'+index+'">Comentário do operador (opcional)</label><textarea id="aa-report-comment-'+index+'" data-operator-index="'+index+'" data-operator-field="comentario" style="min-height:56px" placeholder="Comentário informado pelo operador…">'+esc(item.comentario)+'</textarea></div>';
+      return '<div class="aa-report-operator" data-operator-card="'+index+'"><div class="aa-report-operator-head"><div><label for="aa-report-user-'+index+'">Nome do usuário cadastrado</label><select id="aa-report-user-'+index+'" data-operator-index="'+index+'" data-operator-field="usuarioId">'+optionMarkup(item,users)+'</select></div><button type="button" class="aa-report-btn aa-report-btn-danger" data-report-action="remove-operator" data-index="'+index+'">Remover</button></div><label for="aa-report-feedback-'+index+'">Feedback do gestor sobre o operador</label><textarea id="aa-report-feedback-'+index+'" data-operator-index="'+index+'" data-operator-field="texto" placeholder="Pontos fortes, entregas e oportunidades de desenvolvimento…">'+esc(item.texto)+'</textarea><label>Nota NPS sobre este operador (0 a 10)</label><div class="aa-report-nps">'+scoreButtons+'</div><label for="aa-report-comment-'+index+'">Comentário do operador (opcional)</label><textarea id="aa-report-comment-'+index+'" data-operator-index="'+index+'" data-operator-field="comentario" style="min-height:56px" placeholder="Comentário informado pelo operador…">'+esc(item.comentario)+'</textarea></div>';
     }).join('');
+    renderFeedbackRoster();
+  }
+  function operatorFeedbackStatus(user){
+    const entries=state.ops.filter(item=>item.usuarioId===user.id);
+    if(entries.some(item=>String(item.texto||'').trim()&&String(item.nps==null?'':item.nps)!==''))return 'done';
+    return entries.length?'progress':'missing';
+  }
+  function renderFeedbackRoster(){
+    if(!operatorRoster)return;
+    const users=operatorUsers(),statuses=users.map(user=>({user,status:operatorFeedbackStatus(user)})),completed=statuses.filter(item=>item.status==='done').length;
+    if(rosterCounts)rosterCounts.textContent='Concluídos: '+completed+' de '+users.length+' · Pendentes: '+(users.length-completed);
+    if(!users.length){operatorRoster.innerHTML='<p class="aa-report-hint">Nenhum usuário ativo elegível para feedback.</p>';return;}
+    const filter=rosterFilter?rosterFilter.value:'all',visible=statuses.filter(item=>filter==='all'||(filter==='done'&&item.status==='done')||(filter==='missing'&&item.status!=='done'));
+    if(!visible.length){operatorRoster.innerHTML='<p class="aa-report-hint">Nenhum operador nesta categoria.</p>';return;}
+    operatorRoster.innerHTML=visible.map(({user,status})=>'<div class="aa-report-roster-row"><span class="aa-report-roster-name">'+esc(user.name)+'</span><span class="aa-report-roster-status is-'+status+'">'+(status==='done'?'Concluído':status==='progress'?'Em andamento':'Falta feedback')+'</span>'+(status==='done'?'':'<button type="button" class="aa-report-btn aa-report-roster-add" data-report-action="start-operator-feedback" data-user-id="'+esc(user.id)+'">'+(status==='progress'?'Continuar':'Adicionar')+'</button>')+'</div>').join('');
   }
   function renderLeadershipFeedback(){
     const users=leadershipUsers();
@@ -125,7 +154,7 @@
     const result=await db.auth.getUser();if(result.error)throw result.error;if(!result.data||!result.data.user||!result.data.user.id)throw new Error('Sua sessão expirou. Entre novamente.');
     const user=result.data.user;if(activeCreatorId&&activeCreatorId!==user.id)clearDraft();activeCreatorId=user.id;return user;
   }
-  function clearDraft(){state=blank();draftDirty=false;renderAll();if(savedPanel)savedPanel.hidden=true;unlockReportId='';}
+  function clearDraft(){state=blank();draftDirty=false;readOnlyReportView=false;setSavedListMode(false);setReadOnlyMode(false);renderAll();unlockReportId='';}
   async function saveReport(event){
     event.preventDefault();const submit=$('aa-report-save-submit'),title=$('aa-report-save-title').value.trim(),password=$('aa-report-save-password').value,confirmation=$('aa-report-save-confirm').value,errorEl=$('aa-report-save-error');errorEl.textContent='';
     if(!allowed()){errorEl.textContent='Acesso não autorizado.';return;}
@@ -138,7 +167,7 @@
       const result=await db.from('operational_reports').insert({creator_id:user.id,title,period:text(state.periodo,240),encrypted_payload:encrypted}).select('id,title,period,created_at').single();
       if(result.error)throw result.error;
       closeModal(saveDialog);$('aa-report-save-form').reset();draftDirty=false;setStatus('Relatório salvo criptografado. Somente esta conta e a senha definida conseguem abri-lo.');
-      await loadSavedReports();savedPanel.hidden=false;
+      await loadSavedReports();setSavedListMode(true);
     }catch(error){console.error('Falha ao salvar relatório operacional.',error);errorEl.textContent=error&&error.message&&/grande demais|criptografia segura|sessão expirou/.test(error.message)?error.message:'Não foi possível salvar. Verifique a conexão e tente novamente.';}
     finally{setBusy(submit,false,'Salvar com senha');}
   }
@@ -161,7 +190,7 @@
     try{
       const user=await getSignedInUser(),result=await db.from('operational_reports').select('id,title,period,encrypted_payload').eq('id',unlockReportId).eq('creator_id',user.id).maybeSingle();
       if(result.error)throw result.error;if(!result.data)throw new Error('Relatório indisponível.');
-      const restored=await decryptState(result.data.encrypted_payload,password);state=restored;draftDirty=false;renderAll();closeModal(openDialog);$('aa-report-open-form').reset();setStatus('Relatório aberto. As alterações ficam nesta sessão até você salvar uma nova cópia.');
+      const restored=await decryptState(result.data.encrypted_payload,password);state=restored;draftDirty=false;renderAll();closeModal(openDialog);$('aa-report-open-form').reset();setSavedListMode(false);setReadOnlyMode(true);setStatus('Relatório aberto em modo somente leitura.');
     }catch(error){console.error('Falha ao abrir relatório operacional.',error);errorEl.textContent='Não foi possível abrir. Confira a senha e tente novamente.';}
     finally{setBusy(submit,false,'Abrir relatório');}
   }
@@ -171,6 +200,11 @@
     catch(error){console.error('Falha ao excluir relatório operacional.',error);setStatus('Não foi possível excluir o relatório.', 'error');}
   }
   function addOperator(){state.ops.push({usuarioId:'',nome:'',texto:'',nps:'',comentario:''});draftDirty=true;renderOperators();renderPreview();const last=operatorsEl.querySelector('select:last-of-type');if(last)last.focus();}
+  function startOperatorFeedback(userId){
+    const user=operatorUsers().find(candidate=>candidate.id===userId);if(!user)return;let index=state.ops.findIndex(item=>item.usuarioId===user.id);
+    if(index<0){if(state.ops.length>=50){setStatus('O relatório já atingiu o limite de 50 operadores.','error');return;}state.ops.push({usuarioId:user.id,nome:user.name,texto:'',nps:'',comentario:''});index=state.ops.length-1;draftDirty=true;renderOperators();renderPreview();}
+    const card=operatorsEl.querySelector('[data-operator-card="'+index+'"]');if(card){card.scrollIntoView({behavior:'smooth',block:'center'});const field=card.querySelector('textarea');if(field)field.focus();}
+  }
   function addLeadershipFeedback(role){state.leadershipFeedback.push({usuarioId:'',nome:'',role:role==='sublideranca'?'sublideranca':'lideranca',texto:''});draftDirty=true;renderLeadershipFeedback();const selects=leadershipEl.querySelectorAll('[data-leadership-field="usuarioId"]');if(selects.length)selects[selects.length-1].focus();}
   function resetReport(){if(!window.confirm('Começar um novo relatório? Os operadores e responsáveis permanecem selecionados, mas os feedbacks, notas e indicadores serão limpos.'))return;const old=state.ops.map(item=>({usuarioId:item.usuarioId,nome:item.nome,texto:'',nps:'',comentario:''})),oldLeadership=state.leadershipFeedback.map(item=>({...item,texto:''}));state=blank();state.ops=old;state.leadershipFeedback=oldLeadership;draftDirty=false;renderAll();setStatus('Novo relatório iniciado.');}
   async function initialize(){
@@ -182,12 +216,12 @@
 
   form.addEventListener('input',event=>{
     const field=event.target.closest('[data-report-field]');if(field){state[field.dataset.reportField]=field.value;draftDirty=true;renderPreview();return;}
-    const operator=event.target.closest('[data-operator-field]');if(operator){const index=Number(operator.dataset.operatorIndex),item=state.ops[index];if(!item)return;item[operator.dataset.operatorField]=operator.value;draftDirty=true;renderPreview();}
+    const operator=event.target.closest('[data-operator-field]');if(operator){const index=Number(operator.dataset.operatorIndex),item=state.ops[index];if(!item)return;item[operator.dataset.operatorField]=operator.value;draftDirty=true;renderFeedbackRoster();renderPreview();}
     const leadership=event.target.closest('[data-leadership-field="texto"]');if(leadership){const item=state.leadershipFeedback[Number(leadership.dataset.leadershipIndex)];if(!item)return;item.texto=leadership.value;draftDirty=true;renderPreview();}
   });
   form.addEventListener('change',event=>{
     const field=event.target.closest('[data-report-field]');if(field){state[field.dataset.reportField]=field.value;draftDirty=true;renderPreview();return;}
-    const select=event.target.closest('[data-operator-field="usuarioId"]');if(select){const item=state.ops[Number(select.dataset.operatorIndex)];if(!item)return;item.usuarioId=select.value;draftDirty=true;const user=operatorUsers().find(candidate=>candidate.id===select.value);item.nome=user?user.name:(select.value?item.nome:'');renderPreview();return;}
+    const select=event.target.closest('[data-operator-field="usuarioId"]');if(select){const item=state.ops[Number(select.dataset.operatorIndex)];if(!item)return;item.usuarioId=select.value;draftDirty=true;const user=operatorUsers().find(candidate=>candidate.id===select.value);item.nome=user?user.name:(select.value?item.nome:'');renderFeedbackRoster();renderPreview();return;}
     const leadership=event.target.closest('[data-leadership-field]');if(!leadership)return;const item=state.leadershipFeedback[Number(leadership.dataset.leadershipIndex)];if(!item)return;
     if(leadership.dataset.leadershipField==='usuarioId'){item.usuarioId=leadership.value;const user=leadershipUsers().find(candidate=>candidate.id===leadership.value);item.nome=user?user.name:(leadership.value?item.nome:'');}
     else if(leadership.dataset.leadershipField==='role')item.role=leadership.value==='sublideranca'?'sublideranca':'lideranca';
@@ -198,6 +232,7 @@
     const button=event.target.closest('[data-report-action]');if(!button)return;
     const action=button.dataset.reportAction;
     if(action==='add-operator'){addOperator();return;}
+    if(action==='start-operator-feedback'){startOperatorFeedback(button.dataset.userId||'');return;}
     if(action==='add-leadership'){addLeadershipFeedback(button.dataset.role);return;}
     if(action==='remove-leadership-feedback'){const index=Number(button.dataset.index);if(window.confirm('Remover este feedback da liderança?')){state.leadershipFeedback.splice(index,1);draftDirty=true;renderLeadershipFeedback();renderPreview();}return;}
     if(action==='remove-operator'){const index=Number(button.dataset.index);if(window.confirm('Remover este operador do relatório?')){state.ops.splice(index,1);draftDirty=true;renderOperators();renderPreview();}return;}
@@ -214,7 +249,9 @@
   $('aa-report-save').addEventListener('click',()=>{if(!allowed()){setStatus('Acesso não autorizado.','error');return;}$('aa-report-save-title').value=defaultTitle();$('aa-report-save-error').textContent='';$('aa-report-save-form').reset();$('aa-report-save-title').value=defaultTitle();openModal(saveDialog);setTimeout(()=>$('aa-report-save-password').focus(),0);});
   $('aa-report-save-form').addEventListener('submit',saveReport);
   $('aa-report-open-form').addEventListener('submit',openSavedReport);
-  $('aa-report-saved-toggle').addEventListener('click',async()=>{savedPanel.hidden=!savedPanel.hidden;if(!savedPanel.hidden)await loadSavedReports();});
+  savedToggle.addEventListener('click',async()=>{const showList=!savedListMode;setSavedListMode(showList);if(showList){await loadSavedReports();setSavedListMode(true);}});
+  $('aa-report-edit-open').addEventListener('click',()=>{setReadOnlyMode(false);setStatus('Modo de edição. As alterações não serão gravadas até salvar uma nova cópia.');});
+  rosterFilter.addEventListener('change',renderFeedbackRoster);
   $('aa-report-pdf').addEventListener('click',()=>{if(!allowed())return;window.print();});
   $('aa-report-new').addEventListener('click',resetReport);
   $('aa-report-close-save').addEventListener('click',()=>closeModal(saveDialog));
