@@ -2113,6 +2113,7 @@ window.aaRHLogin = async function(){
     document.getElementById('aa-rh-user').value=data.user.email; document.getElementById('aa-rh-session-name').textContent=profile.nomeCompleto||data.user.email; document.getElementById('aa-rh-session-email').textContent=data.user.email; document.getElementById('aa-rh-session-bar').style.display='block';
     document.getElementById('aa-nat-ano').value=document.getElementById('aa-nat-ano').value || new Date().getFullYear();
     aaApplyRHPermissionsUI(); aaUpdateProfessionalOperationOptions(); aaUpdateDashboardOperations(); const firstTab=aaFirstAllowedRHTab(); if(firstTab) aaSwitchRHTab(firstTab); if(window.aaApplyHashRoute)setTimeout(window.aaApplyHashRoute,0);
+    if(window.__aaOperationalReportRefresh)window.__aaOperationalReportRefresh();
     try{ await loadLixeira(); }catch(e){ console.warn('Não foi possível carregar a lixeira agora.',e); }
     try{ await loadCompanyHolidays(); renderFeriadosList(); window.aaRenderNationalHolidays(); }catch(e){ console.warn('Não foi possível carregar as configurações de fechamento agora.',e); }
     aaLogChange('Login no painel RH',data.user.email,'Autenticação Supabase');
@@ -2134,6 +2135,7 @@ async function aaCheckCurrentUserAccess(){
     rhCurrentPermissions=profilePermissions(current);
     if(anterior!==JSON.stringify(rhCurrentPermissions)){
       aaApplyRHPermissionsUI();
+      if(window.__aaOperationalReportRefresh)window.__aaOperationalReportRefresh();
       const firstTab=aaFirstAllowedRHTab();
       const currentTab=document.querySelector('.aa-rh-tab.active')?.dataset.rhtab;
       if(currentTab && !aaCan(RH_TAB_PERMISSION[currentTab]) && firstTab) aaSwitchRHTab(firstTab);
@@ -3881,6 +3883,7 @@ supabase.auth.getSession().then(async ({data})=>{
     rhCurrentPermissions=profilePermissions(profile); aaPermissionsReady=true;
     aaScheduleAutoLogout();
     document.getElementById('aa-rh-login-card').style.display='none'; document.getElementById('aa-rh-authed-content').style.display='block'; document.getElementById('aa-rh-session-name').textContent=profile.nomeCompleto||data.session.user.email; document.getElementById('aa-rh-session-email').textContent=data.session.user.email; document.getElementById('aa-rh-session-bar').style.display='block'; aaApplyRHPermissionsUI(); aaUpdateProfessionalOperationOptions(); aaUpdateDashboardOperations(); const firstTab=aaFirstAllowedRHTab(); if(firstTab) aaSwitchRHTab(firstTab);
+    if(window.__aaOperationalReportRefresh)window.__aaOperationalReportRefresh();
   }catch(e){
     try{ await supabase.auth.signOut(); }catch(signOutError){ console.warn('Não foi possível encerrar a sessão automática após falha.',signOutError); }
     aaPermissionsReady=false; rhAuthenticated=false; rhCurrentUser=null; rhCurrentProfile=null; rhCurrentPermissions=[]; console.error('Falha ao carregar a sessão do Painel RH.',e);
@@ -6588,6 +6591,13 @@ $("todos").addEventListener("click",function(){
     }
     if(location.hash.toLowerCase()===reportRoute)history.replaceState(null,'','#/painel');
   }
+  function updateOperationalReportVisibility(){
+    const button=document.querySelector('[data-rhtab="operational-report"]'),allowed=reportAllowed();
+    if(button)button.style.display=allowed?'':'none';
+    if(!allowed&&location.hash.toLowerCase()===reportRoute)denyOperationalReport();
+    return allowed;
+  }
+  window.__aaOperationalReportRefresh=updateOperationalReportVisibility;
   function showOperationalReport(){
     if(!reportAllowed()){denyOperationalReport();return;}
     if(typeof rhAuthenticated!=='undefined'&&!rhAuthenticated)return;
@@ -6604,9 +6614,7 @@ $("todos").addEventListener("click",function(){
   window.aaSwitchRHTab=function(tab){if(tab==='operational-report'){showOperationalReport();return;}return originalSwitch.apply(this,arguments);};
   window.aaApplyRHPermissionsUI=function(){
     if(typeof originalApply==='function')originalApply.apply(this,arguments);
-    const button=document.querySelector('[data-rhtab="operational-report"]'),allowed=reportAllowed();
-    if(button)button.style.display=allowed?'':'none';
-    if(!allowed&&location.hash.toLowerCase()===reportRoute)denyOperationalReport();
+    updateOperationalReportVisibility();
   };
 })();
 </script>
