@@ -835,7 +835,7 @@
         </div>
         <div class="aa-rh-subpanel" id="aa-rhtab-operational-report" style="display:none;">
           <div id="aa-operational-report-app">
-            <header class="aa-report-toolbar"><div><h2>Gerador de Relatório Operacional</h2><p>Preencha os dados e acompanhe a prévia. Relatórios salvos ficam criptografados com a senha definida; a senha não é enviada nem armazenada pelo sistema.</p></div><div class="aa-report-actions"><button type="button" class="aa-report-btn" id="aa-report-pdf">Baixar em PDF</button><button type="button" class="aa-report-btn" id="aa-report-copy">Copiar texto</button><button type="button" class="aa-report-btn" id="aa-report-new">Novo mês</button><button type="button" class="aa-report-btn" id="aa-report-saved-toggle">Meus relatórios</button><button type="button" class="aa-report-btn aa-report-btn-primary" id="aa-report-save">Salvar com senha</button></div></header>
+            <header class="aa-report-toolbar"><div><h2>Gerador de Relatório Operacional</h2><p>Preencha os dados e acompanhe a prévia. Relatórios salvos ficam criptografados com a senha definida; a senha não é enviada nem armazenada pelo sistema.</p></div><div class="aa-report-actions"><button type="button" class="aa-report-btn" id="aa-report-pdf">Baixar em PDF</button><button type="button" class="aa-report-btn" id="aa-report-new">Novo</button><button type="button" class="aa-report-btn" id="aa-report-saved-toggle">Meus relatórios</button><button type="button" class="aa-report-btn aa-report-btn-primary" id="aa-report-save">Salvar com senha</button></div></header>
             <p class="aa-report-security-note">O botão PDF abre a impressão do navegador: escolha “Salvar como PDF”. Esse arquivo é baixado no seu dispositivo e fica fora das permissões do sistema. Relatórios salvos aqui só podem ser listados pela conta que os criou e exigem a senha definida ao salvar. Se esquecer a senha, não será possível recuperar o conteúdo.</p>
             <div id="aa-report-status" class="aa-report-status" role="status" aria-live="polite"></div>
             <section id="aa-report-saved-panel" class="aa-report-saved" hidden><h3>Meus relatórios salvos</h3><p class="aa-report-hint">A lista mostra somente arquivos desta conta. Informe a senha para abrir o conteúdo.</p><div id="aa-report-saved-list"></div></section>
@@ -848,17 +848,18 @@
                   <div class="aa-report-field"><label for="aa-report-leader">Nome do responsável</label><input id="aa-report-leader" data-report-field="sublider"></div>
                   <div class="aa-report-field"><label for="aa-report-period">Período</label><input id="aa-report-period" data-report-field="periodo" placeholder="outubro/2026"></div>
                 </div></fieldset>
-                <fieldset><legend>Indicadores do mês</legend><div class="aa-report-grid">
+                <fieldset class="aa-report-indicators"><legend>Indicadores do mês</legend><details><summary>Exibir e editar indicadores (opcional)</summary><div class="aa-report-grid">
                   <div class="aa-report-field"><label for="aa-report-psychologists">Psicólogos ativos</label><input type="number" min="0" id="aa-report-psychologists" data-report-field="psicologos"></div>
                   <div class="aa-report-field"><label for="aa-report-psychiatrists">Psiquiatras ativos</label><input type="number" min="0" id="aa-report-psychiatrists" data-report-field="psiquiatras"></div>
                   <div class="aa-report-field"><label for="aa-report-hours">Carga horária (h/mês)</label><input type="number" min="0" id="aa-report-hours" data-report-field="horas"></div>
                   <div class="aa-report-field"><label for="aa-report-target">Meta de horas</label><input type="number" min="0" id="aa-report-target" data-report-field="meta"></div>
                   <div class="aa-report-field"><label for="aa-report-hired">Novas contratações</label><input type="number" min="0" id="aa-report-hired" data-report-field="contratacoes"></div>
                   <div class="aa-report-field"><label for="aa-report-terminated">Distratos</label><input type="number" min="0" id="aa-report-terminated" data-report-field="distratos"></div>
-                </div></fieldset>
+                </div></details></fieldset>
                 <fieldset><legend>Avaliação geral</legend><textarea data-report-field="avaliacao" aria-label="Avaliação geral" placeholder="Resumo do mês: quadro, carga horária, distratos e motivos…"></textarea></fieldset>
                 <fieldset><legend>Implantação (opcional)</legend><textarea data-report-field="implantacao" aria-label="Implantação" placeholder="Ferramentas, processos ou melhorias implantadas no mês…"></textarea><label for="aa-report-image">Imagem ou print (opcional)</label><input type="file" id="aa-report-image" accept="image/png,image/jpeg,image/webp"><p id="aa-report-image-name" class="aa-report-hint">Nenhuma imagem anexada.</p><button type="button" class="aa-report-btn aa-report-btn-danger" data-report-action="remove-image">Remover imagem</button><p class="aa-report-hint">A imagem é mantida no rascunho desta sessão e será criptografada ao salvar o relatório.</p></fieldset>
-                <fieldset><legend>Feedback dos operadores</legend><div id="aa-report-operators"></div><button type="button" class="aa-report-btn aa-report-btn-primary" data-report-action="add-operator" style="margin-top:10px">Adicionar operador</button><div class="aa-report-hint"><b>A nota avalia o operador, não a operação.</b> Pergunta-guia: “De 0 a 10, o quanto você recomendaria este operador para a equipe e para assumir mais responsabilidades?”<br><b>9–10 Promotor:</b> referência, entrega com consistência e autonomia.<br><b>7–8 Neutro:</b> cumpre o esperado, sem destaque.<br><b>0–6 Detrator:</b> abaixo do esperado, precisa de plano de acompanhamento.<br>NPS = % promotores − % detratores.</div></fieldset>
+                <fieldset><legend>Feedback dos operadores</legend><p class="aa-report-hint">A seleção usa usuários ativos, exceto Administrador, Administrador geral e Gestão.</p><div id="aa-report-operators"></div><button type="button" class="aa-report-btn aa-report-btn-primary" data-report-action="add-operator" style="margin-top:10px">Adicionar operador</button><div class="aa-report-hint"><b>A nota avalia o operador, não a operação.</b> Pergunta-guia: “De 0 a 10, o quanto você recomendaria este operador para a equipe e para assumir mais responsabilidades?”<br><b>9–10 Promotor:</b> referência, entrega com consistência e autonomia.<br><b>7–8 Neutro:</b> cumpre o esperado, sem destaque.<br><b>0–6 Detrator:</b> abaixo do esperado, precisa de plano de acompanhamento.<br>NPS = % promotores − % detratores.</div></fieldset>
+                <fieldset><legend>Feedback da liderança e sub-liderança (opcional)</legend><p class="aa-report-hint">Selecione usuários ativos com perfil Administrador, Administrador geral ou Gestão.</p><div id="aa-report-leadership"></div><div class="aa-report-actions aa-report-leadership-actions"><button type="button" class="aa-report-btn" data-report-action="add-leadership" data-role="lideranca">Adicionar feedback da liderança</button><button type="button" class="aa-report-btn" data-report-action="add-leadership" data-role="sublideranca">Adicionar feedback da sub-liderança</button></div></fieldset>
                 <fieldset><legend>Conclusão</legend><textarea data-report-field="conclusao" aria-label="Conclusão" placeholder="Fechamento do mês e foco do próximo período…"></textarea></fieldset>
               </form>
               <div class="aa-report-preview-wrap"><article id="aa-operational-report-preview" class="aa-report-preview" aria-label="Pré-visualização do relatório"></article></div>
@@ -2147,6 +2148,21 @@ function aaCan(permission){ const root=String((typeof rhCurrentUser!=='undefined
 window.__aaCanPermission = permission => aaCan(permission);
 window.__aaIsLeadershipAdmin = () => { const role=normalizePerfil(rhCurrentProfile&&rhCurrentProfile.perfil),email=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase(),principal=String(window.__AA_ADMIN_EMAIL||'adm@adm.com').trim().toLowerCase(); return rhAuthenticated&&(['administrador','administrador_geral'].includes(role)||email===principal)&&aaCan('controller_dashboard_ver'); };
 window.__aaCanUseOperationalReport = () => { const profile=rhCurrentProfile,role=normalizePerfil(profile&&profile.perfil),email=String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase(),principal=String(window.__AA_ADMIN_EMAIL||'adm@adm.com').trim().toLowerCase(); if(!rhAuthenticated||(!['administrador','administrador_geral'].includes(role)&&email!==principal))return false; return !profile||(!profile.removido&&profile.ativo!==false&&perfilAtivo(profile.perfil)); };
+window.__aaGetOperationalReportUsers = async () => {
+  if(!window.__aaCanUseOperationalReport())return [];
+  if(!dataLoadState.rhusers)await loadRHUsers();
+  const principal=String(window.__AA_ADMIN_EMAIL||'adm@adm.com').trim().toLowerCase();
+  return (Array.isArray(allRHUsers)?allRHUsers:[]).filter(user=>{
+    const email=String(user.username||user.email||'').trim().toLowerCase();
+    return email!==principal&&!user.removido&&user.ativo!==false&&perfilAtivo(user.perfil);
+  }).map(user=>({
+    id:String(user.id||user.auth_user_id||user.authUserId||user.username||''),
+    name:String(user.nomeCompleto||user.nome||user.username||'').trim(),
+    username:String(user.username||user.email||'').trim(),
+    profile:normalizePerfil(user.perfil),
+    profileLabel:perfilLabel(user.perfil)
+  })).filter(user=>user.id&&user.name).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR',{sensitivity:'base'}));
+};
 window.__aaGetPresenceSession = () => {
   if(!rhAuthenticated)return null;
   const current=rhCurrentProfile||{},principal=String(window.__AA_ADMIN_EMAIL||'adm@adm.com').trim().toLowerCase(),email=String(rhCurrentUser||current.username||'').trim().toLowerCase();
