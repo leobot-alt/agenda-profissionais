@@ -5145,6 +5145,9 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 .aa-controller-detail-title h2{margin:3px 0 0!important;color:#223752;font-size:22px!important;letter-spacing:-.02em}
 .aa-controller-detail-controls{display:flex;align-items:end;gap:12px}
 .aa-controller-detail-controls .aa-field{min-width:190px}
+.aa-controller-hour-alert-settings{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 17px;border:1px solid #E0E6F0;border-radius:12px;background:linear-gradient(115deg,#FBFCFE,#F5F7FC)}.aa-controller-hour-alert-settings-copy{min-width:0}.aa-controller-hour-alert-settings-copy strong{display:block;margin-top:3px;color:#2E405B;font-size:14px}.aa-controller-hour-alert-settings-copy p{margin:4px 0 0;color:#718096;font-size:12px}.aa-controller-hour-alert-settings-control{display:flex;align-items:end;gap:8px;flex-wrap:wrap}.aa-controller-hour-alert-settings-control label{display:grid;gap:5px;color:#536176;font-size:11px;font-weight:800}.aa-controller-hour-alert-settings-control select{min-height:36px;border:1px solid #D8E0EA;border-radius:9px;background:#fff;padding:0 10px;color:#354963;font:inherit;font-size:12px}.aa-controller-hour-alert-settings-control #aa-controller-hour-alert-save-status{flex-basis:100%;color:#55705F;font-size:11px}.aa-controller-hour-alert-settings-value{flex:0 0 auto;padding:7px 10px;border-radius:9px;background:#EEF2F8;color:#445875;font-size:12px;font-weight:700}.aa-controller-hour-alert-host:empty{display:none}.aa-controller-hour-alert{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:13px;padding:15px 17px;border:1px solid #F0D9A8;border-left:4px solid #D99A2B;border-radius:12px;background:#FFFAEF;box-shadow:0 5px 15px rgba(66,50,20,.05)}.aa-controller-hour-alert-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#F7E8C7;color:#8D5B08;font-size:19px;font-weight:900}.aa-controller-hour-alert-copy{min-width:0}.aa-controller-hour-alert-copy>strong{display:block;margin-top:3px;color:#5B4724;font-size:14px}.aa-controller-hour-alert-copy p{margin:4px 0 0;color:#6D5C3D;font-size:12px;line-height:1.45}.aa-controller-hour-alert-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.aa-controller-hour-alert-actions .aa-btn{white-space:nowrap}
+@media(max-width:760px){.aa-controller-hour-alert-settings{align-items:flex-start;flex-direction:column}.aa-controller-hour-alert-settings-control{width:100%}.aa-controller-hour-alert{grid-template-columns:auto minmax(0,1fr)}.aa-controller-hour-alert-actions{grid-column:1/-1;justify-content:flex-start}.aa-controller-hour-alert-actions .aa-btn{flex:1 1 auto}}
+
 .aa-controller-record-filters{display:grid;grid-template-columns:minmax(150px,200px) minmax(150px,200px) minmax(220px,1fr) auto auto;align-items:end;gap:12px;margin:0;padding:13px 14px;border:1px solid #E2E8EF;border-radius:12px;background:#F8FAFC}
 .aa-controller-record-filters .aa-field{min-width:0;margin:0}
 .aa-controller-record-filters label{display:block;margin-bottom:6px;color:#536176;font-size:11px;font-weight:800;letter-spacing:.035em;text-transform:uppercase}
@@ -5270,10 +5273,15 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   let controllerPageRecords=[];
   const controllerSelectedRecordIds=new Set();
   let controllerBulkDeletingRecords=false;
-  let controllerSelectedDay=new Date().toISOString().slice(0,10);
+  let controllerSelectedDay=(()=>{const now=new Date();return now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');})();
   let controllerRecordHourFilter='';
   let controllerRecordStatusFilters=[];
+  let controllerRecordAlertHourFilter='';
   let controllerRecordNameSearch='';
+  const CONTROLLER_HOUR_ALERT_SETTING_KEY='hour_alert_lead_minutes';
+  const CONTROLLER_HOUR_ALERT_MINUTES=[5,10,15,20,30];
+  let controllerHourAlertLeadMinutes=10,controllerHourAlertConfigLoaded=false,controllerHourAlertTimer=null,controllerHourAlertCurrentCandidate=null,controllerHourAlertSnooze=null,controllerHourAlertDataCheckKey='';
+  const controllerHourAlertDismissed=new Set();
   let controllerDashboardRecords=[];
   function controllerLocalDateInputValue(date){date=date||new Date();return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');}
   const controllerDashboardInitialDate=controllerLocalDateInputValue(new Date());
@@ -5298,7 +5306,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   let controllerStatusDefinitions=controllerBuildDefaultStatuses();
   let controllerEnabledStatuses=controllerStatusDefinitions.map(item=>item.status_code);
   let controllerStatusConfigLoaded=false;
-  const controllerToday=()=>new Date().toISOString().slice(0,10);
+  const controllerToday=()=>controllerLocalDateInputValue(new Date());
   controllerProfessionalSearchFrom=controllerToday();
   controllerProfessionalSearchTo=controllerToday();
   async function loadControllerStatusConfig(force){
@@ -5344,6 +5352,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     return controllerPageRecords.filter(record=>{
       const hour=String(record.hora_atendimento||'').slice(0,5);
       if(controllerRecordHourFilter&&hour!==controllerRecordHourFilter)return false;
+      if(controllerRecordAlertHourFilter!==''&&Number(hour.slice(0,2))!==Number(controllerRecordAlertHourFilter))return false;
       const status=String(record.status||'pendente').toLowerCase();
       if(controllerRecordStatusFilters.length&&!controllerRecordStatusFilters.includes(status))return false;
       const name=controllerNormalizeProfessionalName(record.profissional);
@@ -5358,6 +5367,63 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     });
   }
   window.aaControllerDownloadTemplate=function(){if(!window.XLSX)return alert('A biblioteca da planilha ainda não foi carregada.');const book=XLSX.utils.book_new();const pages=controllerSortPages(controllerPages.filter(page=>!page.arquivada)),templatePages=pages.length?pages:[{nome:'NOME DO RESPONSAVEL'}];templatePages.forEach(page=>{const rows=[['Agenda','Hora','Status','Observação']];const ws=XLSX.utils.aoa_to_sheet(rows);XLSX.utils.book_append_sheet(book,ws,String(page.nome||'Responsavel').slice(0,31));});XLSX.writeFile(book,'modelo-conferencia-atendimentos.xlsx');};
+  async function controllerLoadHourAlertConfig(force){
+    if(controllerHourAlertConfigLoaded&&!force)return controllerHourAlertLeadMinutes;
+    try{
+      const {data,error}=await controllerDb.from('controller_settings').select('value').eq('setting_key',CONTROLLER_HOUR_ALERT_SETTING_KEY).maybeSingle();if(error)throw error;const stored=data?(typeof data.value==='string'?data.value:JSON.stringify(data.value)):null,parsed=stored?JSON.parse(stored):null,value=Number(parsed&&typeof parsed==='object'?(parsed.minutes??parsed.leadMinutes):parsed);
+      controllerHourAlertLeadMinutes=CONTROLLER_HOUR_ALERT_MINUTES.includes(value)?value:10;controllerHourAlertConfigLoaded=true;
+    }catch(error){controllerHourAlertConfigLoaded=false;console.warn('Não foi possível carregar a antecedência do alerta do Controller.',error);}
+    return controllerHourAlertLeadMinutes;
+  }
+  function controllerHourFromTime(value){const match=String(value||'').trim().match(/^(\d{1,2})(?::\d{2})?/);if(!match)return null;const hour=Number(match[1]);return hour>=0&&hour<=23?hour:null;}
+  function controllerHourText(hour){return String(((Number(hour)%24)+24)%24).padStart(2,'0')+':00';}
+  function controllerHourAlertRows(hour){return controllerPageRecords.filter(record=>controllerHourFromTime(record.hora_atendimento)===Number(hour)&&['pendente','em_andamento'].includes(controllerDashboardWorkflowStatus(record)));}
+  function controllerHourAlertWindow(now){
+    if(controllerSelectedDay!==controllerLocalDateInputValue(now)||!controllerActivePageId)return null;
+    const minuteOfDay=now.getHours()*60+now.getMinutes()+now.getSeconds()/60,targetMinute=(Math.floor(minuteOfDay/60)+1)*60,minutesRemaining=targetMinute-minuteOfDay;
+    if(minutesRemaining<=0||minutesRemaining>controllerHourAlertLeadMinutes)return null;
+    const nextHour=Math.floor((targetMinute%1440)/60),previousHour=Math.floor(targetMinute/60)-1,targetAt=new Date(now.getFullYear(),now.getMonth(),now.getDate(),Math.floor(targetMinute/60),0,0).getTime(),pageId=String(controllerActivePageId),day=String(controllerSelectedDay),key=pageId+'|'+day+'|'+targetMinute;
+    return {key,pageId,day,nextHour,previousHour,targetMinute,targetAt,minutesRemaining:Math.ceil(minutesRemaining)};
+  }
+  function controllerRefreshHourAlertRecords(windowInfo){
+    if(!windowInfo||controllerHourAlertDataCheckKey===windowInfo.key||!controllerDb?.from)return;
+    controllerHourAlertDataCheckKey=windowInfo.key;
+    controllerDb.from('controller_page_records').select('id,page_id,operador,profissional,data_atendimento,hora_atendimento,status,status_original,observacao,criado_em,atualizado_em,atualizado_por').eq('page_id',windowInfo.pageId).eq('data_atendimento',windowInfo.day).order('hora_atendimento',{ascending:true}).then(result=>{
+      if(result.error)throw result.error;
+      if(String(controllerActivePageId)!==windowInfo.pageId||String(controllerSelectedDay)!==windowInfo.day)return;
+      controllerPageRecords=result.data||[];controllerRenderHourAlert();
+    }).catch(error=>console.warn('Não foi possível atualizar os atendimentos antes do alerta de troca de hora.',error));
+  }
+  function controllerHourAlertCandidate(now){
+    if(controllerSelectedDay!==controllerLocalDateInputValue(now)||!controllerActivePageId)return null;
+    const pageId=String(controllerActivePageId),day=String(controllerSelectedDay),windowInfo=controllerHourAlertWindow(now);
+    if(controllerHourAlertSnooze&&controllerHourAlertSnooze.pageId===pageId&&controllerHourAlertSnooze.day===day&&now.getTime()>=controllerHourAlertSnooze.until){
+      const snoozedRows=controllerHourAlertRows(controllerHourAlertSnooze.previousHour);
+      if(snoozedRows.length)return {...controllerHourAlertSnooze,items:snoozedRows,snoozed:true,minutesRemaining:Math.max(0,Math.ceil((controllerHourAlertSnooze.targetAt-now.getTime())/60000))};
+      controllerHourAlertSnooze=null;
+    }
+    if(!windowInfo)return null;
+    const {key,previousHour}=windowInfo,normalRows=controllerHourAlertRows(previousHour);
+    if(!normalRows.length||controllerHourAlertDismissed.has(key))return null;
+    if(controllerHourAlertSnooze&&controllerHourAlertSnooze.key===key&&now.getTime()<controllerHourAlertSnooze.until)return null;
+    return {...windowInfo,items:normalRows,snoozed:false};
+  }
+  function controllerRenderHourAlert(){
+    const host=document.getElementById('aa-controller-hour-alert');if(!host)return;
+    const now=new Date(),windowInfo=controllerHourAlertWindow(now);controllerRefreshHourAlertRecords(windowInfo);const candidate=controllerHourAlertCandidate(now);controllerHourAlertCurrentCandidate=candidate;
+    if(!candidate){host.innerHTML='';return;}
+    const pending=candidate.items.filter(record=>controllerDashboardWorkflowStatus(record)==='pendente').length,inProgress=candidate.items.length-pending,from=controllerHourText(candidate.previousHour),to=controllerHourText(candidate.previousHour+1),summary=pending+' pendente(s) · '+inProgress+' em andamento';
+    const heading=candidate.snoozed?'Lembrete adiado: ainda há atendimentos para revisar.':'Próxima hora às '+controllerHourText(candidate.nextHour)+' · faltam '+candidate.minutesRemaining+' min';
+    host.innerHTML='<aside class="aa-controller-hour-alert" role="status" aria-live="polite"><span class="aa-controller-hour-alert-icon" aria-hidden="true">!</span><div class="aa-controller-hour-alert-copy"><span class="aa-controller-overline">ALERTA DE TROCA DE HORA</span><strong>'+controllerPageText(heading)+'</strong><p>A faixa '+controllerPageText(from)+'–'+controllerPageText(to)+' tem '+candidate.items.length+' atendimento(s) pendente(s) ou em andamento: '+controllerPageText(summary)+'.</p></div><div class="aa-controller-hour-alert-actions"><button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaControllerHourAlertView()">Ver pendências</button><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerHourAlertSnooze()">Lembrar em 10 min</button><button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" onclick="aaControllerHourAlertDismiss()">Dispensar</button></div></aside>';
+  }
+  function controllerStopHourAlertClock(){if(controllerHourAlertTimer){clearInterval(controllerHourAlertTimer);controllerHourAlertTimer=null;}}
+  function controllerStartHourAlertClock(){controllerStopHourAlertClock();controllerRenderHourAlert();controllerHourAlertTimer=setInterval(()=>{if(controllerView==='subpaginas'&&controllerActivePageId&&document.visibilityState==='visible')controllerRenderHourAlert();},15000);}
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&controllerView==='subpaginas'&&controllerActivePageId)controllerRenderHourAlert();});
+  function controllerHourAlertSettingsMarkup(){
+    if(!controllerLeadershipAdminAllowed())return '';
+    const options=CONTROLLER_HOUR_ALERT_MINUTES.map(minutes=>'<option value="'+minutes+'" '+(minutes===controllerHourAlertLeadMinutes?'selected':'')+'>'+minutes+' minutos</option>').join('');
+    return '<section class="aa-controller-hour-alert-settings"><div class="aa-controller-hour-alert-settings-copy"><span class="aa-controller-overline">LEMBRETE DE PENDÊNCIAS</span><strong>Alerta antes da próxima hora</strong><p>O aviso aparece se a hora anterior ainda tiver atendimentos pendentes ou em andamento.</p></div><div class="aa-controller-hour-alert-settings-control"><label for="aa-controller-hour-alert-lead">Antecedência</label><select id="aa-controller-hour-alert-lead">'+options+'</select><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerSaveHourAlertLead()">Salvar</button><span id="aa-controller-hour-alert-save-status" role="status" aria-live="polite"></span></div></section>';
+  }
   function renderControllerPageDetail(){
     const out=document.getElementById('aa-controller-view-subpaginas'),page=controllerPages.find(item=>String(item.id)===String(controllerActivePageId));if(!out||!page)return;
     const canEdit=controllerCan('controller_status_atual_editar'),canDeleteRecords=controllerCan('controller_registros_excluir');
@@ -5372,9 +5438,10 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const statusFilterOptions=filterStatusCodes.map(code=>{const item=controllerStatusDefinitions.find(status=>status.status_code===code),label=item?item.label:controllerStatusLabel(code),suffix=item?.archived?' (Arquivado)':item&&!item.active?' (Inativo)':'';return '<label class="aa-controller-status-option"><input type="checkbox" data-controller-status-filter data-status-code="'+controllerPageText(code)+'" '+(controllerRecordStatusFilters.includes(code)?'checked':'')+' onchange="aaControllerToggleStatusFilter(this)"><span>'+controllerPageText(label+suffix)+'</span></label>';}).join('');
     const selectedStatusLabels=controllerRecordStatusFilters.map(code=>{const item=controllerStatusDefinitions.find(status=>status.status_code===code);return item?item.label:controllerStatusLabel(code);});
     const statusSummary=selectedStatusLabels.length?selectedStatusLabels.map(label=>'<span class="aa-controller-status-chip">'+controllerPageText(label)+'</span>').join(''):'<span class="aa-controller-status-placeholder">Todos os status</span>';
-    const hasRecordFilters=!!(controllerRecordHourFilter||controllerRecordStatusFilters.length||controllerRecordNameSearch.trim());
-    const filterControls=`<div class="aa-controller-record-filters"><div class="aa-field"><label for="aa-controller-record-hour-filter">Filtrar por horário</label><select id="aa-controller-record-hour-filter" onchange="aaControllerFilterRecords(this)"><option value="">Todos os horários</option>${availableHours.map(hour=>'<option value="'+controllerPageText(hour)+'" '+(controllerRecordHourFilter===hour?'selected':'')+'>'+controllerPageText(hour)+'</option>').join('')}</select></div><div class="aa-field aa-controller-status-multi-field"><label id="aa-controller-status-multi-label">Filtrar por status</label><details id="aa-controller-record-status-filter" class="aa-controller-status-picker" ${controllerRecordStatusFilters.length?'open':''}><summary aria-labelledby="aa-controller-status-multi-label"><span class="aa-controller-status-selected">${statusSummary}</span><span class="aa-controller-status-chevron" aria-hidden="true">▾</span></summary><div class="aa-controller-status-options" role="group" aria-labelledby="aa-controller-status-multi-label">${statusFilterOptions}</div></details></div><div class="aa-field"><label for="aa-controller-record-name-search">Pesquisar por nome</label><input id="aa-controller-record-name-search" type="search" maxlength="120" autocomplete="off" placeholder="Digite o nome do profissional" value="${controllerPageText(controllerRecordNameSearch)}" oninput="aaControllerFilterRecords(this)"></div><span class="aa-controller-record-filter-meta">Exibindo ${visibleRecords.length} de ${controllerPageRecords.length} atendimento(s)</span><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerClearRecordFilters()" ${hasRecordFilters?'':'disabled'}>Limpar filtros</button></div>`;
-    const emptyState=controllerPageRecords.length?'<div class="aa-controller-empty"><strong>Nenhum atendimento encontrado</strong><span>Altere ou limpe os filtros de horário, status e nome.</span></div>':'<div class="aa-controller-empty"><strong>Nenhum atendimento neste dia</strong><span>Quando a planilha do dia for importada, os atendimentos aparecerão aqui.</span></div>';
+    const alertHourFilterLabel=controllerRecordAlertHourFilter!==''?' · Hora '+controllerHourText(controllerRecordAlertHourFilter)+'–'+controllerHourText(Number(controllerRecordAlertHourFilter)+1):'';
+    const hasRecordFilters=!!(controllerRecordHourFilter||controllerRecordStatusFilters.length||controllerRecordAlertHourFilter!==''||controllerRecordNameSearch.trim());
+    const filterControls=`<div class="aa-controller-record-filters"><div class="aa-field"><label for="aa-controller-record-hour-filter">Filtrar por horário</label><select id="aa-controller-record-hour-filter" onchange="aaControllerFilterRecords(this)"><option value="">Todos os horários</option>${availableHours.map(hour=>'<option value="'+controllerPageText(hour)+'" '+(controllerRecordHourFilter===hour?'selected':'')+'>'+controllerPageText(hour)+'</option>').join('')}</select></div><div class="aa-field aa-controller-status-multi-field"><label id="aa-controller-status-multi-label">Filtrar por status</label><details id="aa-controller-record-status-filter" class="aa-controller-status-picker"><summary aria-labelledby="aa-controller-status-multi-label"><span class="aa-controller-status-selected">${statusSummary}</span><span class="aa-controller-status-chevron" aria-hidden="true">▾</span></summary><div class="aa-controller-status-options" role="group" aria-labelledby="aa-controller-status-multi-label">${statusFilterOptions}</div></details></div><div class="aa-field"><label for="aa-controller-record-name-search">Pesquisar por nome</label><input id="aa-controller-record-name-search" type="search" maxlength="120" autocomplete="off" placeholder="Digite o nome do profissional" value="${controllerPageText(controllerRecordNameSearch)}" oninput="aaControllerFilterRecords(this)"></div><span class="aa-controller-record-filter-meta">Exibindo ${visibleRecords.length} de ${controllerPageRecords.length} atendimento(s)${controllerPageText(alertHourFilterLabel)}</span><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerClearRecordFilters()" ${hasRecordFilters?'':'disabled'}>Limpar filtros</button></div>`;
+    const emptyState=controllerPageRecords.length?'<div class="aa-controller-empty"><strong>Nenhum atendimento encontrado</strong><span>Altere ou limpe os filtros de horário, faixa, status e nome.</span></div>':'<div class="aa-controller-empty"><strong>Nenhum atendimento neste dia</strong><span>Quando a planilha do dia for importada, os atendimentos aparecerão aqui.</span></div>';
     const rows=visibleRecords.map(record=>{
       const id=controllerPageText(record.id),selected=controllerSelectedRecordIds.has(String(record.id));
       const selectionCell=canDeleteRecords?`<td data-label="Selecionar"><label class="aa-controller-record-select"><input type="checkbox" data-controller-select-record="${id}" ${selected?'checked':''} onchange="aaControllerSetRecordSelected('${id}',this.checked)" aria-label="Selecionar horário de ${controllerPageText(record.profissional)} às ${controllerPageText(String(record.hora_atendimento||'').slice(0,5))}"></label></td>`:'';
@@ -5389,13 +5456,16 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
         <div class="aa-controller-detail-title"><button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" onclick="aaControllerBackToPages()">← Voltar aos colaboradores</button><div><span class="aa-controller-overline">ACOMPANHAMENTO DO COLABORADOR</span><h2>${controllerPageText(page.nome)}</h2><p>Atendimentos de ${controllerRenderDayDate(controllerSelectedDay)}. A lista é organizada por horário e nome.</p></div></div>
         <div class="aa-controller-detail-controls"><span class="aa-controller-count-pill">${controllerPageRecords.length} atendimento(s)</span><div class="aa-field"><label for="aa-controller-consult-day">Consultar outro dia</label><input id="aa-controller-consult-day" type="date" value="${controllerPageText(controllerSelectedDay)}" onchange="aaControllerChangeDay(this.value)"></div></div>
       </header>
-      <section class="aa-card aa-controller-records-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">AGENDA DO DIA</span><h2>Atendimentos para acompanhar</h2><p>Atualize o status e, quando necessário, ajuste a observação do atendimento.</p></div><span class="aa-controller-pending-hint">Ordem: horário e nome (A–Z)</span></header>
+      ${controllerHourAlertSettingsMarkup()}
+      <div id="aa-controller-hour-alert" class="aa-controller-hour-alert-host"></div>
+      <section class="aa-card aa-controller-records-card" id="aa-controller-records"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">AGENDA DO DIA</span><h2>Atendimentos para acompanhar</h2><p>Atualize o status e, quando necessário, ajuste a observação do atendimento.</p></div><span class="aa-controller-pending-hint">Ordem: horário e nome (A–Z)</span></header>
         ${filterControls}
         ${canDeleteRecords&&controllerPageRecords.length?`<div class="aa-controller-record-bulk-actions"><label class="aa-controller-record-select-all"><input type="checkbox" ${allRecordsSelected?'checked':''} onchange="aaControllerSelectAllRecords(this.checked)" aria-label="Selecionar todos os horários exibidos"><span>Selecionar horários exibidos</span></label><span>${selectedRecordCount} selecionado(s) no total</span><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeleteSelectedRecords()" ${selectedRecordCount?'':'disabled'}>Excluir horários selecionados${selectedRecordCount?' ('+selectedRecordCount+')':''}</button></div>`:''}
         ${rows?`<div class="aa-table-scroll aa-controller-record-scroll"><table class="aa-compact-table aa-controller-record-table"><thead><tr>${canDeleteRecords?`<th scope="col"><input type="checkbox" ${allRecordsSelected?'checked':''} onchange="aaControllerSelectAllRecords(this.checked)" aria-label="Selecionar todos os horários exibidos"></th>`:''}<th>Agenda / profissional</th><th>Hora</th><th>Status da planilha</th><th>Status atual</th><th>Última alteração</th><th>Observação</th><th>Ação</th></tr></thead><tbody>${rows}</tbody></table></div>`:emptyState}
       </section>
     </section>`;
     if(!canDeleteRecords)out.querySelectorAll('.aa-btn-danger').forEach(button=>button.style.display='none');
+    controllerRenderHourAlert();
   }
   window.aaControllerCopyProfessionalName=async function(encodedName){
     let name='';try{name=decodeURIComponent(String(encodedName||''));}catch{return;}
@@ -5404,13 +5474,17 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     try{if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(name);else fallbackCopy();if(typeof aaToast==='function')aaToast('Nome do profissional copiado.','success');else alert('Nome do profissional copiado.');}
     catch(error){try{fallbackCopy();if(typeof aaToast==='function')aaToast('Nome do profissional copiado.','success');else alert('Nome do profissional copiado.');}catch(copyError){if(typeof aaToast==='function')aaToast('Não foi possível copiar o nome.','error');else alert('Não foi possível copiar o nome.');}}
   };
-  window.aaControllerOpenPage=async function(id,day){if(!controllerAllowed())return;const targetPage=String(id),targetDay=day||controllerToday();if(targetPage!==controllerActivePageId||targetDay!==controllerSelectedDay){controllerRecordHourFilter='';controllerRecordStatusFilters=[];controllerRecordNameSearch='';}controllerSelectedRecordIds.clear();controllerView='subpaginas';controllerActivePageId=targetPage;controllerSelectedDay=targetDay;try{await loadControllerStatusConfig();await loadControllerPageRecords(id,controllerSelectedDay);renderControllerPageDetail();}catch(e){alert('Não foi possível carregar os atendimentos desta área: '+(e?.message||''));console.error(e);}};
+  window.aaControllerOpenPage=async function(id,day){if(!controllerAllowed())return;controllerStopHourAlertClock();const targetPage=String(id),targetDay=day||controllerToday();if(targetPage!==controllerActivePageId||targetDay!==controllerSelectedDay){controllerRecordHourFilter='';controllerRecordStatusFilters=[];controllerRecordAlertHourFilter='';controllerRecordNameSearch='';}controllerSelectedRecordIds.clear();controllerView='subpaginas';controllerActivePageId=targetPage;controllerSelectedDay=targetDay;controllerHourAlertDataCheckKey='';try{await loadControllerStatusConfig();await controllerLoadHourAlertConfig(true);await loadControllerPageRecords(id,controllerSelectedDay);renderControllerPageDetail();controllerStartHourAlertClock();}catch(e){alert('Não foi possível carregar os atendimentos desta área: '+(e?.message||''));console.error(e);}};
   window.aaControllerChangeDay=async function(day){if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!controllerActivePageId)return;await window.aaControllerOpenPage(controllerActivePageId,day);};
   window.aaControllerFilterRecords=function(element){const focusId=element?.id||'',selectionStart=element&&typeof element.selectionStart==='number'?element.selectionStart:null,selectionEnd=element&&typeof element.selectionEnd==='number'?element.selectionEnd:null;controllerRecordHourFilter=document.getElementById('aa-controller-record-hour-filter')?.value||'';controllerRecordNameSearch=document.getElementById('aa-controller-record-name-search')?.value||'';renderControllerPageDetail();if(focusId){const next=document.getElementById(focusId);if(next){next.focus();if(selectionStart!==null&&typeof next.setSelectionRange==='function')next.setSelectionRange(selectionStart,selectionEnd);}}};
   window.aaControllerToggleStatusFilter=function(input){const code=String(input?.dataset.statusCode||'');if(!code)return;const next=new Set(controllerRecordStatusFilters);if(input.checked)next.add(code);else next.delete(code);controllerRecordStatusFilters=[...next];renderControllerPageDetail();const picker=document.getElementById('aa-controller-record-status-filter');if(picker){picker.open=true;const checkbox=Array.from(picker.querySelectorAll('[data-controller-status-filter]')).find(item=>item.dataset.statusCode===code);checkbox?.focus();}};
   document.addEventListener('click',function(event){const picker=document.getElementById('aa-controller-record-status-filter');if(!picker||!picker.open)return;if(event.target?.closest?.('#aa-controller-record-status-filter'))return;picker.open=false;});
-  window.aaControllerClearRecordFilters=function(){controllerRecordHourFilter='';controllerRecordStatusFilters=[];controllerRecordNameSearch='';renderControllerPageDetail();document.getElementById('aa-controller-record-name-search')?.focus();};
-  window.aaControllerBackToPages=function(){controllerActivePageId='';controllerRecordHourFilter='';controllerRecordStatusFilters=[];controllerRecordNameSearch='';controllerView='subpaginas';renderControllerPages();};
+  window.aaControllerHourAlertView=function(){const candidate=controllerHourAlertCurrentCandidate;if(!candidate)return;controllerHourAlertDismissed.add(candidate.key);controllerHourAlertSnooze=null;controllerRecordHourFilter='';controllerRecordAlertHourFilter=String(candidate.previousHour);controllerRecordStatusFilters=[...new Set(candidate.items.map(record=>String(record.status||'pendente').toLowerCase()))];controllerRecordNameSearch='';renderControllerPageDetail();setTimeout(()=>document.getElementById('aa-controller-records')?.scrollIntoView({behavior:'smooth',block:'start'}),0);};
+  window.aaControllerHourAlertSnooze=function(){const candidate=controllerHourAlertCurrentCandidate;if(!candidate)return;controllerHourAlertSnooze={...candidate,until:Date.now()+10*60*1000};controllerRenderHourAlert();};
+  window.aaControllerHourAlertDismiss=function(){const candidate=controllerHourAlertCurrentCandidate;if(!candidate)return;controllerHourAlertDismissed.add(candidate.key);if(controllerHourAlertSnooze?.key===candidate.key)controllerHourAlertSnooze=null;controllerRenderHourAlert();};
+  window.aaControllerSaveHourAlertLead=async function(){if(!controllerLeadershipAdminAllowed())return alert('A configuração geral do alerta está disponível somente para perfis administrativos.');const value=Number(document.getElementById('aa-controller-hour-alert-lead')?.value),status=document.getElementById('aa-controller-hour-alert-save-status'),button=document.querySelector('.aa-controller-hour-alert-settings-control button');if(!CONTROLLER_HOUR_ALERT_MINUTES.includes(value)){if(status)status.textContent='Selecione uma antecedência válida.';return;}if(button){button.disabled=true;button.textContent='Salvando…';}if(status)status.textContent='';try{const {error}=await controllerDb.from('controller_settings').upsert({setting_key:CONTROLLER_HOUR_ALERT_SETTING_KEY,value:{minutes:value},updated_at:new Date().toISOString()},{onConflict:'setting_key'});if(error)throw error;controllerHourAlertLeadMinutes=value;controllerHourAlertConfigLoaded=true;controllerHourAlertDismissed.clear();controllerHourAlertDataCheckKey='';controllerRenderHourAlert();if(status)status.textContent='Salvo para toda a equipe.';if(typeof aaToast==='function')aaToast('Antecedência do alerta salva para toda a equipe.','success');}catch(error){console.error('Falha ao salvar antecedência do alerta.',error);if(status)status.textContent='Não foi possível salvar. Tente novamente.';}finally{if(button){button.disabled=false;button.textContent='Salvar';}}};
+  window.aaControllerClearRecordFilters=function(){controllerRecordHourFilter='';controllerRecordStatusFilters=[];controllerRecordAlertHourFilter='';controllerRecordNameSearch='';renderControllerPageDetail();document.getElementById('aa-controller-record-name-search')?.focus();};
+  window.aaControllerBackToPages=function(){controllerStopHourAlertClock();controllerActivePageId='';controllerRecordHourFilter='';controllerRecordStatusFilters=[];controllerRecordAlertHourFilter='';controllerRecordNameSearch='';controllerView='subpaginas';renderControllerPages();};
   window.aaControllerCreateRecord=async function(event){
     if(event)event.preventDefault();
     if(!controllerAllowed()||!controllerCan('controller_registros_criar')||!controllerActivePageId){if(controllerAllowed()&&!controllerCan('controller_registros_criar'))alert('Você não tem permissão para cadastrar atendimentos manualmente.');return;}
@@ -6401,6 +6475,7 @@ $("todos").addEventListener("click",function(){
     if(view==='hours'&&!(controllerLeadershipAdminAllowed()||controllerHoursAllowed())){alert('A Divisão de horas está disponível somente para ADM, ADM Geral e Gestão.');return;}
     if(view==='status'&&!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para configurar os status do Controller.');return;}
     controllerStopDashboardRefresh();
+    controllerStopHourAlertClock();
     controllerView=view==='dashboard'?'dashboard':view==='professional-search'?'professional-search':view==='hours'?'hours':view==='status'?'status':'subpaginas';
     const immediateOut=document.getElementById('aa-controller-view-subpaginas');
     if(immediateOut)immediateOut.innerHTML=controllerViewNav()+'<div class="aa-card aa-controller-loading"><span class="aa-controller-loading-dot"></span>Carregando '+(controllerView==='dashboard'?'a visão geral':controllerView==='professional-search'?'a busca de profissionais':controllerView==='hours'?'a divisão de horas':controllerView==='status'?'a configuração de status':'os atendimentos')+'...</div>';
