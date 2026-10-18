@@ -5601,37 +5601,84 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     await controllerAudit('Atendimento excluído', (page?.nome||record.operador||'')+' · '+record.profissional,'Dia '+controllerRenderDayDate(record.data_atendimento)+' às '+String(record.hora_atendimento||'').slice(0,5),controllerStatusLabel(record.status),'Excluído');
     controllerSelectedRecordIds.delete(String(id));await loadControllerPageRecords(controllerActivePageId,controllerSelectedDay);renderControllerPageDetail();
   };
-  window.aaControllerImportPlanilha=async function(event){
-    if(event)event.preventDefault();
-    if(!controllerAllowed()||!controllerCan('controller_importar')){alert('Você não tem permissão para importar planilhas.');return;}
-    const file=document.getElementById('aa-controller-import-file')?.files?.[0],importDay=String(document.getElementById('aa-controller-import-day')?.value||'');
-    if(!file||!importDay)return alert('Selecione a planilha e informe o dia dos atendimentos.');
+  async function controllerImportWorkbook(book,importDay,options){
+    options=options||{};
+    if(!controllerAllowed()||!controllerCan('controller_importar')){alert('Você não tem permissão para importar atendimentos.');return false;}
+    importDay=String(importDay||'');
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(importDay)){alert('Informe uma data válida para os atendimentos.');return false;}
+    if(!book||!Array.isArray(book.SheetNames)||!book.SheetNames.length){alert('A planilha não contém abas para importar.');return false;}
     try{
-      const auth=await controllerDb.auth.getUser();if(auth.error)throw auth.error;const creatorId=auth.data?.user?.id;if(!creatorId)throw new Error('Sessão autenticada indisponível. Faça login novamente.');const data=await file.arrayBuffer(),book=XLSX.read(data,{type:'array',cellDates:true}),records=[],errors=[],createdPages=[];
+      const auth=await controllerDb.auth.getUser();if(auth.error)throw auth.error;const creatorId=auth.data?.user?.id;if(!creatorId)throw new Error('Sessão autenticada indisponível. Faça login novamente.');
+      const errors=[],createdPages=[],entries=[],stagedPages=new Map(),normalizedKey=value=>controllerImportHeader(value),ignoredSheets=[];
       for(const sheetName of book.SheetNames){
+        const normalizedSheet=normalizedKey(sheetName);
+        if(options.direct&&['semacompanhamento','semhorariorevisar'].includes(normalizedSheet)){ignoredSheets.push(sheetName);continue;}
         let page=controllerPageByName(sheetName,true);
         if(page?.arquivada){errors.push('Aba "'+sheetName+'" corresponde à área arquivada "'+page.nome+'"; restaure-a antes de importar.');continue;}
         if(!page){
           const name=String(sheetName||'').trim().slice(0,80);
           if(!name){errors.push('Uma aba sem nome foi ignorada.');continue;}
-          page={id:'controller-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),nome:name,descricao:'Criada automaticamente pela importação da planilha.',responsavelAuthId:'',arquivada:false,criadaEm:new Date().toISOString()};
-          const pageResult=await controllerDb.from('controller_subpages').insert({id:page.id,nome:page.nome,descricao:page.descricao,criada_em:page.criadaEm});
-          if(pageResult.error)throw pageResult.error;
-          controllerPages.push(page);createdPages.push(page.nome);await controllerAudit('Subpágina criada pela importação',page.nome,'Nova área de acompanhamento criada automaticamente ao importar a planilha.','','Criada');
+          const key=normalizedKey(name);
+          page=stagedPages.get(key);
+          if(!page){page={id:'controller-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),nome:name,descricao:'Criada automaticamente pela importação da planilha.',responsavelAuthId:'',arquivada:false,criadaEm:new Date().toISOString(),_pendingInsert:true};stagedPages.set(key,page);}
         }
-        const rows=XLSX.utils.sheet_to_json(book.Sheets[sheetName],{defval:''}),keys=rows[0]?Object.keys(rows[0]):[],findKey=names=>keys.find(k=>names.includes(controllerImportHeader(k))),kAgenda=findKey(['agenda']),kHora=findKey(['hora','horario']),kStatus=findKey(['status','situacao']),kNote=findKey(['observacao','observacoes','obs']);
+        const rows=XLSX.utils.sheet_to_json(book.Sheets[sheetName],{defval:''});
+        if(options.direct&&!rows.length)continue;
+        const keys=rows[0]?Object.keys(rows[0]):[],findKey=names=>keys.find(k=>names.includes(controllerImportHeader(k))),kAgenda=findKey(['agenda']),kHora=findKey(['hora','horario']),kStatus=findKey(['status','situacao']),kNote=findKey(['observacao','observacoes','obs']);
         if(!kAgenda||!kHora){errors.push('Aba "'+sheetName+'": use as colunas Agenda e Hora.');continue;}
-        rows.forEach((row,i)=>{const profissional=String(row[kAgenda]||'').trim(),hora=controllerImportTime(row[kHora]);if(!profissional&&!hora)return;if(!profissional||!hora){errors.push('Aba "'+sheetName+'", linha '+(i+2)+': Agenda ou Hora vazia.');return;}records.push({id:'record-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)+'-'+records.length,page_id:page.id,operador:page.nome,profissional,data_atendimento:importDay,hora_atendimento:hora,status:'pendente',status_original:String(kStatus?row[kStatus]||'':'').trim(),criado_por:creatorId,observacao:String(kNote?row[kNote]||'':'').trim(),criado_em:new Date().toISOString(),atualizado_em:new Date().toISOString()});});
+        const validRows=[];
+        rows.forEach((row,i)=>{const profissional=String(row[kAgenda]||'').trim(),hora=controllerImportTime(row[kHora]);if(!profissional&&!hora)return;if(!profissional||!hora){errors.push('Aba "'+sheetName+'", linha '+(i+2)+': Agenda ou Hora vazia.');return;}validRows.push({profissional,hora,statusOriginal:String(kStatus?row[kStatus]||'':'').trim(),observacao:String(kNote?row[kNote]||'':'').trim()});});
+        if(options.direct&&!validRows.length)continue;
+        entries.push({sheetName,page,rows:validRows,kStatus,kNote});
       }
-      if(!records.length){renderControllerPages();return alert('Nenhum atendimento válido foi encontrado.'+(createdPages.length?'\nÁreas de acompanhamento criadas: '+createdPages.join(', '):'')+(errors.length?'\n'+errors.slice(0,6).join('\n'):''));}
+      const totalRecords=entries.reduce((sum,entry)=>sum+entry.rows.length,0);
+      if(!totalRecords){
+        if(!options.direct){
+          for(const entry of entries){if(!entry.page._pendingInsert)continue;const result=await controllerDb.from('controller_subpages').insert({id:entry.page.id,nome:entry.page.nome,descricao:entry.page.descricao,criada_em:entry.page.criadaEm});if(result.error)throw result.error;delete entry.page._pendingInsert;controllerPages.push(entry.page);createdPages.push(entry.page.nome);await controllerAudit('Subpágina criada pela importação',entry.page.nome,'Nova área de acompanhamento criada automaticamente ao importar a planilha.','','Criada');}
+          renderControllerPages();
+        }
+        alert('Nenhum atendimento válido foi encontrado.'+(createdPages.length?'\nÁreas de acompanhamento criadas: '+createdPages.join(', '):'')+(ignoredSheets.length?'\nAbas auxiliares ignoradas: '+ignoredSheets.join(', '):'')+(errors.length?'\n'+errors.slice(0,6).join('\n'):''));return false;
+      }
+      let existingForDay=false;
+      if(options.direct){
+        const existing=await controllerDb.from('controller_page_records').select('id').eq('data_atendimento',importDay).limit(1);
+        if(existing.error)throw new Error('Não foi possível verificar se já existem atendimentos nesta data: '+existing.error.message);
+        existingForDay=Array.isArray(existing.data)&&existing.data.length>0;
+        const newPageNames=[...new Set(entries.filter(entry=>entry.page._pendingInsert).map(entry=>entry.page.nome))];
+        let message='Enviar '+totalRecords+' atendimento(s) da divisão para '+controllerRenderDayDate(importDay)+'?\n\nSomente as abas dos colaboradores serão enviadas; abas de exceção serão ignoradas. Nenhum registro existente será substituído.';
+        if(newPageNames.length)message+='\n\nSerão criadas áreas do Controller para: '+newPageNames.join(', ')+'.';
+        if(existingForDay)message+='\n\nAtenção: já há atendimentos cadastrados para esta data. O envio acrescentará os novos registros e pode gerar horários duplicados. Quer continuar?';
+        if(!confirm(message))return false;
+      }
+      for(const entry of entries){
+        if(!entry.page._pendingInsert)continue;
+        const pageResult=await controllerDb.from('controller_subpages').insert({id:entry.page.id,nome:entry.page.nome,descricao:entry.page.descricao,criada_em:entry.page.criadaEm});
+        if(pageResult.error)throw pageResult.error;
+        delete entry.page._pendingInsert;controllerPages.push(entry.page);createdPages.push(entry.page.nome);
+        await controllerAudit('Subpágina criada pela importação',entry.page.nome,'Nova área de acompanhamento criada automaticamente ao importar a planilha.','','Criada');
+      }
+      const records=[];
+      for(const entry of entries)entry.rows.forEach(row=>records.push({id:'record-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)+'-'+records.length,page_id:entry.page.id,operador:entry.page.nome,profissional:row.profissional,data_atendimento:importDay,hora_atendimento:row.hora,status:'pendente',status_original:row.statusOriginal,criado_por:creatorId,observacao:row.observacao,criado_em:new Date().toISOString(),atualizado_em:new Date().toISOString()}));
       const result=await controllerDb.from('controller_page_records').insert(records);if(result.error)throw result.error;
-      await controllerAudit('Importação de atendimentos',createdPages.length?createdPages.join(', '):[...new Set(records.map(record=>record.operador))].join(', '),'Importados '+records.length+' horário(s) para '+controllerRenderDayDate(importDay)+(createdPages.length?'; subpáginas criadas: '+createdPages.join(', '):''),'',records.length+' importado(s)');
+      await controllerAudit(options.direct?'Envio direto da Divisão de horas':'Importação de atendimentos',createdPages.length?createdPages.join(', '):[...new Set(records.map(record=>record.operador))].join(', '),'Importados '+records.length+' horário(s) para '+controllerRenderDayDate(importDay)+(createdPages.length?'; subpáginas criadas: '+createdPages.join(', '):''),'',records.length+' importado(s)');
       let msg='Importados '+records.length+' atendimento(s) para o dia '+controllerRenderDayDate(importDay)+'.';
       if(createdPages.length)msg+='\nÁrea(s) de acompanhamento criada(s) automaticamente: '+createdPages.join(', ')+'.';
-      if(errors.length)msg+='\nAvisos: '+errors.length;
+      if(ignoredSheets.length)msg+='\nAbas auxiliares ignoradas: '+ignoredSheets.join(', ')+'.';
+      if(errors.length)msg+='\nAvisos: '+errors.length+' linha(s)/aba(s) precisaram de atenção.';
+      if(options.direct)msg+='\nOs registros já estão disponíveis em “Atendimentos por colaborador”.';
       alert(msg);
-      const input=document.getElementById('aa-controller-import-file');if(input)input.value='';renderControllerPages();
-    }catch(e){alert('Não foi possível importar a planilha: '+(e?.message||''));console.error('Importação Controller:',e);}
+      if(!options.direct){const input=document.getElementById('aa-controller-import-file');if(input)input.value='';renderControllerPages();}
+      return true;
+    }catch(e){alert('Não foi possível importar os atendimentos: '+(e?.message||''));console.error('Importação Controller:',e);return false;}
+  }
+  window.aaControllerImportWorkbook=controllerImportWorkbook;
+  window.aaControllerImportPlanilha=async function(event){
+    if(event)event.preventDefault();
+    if(!controllerAllowed()||!controllerCan('controller_importar')){alert('Você não tem permissão para importar planilhas.');return;}
+    const file=document.getElementById('aa-controller-import-file')?.files?.[0],importDay=String(document.getElementById('aa-controller-import-day')?.value||'');
+    if(!file||!importDay)return alert('Selecione a planilha e informe o dia dos atendimentos.');
+    try{const data=await file.arrayBuffer(),book=XLSX.read(data,{type:'array',cellDates:true});await controllerImportWorkbook(book,importDay,{direct:false});}
+    catch(e){alert('Não foi possível ler a planilha: '+(e?.message||''));console.error('Importação Controller:',e);}
   };
   function controllerAssignableUsers(){
     const source=window.__aaPortalState?.users;
@@ -6108,8 +6155,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 <section id="out" class="hide">
 <h2>4. Resultado</h2>
 <div id="lista"></div>
-<div style="margin-top:12px"><button id="todos">Baixar planilha (uma aba por colaborador)</button></div>
-<div id="msg" class="hint"></div>
+<div style="margin-top:12px;display:flex;gap:9px;flex-wrap:wrap"><button id="todos" type="button">Baixar planilha (uma aba por colaborador)</button><button id="enviarController" type="button" class="sec">Enviar direto para Acompanhamento</button></div>
+<div id="msg" class="hint" role="status" aria-live="polite"></div>
 <div id="conf" style="margin-top:12px"></div>
 <div class="tw" id="prev"></div>
 </section></div>`;
@@ -6503,6 +6550,11 @@ function construir(){
   partes.forEach(function(p){abaColab(wb,p,used)});
   return wb;
 }
+function construirAcompanhamento(){
+  var wb=XLSX.utils.book_new(), used={};
+  partes.filter(function(p){return !!p.turno}).forEach(function(p){abaColab(wb,p,used)});
+  return wb;
+}
 function nomeArquivo(){
   var d=$("dataArq").value, dd, mm;
   if(d){var p=d.split("-");dd=p[2];mm=p[1]}
@@ -6517,6 +6569,17 @@ $("todos").addEventListener("click",function(){
   var wb;
   try{wb=construir()}catch(e){$("msg").textContent="Não consegui montar a planilha: "+(e&&e.message);return}
   salvar(wb,nomeArquivo());
+});
+var directButton=$("enviarController");
+if(directButton&&!controllerCan('controller_importar'))directButton.style.display="none";
+if(directButton)directButton.addEventListener("click",async function(){
+  if(!controllerCan('controller_importar')){alert("Você não tem permissão para importar atendimentos.");return;}
+  var date=$("dataArq").value;
+  if(!date){alert("Informe a data dos atendimentos na Divisão de horas.");return;}
+  directButton.disabled=true;$("msg").textContent="Preparando o envio direto para Acompanhamento...";
+  try{var wb=construirAcompanhamento();await window.aaControllerImportWorkbook(wb,date,{direct:true});}
+  catch(e){alert("Não foi possível preparar o envio: "+(e&&e.message||""));console.error("Envio direto da Divisão de horas:",e);}
+  finally{directButton.disabled=false;}
 });
 (function(){var n=new Date();$("dataArq").value=n.getFullYear()+"-"+("0"+(n.getMonth()+1)).slice(-2)+"-"+("0"+n.getDate()).slice(-2)})();
 
