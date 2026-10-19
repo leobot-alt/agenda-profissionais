@@ -6114,7 +6114,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 
 <section id="cfg" class="hide">
 <h2>3. Ajustes da divisão</h2>
-<div style="margin-bottom:10px"><label for="dataArq">Data do arquivo (o nome sai como Controller HH - dia-mês)</label><input type="date" id="dataArq"></div>
+<div style="margin-bottom:10px"><label for="dataArq">Data da divisão (define o mês do histórico; o arquivo sai como Controller HH - dia-mês)</label><input type="date" id="dataArq"></div><div id="monthHistoryStatus" class="hint" role="status" aria-live="polite" style="margin:0 0 10px">Carregando histórico mensal...</div>
 <div class="hint" style="margin:0 0 10px">Colunas usadas (fixas): <b>Agenda</b> = profissional · <b>Hora</b> = horário · <b>Status</b> = status do horário.</div>
 <div class="row3">
 <div><label for="sab">Relatório de sábado</label><select id="sab"><option value="0">Não, dia de semana</option><option value="1">Sim, todos no mesmo horário</option></select></div>
@@ -6140,7 +6140,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 </div>
 <div>
 <label for="manter">Mesmo profissional com o mesmo colaborador</label>
-<select id="manter"><option value="1">Sim, o máximo possível (a divisão igual vem primeiro)</option><option value="0">Não, só dividir igual</option></select>
+<select id="manter"><option value="1">Sim, priorizar continuidade mensal com distribuição equilibrada</option><option value="0">Não, sem preferência por profissional (equilíbrio mensal permanece)</option></select>
 </div>
 
 </div>
@@ -6161,12 +6161,12 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 <div class="tw" id="prev"></div>
 </section></div>`;
     (function(){
-var header=[], rows=[], nomeArq="relatorio", partes=[], dl=null;
+var header=[], rows=[], nomeArq="relatorio", partes=[], dl=null,lastDivisionDate="";
 var $=function(i){return document.getElementById(i)};
 try{if(window.claude&&claude.use)claude.use("downloads").then(function(d){dl=d}).catch(function(){dl=null})}catch(e){dl=null}
 
 $("arq").addEventListener("change",function(e){
-  var f=e.target.files[0]; $("err").textContent=""; if(!f) return;
+  var f=e.target.files[0];lastDivisionDate=""; $("err").textContent=""; if(!f) return;
   nomeArq=f.name.replace(/\.[^.]+$/,"");
   var r=new FileReader();
   r.onload=function(){
@@ -6324,6 +6324,47 @@ try{if(window.claude&&claude.use)claude.use("db").then(function(db){
     else cfgGravar();
   },function(){});
 }).catch(function(){})}catch(e){}
+var monthHistory={month:"",day:"",loadByGroup:{},preferredByGroup:{},loaded:false},monthHistoryRequest=0;
+function monthNormalize(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase().replace(/\s+/g," ")}
+function monthProfessionalKey(value){return monthNormalize(value)}
+function monthCollaboratorKey(c){var authId=String(c&&c.auth_user_id||"").trim();if(authId)return "auth:"+authId.toLowerCase();return "name:"+monthNormalize(c&&c.nome)+"|shift:"+String(c&&c.shift||"")+"|support:"+(c&&c.apoio?"1":"0")}
+function monthPairKey(group,professional){return String(group||"")+"\u001f"+String(professional||"")}
+function nextMonthDate(month){var p=String(month||"").split("-").map(Number);return new Date(Date.UTC(p[0],p[1],1)).toISOString().slice(0,10)}
+async function loadMonthlyHistory(day){
+  day=String(day||"");var token=++monthHistoryRequest,status=$("monthHistoryStatus"),month=day.slice(0,7);
+  monthHistory={month:month,day:day,loadByGroup:{},preferredByGroup:{},loaded:false};
+  if(status)status.textContent="Carregando histórico de continuidade de "+month+"...";
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(day)){if(status)status.textContent="Escolha a data da divisão para carregar o histórico mensal.";return {ok:false,error:new Error("Data inválida.")};}
+  try{
+    var client=window.__aaSupabaseClient;if(!client||!client.from)throw new Error("Banco de dados indisponível.");
+    var query=await client.from("controller_hours_monthly_snapshots").select("division_date,assignments").gte("division_date",month+"-01").lt("division_date",nextMonthDate(month)).neq("division_date",day).limit(100);
+    if(query.error)throw query.error;
+    if(token!==monthHistoryRequest)return {ok:false,stale:true};
+    var loadByGroup=Object.create(null),preferenceCounts=Object.create(null),rows=query.data||[];
+    rows.forEach(function(snapshot){(Array.isArray(snapshot.assignments)?snapshot.assignments:[]).forEach(function(item){
+      var group=String(item.group_key||""),professional=String(item.professional_key||""),collaborator=String(item.collaborator_key||""),count=Math.max(0,Number(item.count)||0);
+      if(!group||!professional||!collaborator||!count)return;
+      if(!loadByGroup[group])loadByGroup[group]=Object.create(null);
+      loadByGroup[group][collaborator]=(loadByGroup[group][collaborator]||0)+count;
+      var key=monthPairKey(group,professional);if(!preferenceCounts[key])preferenceCounts[key]=Object.create(null);
+      preferenceCounts[key][collaborator]=(preferenceCounts[key][collaborator]||0)+count;
+    });});
+    var preferredByGroup=Object.create(null);
+    Object.keys(preferenceCounts).forEach(function(key){var group=key.split("\u001f")[0],counts=preferenceCounts[key],loads=loadByGroup[group]||{};preferredByGroup[key]=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a]||(loads[a]||0)-(loads[b]||0)||a.localeCompare(b)})[0]||"";});
+    monthHistory={month:month,day:day,loadByGroup:loadByGroup,preferredByGroup:preferredByGroup,loaded:true};
+    if(status)status.textContent="Histórico mensal de "+month+" carregado: "+rows.length+" divisão(ões) anterior(es). O dia selecionado não é contado novamente.";
+    return {ok:true,rows:rows.length};
+  }catch(error){
+    if(token===monthHistoryRequest){monthHistory={month:month,day:day,loadByGroup:{},preferredByGroup:{},loaded:false};if(status)status.textContent="Não foi possível carregar o histórico mensal; a divisão poderá continuar sem as preferências anteriores.";}
+    console.warn("Não foi possível carregar o histórico mensal da Divisão de horas.",error);return {ok:false,error:error};
+  }
+}
+async function saveMonthlyHistory(day,assignments){
+  var client=window.__aaSupabaseClient;if(!client||!client.from)throw new Error("Banco de dados indisponível.");
+  var auth=await client.auth.getUser();if(auth.error)throw auth.error;var userId=auth.data&&auth.data.user&&auth.data.user.id;if(!userId)throw new Error("Sessão autenticada indisponível.");
+  var result=await client.from("controller_hours_monthly_snapshots").upsert({division_date:day,assignments:Array.isArray(assignments)?assignments:[],updated_by:userId,updated_at:new Date().toISOString()},{onConflict:"division_date"});
+  if(result.error)throw result.error;
+}
 function hora(v){
   var t=String(v).trim().toLowerCase(), m=t.match(/(\d{1,2})\s*(?::|h)\s*(\d{2})?/);
   if(!m) return null;
@@ -6340,6 +6381,16 @@ function isLivre(l){
   return /livre|vag[oa]|dispon[ií]vel|sem agend/.test(v);
 }
 function pk(l){return String(l[cols[0]]).trim().toLowerCase()}
+function monthlyAssignmentsFrom(colabs,groupByRow){
+  var grouped=new Map();
+  colabs.forEach(function(c){c.linhas.forEach(function(l){
+    var group=String(groupByRow.get(l)||""),professional=String(l[cols[0]]||"").trim();if(!group||!professional)return;
+    var professionalKey=monthProfessionalKey(professional),collaboratorKey=monthCollaboratorKey(c);if(!professionalKey||!collaboratorKey)return;
+    var key=group+"\u001f"+professionalKey+"\u001f"+collaboratorKey,item=grouped.get(key);
+    if(!item){item={group_key:group,professional_key:professionalKey,collaborator_key:collaboratorKey,count:0};grouped.set(key,item)}item.count++;
+  });});
+  return Array.from(grouped.values());
+}
 function alocar(W,quota){
   var R=W.length, K=quota.length, N=R+K+2, S=R+K, T=R+K+1, g=[], E=[], i, r, k;
   for(i=0;i<N;i++)g.push([]);
@@ -6365,9 +6416,14 @@ function alocar(W,quota){
 function distribuir(lista,elig,campo,o){
   var n=elig.length, q=Math.floor(lista.length/n), extra=lista.length%n;
   var quota=elig.map(function(){return q}), cnt=elig.map(function(){return 0}), resto=[];
-  var hc=elig.map(function(){return 0});
+  var hc=elig.map(function(){return 0}),monthLoads=(o.monthLoadByGroup||{})[o.currentGroupKey]||{};
   if(o.manter&&o.homeOf){lista.forEach(function(l){var i=elig.indexOf(o.homeOf(l)); if(i>=0)hc[i]++})}
-  var ordem=elig.map(function(c,i){return i}).sort(function(a,b){return elig[a][campo]-elig[b][campo]||elig[a].tot-elig[b].tot||hc[b]-hc[a]||a-b});
+  var minMonthLoad=elig.reduce(function(min,c){return Math.min(min,Number(monthLoads[monthCollaboratorKey(c)]||0))},Infinity);
+  var ordem=elig.map(function(c,i){return i}).sort(function(a,b){
+    var loadA=Number(monthLoads[monthCollaboratorKey(elig[a])]||0),loadB=Number(monthLoads[monthCollaboratorKey(elig[b])]||0),
+      balanceA=Math.max(0,loadA-minMonthLoad-1),balanceB=Math.max(0,loadB-minMonthLoad-1);
+    return elig[a][campo]-elig[b][campo]||balanceA-balanceB||hc[b]-hc[a]||loadA-loadB||elig[a].tot-elig[b].tot||a-b;
+  });
   for(var e=0;e<extra;e++)quota[ordem[e]]++;
   function dar(i,l){var c=elig[i];c.linhas.push(l);c[campo]++;c.tot++;cnt[i]++;if(o.manter)c.prefs[pk(l)]=(c.prefs[pk(l)]||0)+1}
   if(o.manter&&lista.length){
@@ -6383,11 +6439,11 @@ function distribuir(lista,elig,campo,o){
   return cnt;
 }
 function dividirTudo(linhas,m,t,o){
-  var colabs=[], slots={}, ids=[], sem=[], fora=[], conf=[];
+  var colabs=[], slots={}, ids=[], sem=[], fora=[], conf=[],groupByRow=new Map();
   function minu(v){var h=hora(v);return h===null?null:Math.round(h*60)}
   function criar(e,sh){
     var pI=minu(e.pi), pF=minu(e.pf);
-    return {nome:e.nome,shift:sh,apoio:!!e.apoio,turno:o.sab?"sáb":sh+"h",
+    return {nome:e.nome,auth_user_id:String(e.auth_user_id||""),shift:sh,apoio:!!e.apoio,turno:o.sab?"sáb":sh+"h",
       ini:o.sab?o.sabini:(sh==="07"?-1:(sh==="11"?o.iini:o.tini)),fim:o.sab?o.sabfim:(sh==="07"?o.mfim:(sh==="11"?o.ifim:o.tfim)),
       pIni:(pI!==null&&pF!==null&&pF>pI)?pI:null,pFim:pF,pI:e.pi,pF:e.pf,
       poIni:(e.po&&minu(e.poi)!==null&&minu(e.pof)!==null&&minu(e.pof)>minu(e.poi))?minu(e.poi):null,poFim:minu(e.pof),
@@ -6401,22 +6457,25 @@ function dividirTudo(linhas,m,t,o){
   var casa={}, grp={};
   function grupoDe(S){var sh={}; colabs.forEach(function(c){if(!c.apoio&&S.k>=c.ini&&S.k<=c.fim)sh[c.shift]=1}); return Object.keys(sh).sort().join(",")}
   ids.forEach(function(id){
-    var S=slots[id]; S.g=grupoDe(S);
+    var S=slots[id]; S.g=grupoDe(S);S.l.forEach(function(l){groupByRow.set(l,S.g)});
     if(!o.manter||!S.g)return;
     if(!grp[S.g]){var ms=S.g.split(",");grp[S.g]={membros:colabs.filter(function(c){return !c.apoio&&ms.indexOf(c.shift)>=0}),profs:{},cap:{}}}
     var G=grp[S.g]; G.cap[id]=Math.ceil(S.l.length/G.membros.length);
     S.l.forEach(function(l){var pn=pk(l); (G.profs[pn]=G.profs[pn]||[]).push(id)});
   });
   Object.keys(grp).forEach(function(g){
-    var G=grp[g], nomes=Object.keys(G.profs).sort(function(a,b){return G.profs[b].length-G.profs[a].length||(a<b?-1:1)});
+    var G=grp[g], nomes=Object.keys(G.profs).sort(function(a,b){return G.profs[b].length-G.profs[a].length||(a<b?-1:1)}),
+      monthLoads=(o.monthLoadByGroup||{})[g]||{};
+    var minMonthLoad=G.membros.reduce(function(min,c){return Math.min(min,Number(monthLoads[monthCollaboratorKey(c)]||0))},Infinity);
     var carga=G.membros.map(function(){return {}}), tot=G.membros.map(function(){return 0});
     nomes.forEach(function(pn){
-      var sl=G.profs[pn], best=-1, bc=null;
+      var sl=G.profs[pn], best=-1, bc=null, previous=(o.monthPreferredByGroup||{})[monthPairKey(g,monthProfessionalKey(pn))]||"";
       G.membros.forEach(function(c,i){
         var over=0, soma=0;
         sl.forEach(function(id){var cur=carga[i][id]||0; soma+=cur; if(cur+1>G.cap[id])over++});
-        var custo=[over,soma,tot[i],i], melhor=false;
-        if(bc===null)melhor=true; else for(var x=0;x<4;x++){if(custo[x]!==bc[x]){melhor=custo[x]<bc[x];break}}
+        var key=monthCollaboratorKey(c),load=Number(monthLoads[key]||0),balancePenalty=Math.max(0,load-minMonthLoad-1),continuityPenalty=previous&&key!==previous?1:0;
+        var custo=[over,soma,balancePenalty,continuityPenalty,load,tot[i],i], melhor=false;
+        if(bc===null)melhor=true; else for(var x=0;x<custo.length;x++){if(custo[x]!==bc[x]){melhor=custo[x]<bc[x];break}}
         if(melhor){bc=custo;best=i}
       });
       sl.forEach(function(id){carga[best][id]=(carga[best][id]||0)+1});
@@ -6424,7 +6483,7 @@ function dividirTudo(linhas,m,t,o){
     });
   });
   ids.forEach(function(id){
-    var S=slots[id]; o.homeOf=function(l){return casa[S.g+"|"+pk(l)]};
+    var S=slots[id]; o.currentGroupKey=S.g;o.homeOf=function(l){return casa[S.g+"|"+pk(l)]};
     var dentro=colabs.filter(function(c){return S.k>=c.ini&&S.k<=c.fim});
     function emP(c){return c.pIni!==null&&S.k>=c.pIni&&S.k<c.pFim}
     function emPoli(c){return c.poIni!==null&&S.k>=c.poIni&&S.k<c.poFim}
@@ -6455,24 +6514,39 @@ function dividirTudo(linhas,m,t,o){
     ap.forEach(function(a,j){if(movAg[j]||movLi[j]){nomes.push(a.nome+" (apoio)");cAg.push(movAg[j]);cLi.push(movLi[j])}});
     conf.push({rot:rotulo(S.k),nomes:nomes,ag:cAg,li:cLi,temLivre:li.length>0});
   });
-  return {colabs:colabs,sem:sem,fora:fora,conf:conf};
+  return {colabs:colabs,sem:sem,fora:fora,conf:conf,monthlyAssignments:monthlyAssignmentsFrom(colabs,groupByRow)};
 }
 
-$("go").addEventListener("click",function(){
-  var m=ativos("07"), t=ativos("14"); $("err").textContent="";
+$("go").addEventListener("click",async function(){
+  var m=ativos("07"), t=ativos("14"),button=$("go"),divisionDate=String($("dataArq").value||"");$("err").textContent="";
   if(!m.length&&!t.length&&!ativos("11").length){$("err").textContent="Adicione e marque pelo menos um colaborador na equipe.";return}
   if(iProf<0||iHora<0||iStat<0){$("err").textContent="Anexe o relatório primeiro.";return}
-  cols=[iProf,iHora]; scolv=iStat; acol=-1;
-  function mi(id,d){var h=hora($(id).value);return h===null?d:Math.round(h*60)}
-  var o={mfim:mi("mfim",899),tini:mi("tini",900),tfim:mi("tfim",1439),manter:$("manter").value==="1",modo:$("modo").value,sab:$("sab").value==="1",sabini:mi("sabini",450),sabfim:mi("sabfim",810),iini:mi("iini",660),ifim:mi("ifim",1259),mid:ativos("11")}; ultimoSab=o.sab;
-  var r=dividirTudo(rows,m,t,o);
-  partes=r.colabs.map(function(c){return {nome:c.nome,turno:c.turno,apoio:c.apoio,linhas:c.linhas}});
-  if(r.fora.length) partes.push({nome:"Sem acompanhamento",linhas:r.fora});
-  if(r.sem.length) partes.push({nome:"Sem horário (revisar)",linhas:r.sem});
-  confer=r.conf;
-  mostrar();
-  var av=[]; if(r.fora.length)av.push(r.fora.length+" linhas fora dos horários de acompanhamento (aba \"Sem acompanhamento\")"); if(r.sem.length)av.push(r.sem.length+" linhas sem horário identificado (aba \"Sem horário (revisar)\")");
-  if(av.length)$("msg").textContent=av.join(". ")+".";
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(divisionDate)){$("err").textContent="Informe a data da divisão para selecionar o histórico do mês.";return}
+  if(button.disabled)return;button.disabled=true;
+  try{
+    var historyResult=await loadMonthlyHistory(divisionDate);
+    if(historyResult.stale||String($("dataArq").value||"")!==divisionDate)return;
+    if(!historyResult.ok&&!confirm("Não foi possível carregar o histórico de continuidade do mês. Se continuar, esta divisão respeitará os horários e o equilíbrio deste arquivo, mas não poderá usar as atribuições anteriores. Deseja continuar?"))return;
+    cols=[iProf,iHora]; scolv=iStat; acol=-1;
+    function mi(id,d){var h=hora($(id).value);return h===null?d:Math.round(h*60)}
+    var o={mfim:mi("mfim",899),tini:mi("tini",900),tfim:mi("tfim",1439),manter:$("manter").value==="1",modo:$("modo").value,sab:$("sab").value==="1",sabini:mi("sabini",450),sabfim:mi("sabfim",810),iini:mi("iini",660),ifim:mi("ifim",1259),mid:ativos("11"),monthLoadByGroup:historyResult.ok?monthHistory.loadByGroup:{},monthPreferredByGroup:historyResult.ok?monthHistory.preferredByGroup:{}};ultimoSab=o.sab;
+    var r=dividirTudo(rows,m,t,o);lastDivisionDate=divisionDate;
+    partes=r.colabs.map(function(c){return {nome:c.nome,turno:c.turno,apoio:c.apoio,linhas:c.linhas}});
+    if(r.fora.length)partes.push({nome:"Sem acompanhamento",linhas:r.fora});
+    if(r.sem.length)partes.push({nome:"Sem horário (revisar)",linhas:r.sem});
+    confer=r.conf;mostrar();
+    var av=[];if(r.fora.length)av.push(r.fora.length+" linhas fora dos horários de acompanhamento (aba \"Sem acompanhamento\")");if(r.sem.length)av.push(r.sem.length+" linhas sem horário identificado (aba \"Sem horário (revisar)\")");
+    if(av.length){$("msg").textContent=av.join(". ")+".";}
+    if(String($("dataArq").value||"")!==divisionDate){$("monthHistoryStatus").textContent="A data mudou antes de salvar o histórico; execute a divisão novamente para gravar na data correta.";return;}
+    try{
+      await saveMonthlyHistory(divisionDate,r.monthlyAssignments);
+      $("monthHistoryStatus").textContent=(historyResult.ok?"Histórico de continuidade":"Histórico inicial (sem divisões anteriores carregadas)")+" salvo para "+divisionDate.split("-").reverse().join("/")+" ("+r.monthlyAssignments.length+" combinação(ões) profissional/colaborador). Refazer esta data substitui o snapshot anterior.";
+    }catch(saveError){
+      $("monthHistoryStatus").textContent="A divisão foi calculada, mas não foi possível salvar o histórico mensal. As próximas divisões não usarão este resultado até a sincronização ser corrigida.";
+      console.error("Não foi possível salvar o histórico mensal da Divisão de horas.",saveError);
+    }
+  }catch(error){$("err").textContent="Não foi possível concluir a divisão: "+(error&&error.message||"erro desconhecido");console.error("Erro na divisão de horas:",error);}
+  finally{button.disabled=false;}
 });
 
 function mostrarConf(){
@@ -6576,12 +6650,13 @@ if(directButton)directButton.addEventListener("click",async function(){
   if(!controllerCan('controller_importar')){alert("Você não tem permissão para importar atendimentos.");return;}
   var date=$("dataArq").value;
   if(!date){alert("Informe a data dos atendimentos na Divisão de horas.");return;}
+  if(date!==lastDivisionDate){alert("A data foi alterada depois da divisão. Execute a divisão novamente antes de enviar para garantir que os atendimentos fiquem no dia correto.");return;}
   directButton.disabled=true;$("msg").textContent="Preparando o envio direto para Acompanhamento...";
   try{var wb=construirAcompanhamento();await window.aaControllerImportWorkbook(wb,date,{direct:true});}
   catch(e){alert("Não foi possível preparar o envio: "+(e&&e.message||""));console.error("Envio direto da Divisão de horas:",e);}
   finally{directButton.disabled=false;}
 });
-(function(){var n=new Date();$("dataArq").value=n.getFullYear()+"-"+("0"+(n.getMonth()+1)).slice(-2)+"-"+("0"+n.getDate()).slice(-2)})();
+(function(){var n=new Date(),dateInput=$("dataArq");dateInput.value=n.getFullYear()+"-"+("0"+(n.getMonth()+1)).slice(-2)+"-"+("0"+n.getDate()).slice(-2);dateInput.addEventListener("change",function(){loadMonthlyHistory(dateInput.value)});loadMonthlyHistory(dateInput.value)})();
 
     })();
     controllerHoursToolMounted=true;
