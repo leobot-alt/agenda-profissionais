@@ -868,7 +868,7 @@
             <dialog id="aa-report-open-dialog" class="aa-report-dialog"><form id="aa-report-open-form"><h3 id="aa-report-open-title">Abrir relatório salvo</h3><p>Digite a senha usada ao salvar. O conteúdo só será descriptografado neste navegador.</p><label for="aa-report-open-password">Senha</label><input id="aa-report-open-password" type="password" maxlength="128" autocomplete="current-password" required><div id="aa-report-open-error" class="aa-report-dialog-error" role="alert"></div><div class="aa-report-dialog-actions"><button type="button" class="aa-report-btn" id="aa-report-close-open">Cancelar</button><button type="submit" class="aa-report-btn aa-report-btn-primary" id="aa-report-open-submit">Abrir relatório</button></div></form></dialog>
           </div>
         </div>
-        <div class="aa-rh-subpanel" id="aa-rhtab-recibos" style="display:none;"><iframe title="Gerador de recibos" src="recibos.html" style="display:block;width:100%;min-height:1100px;border:0;border-radius:14px;background:#f7f8fb;"></iframe></div>
+        <div class="aa-rh-subpanel" id="aa-rhtab-recibos" style="display:none;"><div class="aa-card" style="margin:0;padding:14px;background:#FAF9FD;"><div class="aa-tabs" style="margin-bottom:14px;"><button type="button" class="aa-tab active" data-recibos-subpagina="gerador" onclick="aaRecibosSubpagina('gerador')">Gerador de recibos</button><button type="button" class="aa-tab" data-recibos-subpagina="salvos" onclick="aaRecibosSubpagina('salvos')">Recibos salvos</button></div><iframe id="aa-recibos-frame" title="Gerador de recibos" src="recibos.html?view=generator" style="display:block;width:100%;min-height:1100px;border:0;border-radius:14px;background:#f7f8fb;"></iframe></div></div>
         <div class="aa-rh-subpanel" id="aa-rhtab-controller" style="display:none;">
           <section class="aa-controller-root">
             <header class="aa-controller-root-header"><div><span class="aa-controller-overline">CONTROLE OPERACIONAL</span><h1>Controller</h1><p>Organize a importação e a conferência dos atendimentos da equipe.</p></div></header>
@@ -3853,6 +3853,7 @@ window.aaExportSingle = function(protocolo){
   aaExportXLSXFor([sub], filename);
 };
 
+window.aaRecibosSubpagina=function(view){const saved=String(view)==='salvos',frame=document.getElementById('aa-recibos-frame');if(frame)frame.src='recibos.html?view='+(saved?'saved':'generator');document.querySelectorAll('[data-recibos-subpagina]').forEach(btn=>btn.classList.toggle('active',btn.dataset.recibosSubpagina===(saved?'salvos':'gerador')));};
 // ---------- init ----------
 document.getElementById('aa-in-ano').value = new Date().getFullYear();
 document.getElementById('aa-nat-ano').value = new Date().getFullYear();
