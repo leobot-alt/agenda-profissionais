@@ -5247,6 +5247,14 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   let controllerProfessionalSearchFrom='';
   let controllerProfessionalSearchTo='';
   let controllerProfessionalSearchName='';
+  let controllerLeadershipRecords=[];
+  let controllerLeadershipDate='';
+  let controllerLeadershipShiftFilter='all';
+  let controllerLeadershipHourFilter='all';
+  let controllerLeadershipLastUpdated='';
+  let controllerLeadershipRefreshError='';
+  let controllerLeadershipRefreshing=false;
+  let controllerLeadershipRefreshTimer=null;
   const CONTROLLER_RECORD_STATUSES=[['pendente','Pendente'],['disponivel','DISPONÍVEL'],['atendido','ATENDIDO'],['bloqueado','BLOQUEADO'],['cancelado','CANCELADO'],['desmarcado','DESMARCADO'],['desmarcado_pro','DESMARCADO PRO'],['faltou','FALTOU'],['horario_reservado_lideranca','HORÁRIO RESERVADO/LIDERANÇA'],['pro_faltou','PRO FALTOU'],['remanejar','REMANEJAR'],['acompanhando','Acompanhando'],['em_atendimento','Em atendimento'],['paciente_aguardando','Paciente aguardando'],['profissional_aguardando','Profissional aguardando'],['sala_fechada','Sala fechada']];
   const CONTROLLER_PINNED_STATUSES=new Set(['acompanhando','em_atendimento','paciente_aguardando','profissional_aguardando','sala_fechada']);
   const CONTROLLER_LEGACY_STATUS_CODES=['falta','remanejado','ajuste_necessario'];
@@ -5260,6 +5268,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   const controllerToday=()=>new Date().toISOString().slice(0,10);
   controllerProfessionalSearchFrom=controllerToday();
   controllerProfessionalSearchTo=controllerToday();
+  controllerLeadershipDate=controllerToday();
   async function loadControllerStatusConfig(force){
     if(controllerStatusConfigLoaded&&!force)return controllerEnabledStatuses;
     try{
@@ -5550,9 +5559,21 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     }
     return records;
   }
+  async function loadControllerLeadershipRecords(day){
+    if(!controllerDb?.from)throw new Error('Cliente Supabase indisponível.');
+    const pageSize=1000,records=[];
+    for(let offset=0;;offset+=pageSize){
+      const result=await controllerDb.from('controller_page_records').select('id,page_id,profissional,data_atendimento,hora_atendimento,status,status_original,atualizado_em').eq('data_atendimento',day).order('hora_atendimento',{ascending:true}).order('id',{ascending:true}).range(offset,offset+pageSize-1);
+      if(result.error)throw result.error;
+      const batch=result.data||[];
+      records.push(...batch);
+      if(batch.length<pageSize)break;
+    }
+    return records;
+  }
   function controllerViewNav(){
-    const dashboardAllowed=controllerCan('controller_dashboard_ver'),settingsAllowed=controllerCan('controller_subpaginas_gerenciar');
-    return '<nav class="aa-controller-nav" aria-label="Navegação do Controller">'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='dashboard'?'active':'')+'" aria-current="'+(controllerView==='dashboard'?'page':'false')+'" onclick="aaControllerSwitchView(\'dashboard\')">Monitor ao vivo</button>':'')+'<button type="button" class="aa-controller-tab '+(controllerView==='subpaginas'?'active':'')+'" aria-current="'+(controllerView==='subpaginas'?'page':'false')+'" onclick="aaControllerSwitchView(\'subpaginas\')">Atendimentos por colaborador</button>'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='professional-search'?'active':'')+'" aria-current="'+(controllerView==='professional-search'?'page':'false')+'" onclick="aaControllerSwitchView(\'professional-search\')">Buscar profissional</button>':'')+((controllerLeadershipAdminAllowed()||controllerHoursAllowed())?'<button type="button" class="aa-controller-tab '+(controllerView==='hours'?'active':'')+'" aria-current="'+(controllerView==='hours'?'page':'false')+'" onclick="aaControllerSwitchView(\'hours\')">Divisão de horas</button>':'')+(settingsAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='status'?'active':'')+'" aria-current="'+(controllerView==='status'?'page':'false')+'" onclick="aaControllerSwitchView(\'status\')">Configurar status</button>':'')+'</nav>';
+    const dashboardAllowed=controllerCan('controller_dashboard_ver'),leadershipAllowed=controllerLeadershipAdminAllowed(),settingsAllowed=controllerCan('controller_subpaginas_gerenciar');
+    return '<nav class="aa-controller-nav" aria-label="Navegação do Controller">'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='dashboard'?'active':'')+'" aria-current="'+(controllerView==='dashboard'?'page':'false')+'" onclick="aaControllerSwitchView(\'dashboard\')">Monitor ao vivo</button>':'')+'<button type="button" class="aa-controller-tab '+(controllerView==='subpaginas'?'active':'')+'" aria-current="'+(controllerView==='subpaginas'?'page':'false')+'" onclick="aaControllerSwitchView(\'subpaginas\')">Atendimentos por colaborador</button>'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='professional-search'?'active':'')+'" aria-current="'+(controllerView==='professional-search'?'page':'false')+'" onclick="aaControllerSwitchView(\'professional-search\')">Buscar profissional</button>':'')+(leadershipAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='leadership'?'active':'')+'" aria-current="'+(controllerView==='leadership'?'page':'false')+'" onclick="aaControllerSwitchView(\'leadership\')">Visão da liderança</button>':'')+((leadershipAllowed||controllerHoursAllowed())?'<button type="button" class="aa-controller-tab '+(controllerView==='hours'?'active':'')+'" aria-current="'+(controllerView==='hours'?'page':'false')+'" onclick="aaControllerSwitchView(\'hours\')">Divisão de horas</button>':'')+(settingsAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='status'?'active':'')+'" aria-current="'+(controllerView==='status'?'page':'false')+'" onclick="aaControllerSwitchView(\'status\')">Configurar status</button>':'')+'</nav>';
   }
   function controllerDashboardPage(record){
     return controllerPages.find(page=>String(page.id)===String(record?.page_id||''))||null;
@@ -5740,6 +5761,65 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
       <section class="aa-controller-dashboard-distributions" style="grid-template-columns:1fr"><article class="aa-card aa-controller-dashboard-table-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">DISTRIBUIÇÃO POR TURNO</span><h2>Carga por turno</h2><p>Use “Editar turno” na lista de colaboradores para preencher ou corrigir essa informação.</p></div></header><div class="aa-table-scroll aa-controller-dashboard-table-scroll"><table class="aa-compact-table aa-controller-dashboard-table"><thead><tr><th>Turno</th><th>Colaboradores</th><th>Atendimentos</th><th>Média por colaborador</th></tr></thead><tbody>${shiftTable}</tbody></table></div></article></section>
     </section>`;
   }
+  function controllerLeadershipStatusCategory(record){
+    const code=String(record?.status||'pendente'),definition=controllerStatusDefinitions.find(item=>item.status_code===code);
+    return definition&&['pendente','em_andamento','finalizado'].includes(definition.category)?definition.category:controllerDashboardWorkflowStatus(record);
+  }
+  function controllerLeadershipMetrics(records){
+    const metrics={total:records.length,agendado:0,disponivel:0,reservado:0,outros:0,pendente:0,em_andamento:0,finalizado:0};
+    const sourceStatuses=new Map(),currentStatuses=new Map(),collaborators=new Map(),hours=new Map();
+    records.forEach(record=>{
+      const owner=controllerDashboardOwner(record),shift=controllerLeadershipShift(record),source=String(record.status_original||'').trim(),sourceKey=controllerImportHeader(source)||'semstatus',sourceLabel=source?source.toLocaleUpperCase('pt-BR'):'Sem status na planilha',sourceClass=controllerDashboardStatusClass(source),category=controllerLeadershipStatusCategory(record),status=String(record.status||'pendente'),hour=String(record.hora_atendimento||'').slice(0,5)||'Sem horário';
+      metrics[sourceClass]=(metrics[sourceClass]||0)+1;metrics[category]=(metrics[category]||0)+1;
+      const sourceItem=sourceStatuses.get(sourceKey)||{label:sourceLabel,count:0};sourceItem.count++;sourceStatuses.set(sourceKey,sourceItem);
+      currentStatuses.set(status,(currentStatuses.get(status)||0)+1);
+      if(!collaborators.has(owner.key))collaborators.set(owner.key,{key:owner.key,name:owner.name,turno:owner.turno,shiftKey:shift.key,total:0,agendado:0,pendente:0,em_andamento:0,finalizado:0});
+      const collaborator=collaborators.get(owner.key);collaborator.total++;collaborator[sourceClass]=(collaborator[sourceClass]||0)+1;collaborator[category]=(collaborator[category]||0)+1;
+      if(!hours.has(hour))hours.set(hour,{hour,total:0,agendado:0,pendente:0,em_andamento:0,finalizado:0});
+      const hourRow=hours.get(hour);hourRow.total++;hourRow.agendado+=sourceClass==='agendado'?1:0;hourRow[category]++;
+    });
+    const statusKeys=[...new Set([...controllerEnabledStatuses,...currentStatuses.keys()])],statusLabels=new Map(controllerStatusDefinitions.map(item=>[item.status_code,item.label]));
+    const currentStatusRows=statusKeys.map(key=>({label:statusLabels.get(key)||key,count:currentStatuses.get(key)||0}));
+    const sourceStatusRows=[...sourceStatuses.values()].sort((a,b)=>b.count-a.count||a.label.localeCompare(b.label,'pt-BR'));
+    const shiftOrder={manha:0,tarde:1,outro:2};
+    const collaboratorRows=[...collaborators.values()].sort((a,b)=>(shiftOrder[a.shiftKey]??2)-(shiftOrder[b.shiftKey]??2)||a.name.localeCompare(b.name,'pt-BR',{sensitivity:'base'}));
+    const hourRows=[...hours.values()].sort((a,b)=>a.hour.localeCompare(b.hour,'pt-BR',{numeric:true}));
+    return {metrics,sourceStatusRows,currentStatusRows,collaboratorRows,hourRows};
+  }
+  function renderControllerLeadershipDashboard(){
+    const out=document.getElementById('aa-controller-view-subpaginas');if(!out)return;
+    const scrollTop=window.scrollY||0,shiftRecords=controllerLeadershipRecords.filter(record=>controllerLeadershipShiftFilter==='all'||controllerLeadershipShift(record).key===controllerLeadershipShiftFilter);
+    const availableHours=[...new Set(shiftRecords.map(record=>String(record.hora_atendimento||'').slice(0,5)||'Sem horário'))].sort((a,b)=>a.localeCompare(b,'pt-BR',{numeric:true}));
+    if(controllerLeadershipHourFilter!=='all'&&!availableHours.includes(controllerLeadershipHourFilter))controllerLeadershipHourFilter='all';
+    const records=shiftRecords.filter(record=>controllerLeadershipHourFilter==='all'||(String(record.hora_atendimento||'').slice(0,5)||'Sem horário')===controllerLeadershipHourFilter);
+    const {metrics,sourceStatusRows,currentStatusRows,collaboratorRows,hourRows}=controllerLeadershipMetrics(records),total=metrics.total;
+    const pct=value=>total?((value*100/total).toLocaleString('pt-BR',{maximumFractionDigits:1})+'% do filtro'):'0% do filtro';
+    const stat=(label,value,modifier)=>'<article class="aa-controller-dashboard-stat '+modifier+'"><small>'+label+'</small><strong>'+value+'</strong><span class="aa-controller-leadership-stat-caption">'+pct(value)+'</span></article>';
+    const collaboratorTable=collaboratorRows.length?collaboratorRows.map(row=>'<tr><td><strong>'+controllerPageText(row.name)+'</strong></td><td>'+controllerPageText(row.turno)+'</td><td>'+row.total+'</td><td>'+row.agendado+'</td><td>'+row.pendente+'</td><td>'+row.em_andamento+'</td><td>'+row.finalizado+'</td></tr>').join(''):'<tr><td colspan="7">Nenhum atendimento no recorte escolhido.</td></tr>';
+    const hourlyTable=hourRows.length?hourRows.map(row=>'<tr><td><strong>'+controllerPageText(row.hour)+'</strong></td><td>'+row.total+'</td><td>'+row.agendado+'</td><td>'+row.pendente+'</td><td>'+row.em_andamento+'</td><td>'+row.finalizado+'</td></tr>').join(''):'<tr><td colspan="6">Nenhum horário no recorte escolhido.</td></tr>';
+    const shiftOptions='<option value="all" '+(controllerLeadershipShiftFilter==='all'?'selected':'')+'>Todos os turnos</option><option value="manha" '+(controllerLeadershipShiftFilter==='manha'?'selected':'')+'>Manhã · 07h–16h</option><option value="tarde" '+(controllerLeadershipShiftFilter==='tarde'?'selected':'')+'>Tarde · 14h–23h</option><option value="outro" '+(controllerLeadershipShiftFilter==='outro'?'selected':'')+'>Outro / sem turno classificado</option>';
+    const hourOptions='<option value="all">Todos os horários</option>'+availableHours.map(hour=>'<option value="'+controllerPageText(hour)+'" '+(controllerLeadershipHourFilter===hour?'selected':'')+'>'+controllerPageText(hour)+'</option>').join('');
+    const lastUpdated=controllerLeadershipLastUpdated?new Date(controllerLeadershipLastUpdated).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'Aguardando primeira atualização';
+    const error=controllerLeadershipRefreshError?'<div class="aa-error-msg">'+controllerPageText(controllerLeadershipRefreshError)+'</div>':'';
+    const info='<div class="aa-controller-leadership-note">“Agendados” e “Disponíveis” contam o status original recebido da planilha. “Pendentes”, “Em andamento” e “Finalizados” usam a categoria do status atual no Controller. O turno é identificado pelo horário inicial cadastrado (07h = manhã; 14h = tarde).</div>';
+    out.innerHTML=controllerViewNav()+`<section class="aa-controller-dashboard aa-controller-leadership">
+      <header class="aa-card aa-controller-dashboard-header"><div class="aa-controller-dashboard-title"><span class="aa-controller-overline">VISÃO RESTRITA À LIDERANÇA</span><h1>Acompanhamento da liderança</h1><p>Acompanhe os registros de um dia, horário e turno sem alterar a dashboard geral.</p></div><div class="aa-controller-leadership-live"><div><strong>Atualização automática a cada 10 segundos</strong><span>Última atualização: ${controllerPageText(lastUpdated)}</span></div><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerRefreshLeadership(false)" ${controllerLeadershipRefreshing?'disabled':''}>Atualizar agora</button></div></header>
+      <section class="aa-card aa-controller-dashboard-filter-card"><div class="aa-controller-leadership-filters"><div class="aa-field"><label for="aa-controller-leadership-date">Dia</label><input id="aa-controller-leadership-date" type="date" value="${controllerPageText(controllerLeadershipDate)}" onchange="aaControllerChangeLeadershipFilter('date')"></div><div class="aa-field"><label for="aa-controller-leadership-shift">Turno</label><select id="aa-controller-leadership-shift" onchange="aaControllerChangeLeadershipFilter('shift')">${shiftOptions}</select></div><div class="aa-field"><label for="aa-controller-leadership-hour">Horário</label><select id="aa-controller-leadership-hour" onchange="aaControllerChangeLeadershipFilter('hour')">${hourOptions}</select></div><div class="aa-controller-dashboard-filter-meta">${records.length} de ${controllerLeadershipRecords.length} atendimento(s) no recorte</div></div></section>
+      ${error}
+      <section class="aa-card aa-controller-dashboard-table-card aa-controller-dashboard-wide"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">RESPONSÁVEIS</span><h2>Acompanhamento por colaborador</h2><p>Compare o volume e o andamento dentro do turno selecionado.</p></div></header><div class="aa-table-scroll aa-controller-dashboard-table-scroll"><table class="aa-compact-table aa-controller-dashboard-table aa-controller-leadership-table"><thead><tr><th>Colaborador</th><th>Turno cadastrado</th><th>Total</th><th>Agendados</th><th>Pendentes</th><th>Em andamento</th><th>Finalizados</th></tr></thead><tbody>${collaboratorTable}</tbody></table></div></section>
+      <section class="aa-controller-dashboard-stats">${stat('Total de horários',metrics.total,'aa-controller-dashboard-stat--total')}${stat('Agendados · planilha',metrics.agendado,'aa-controller-dashboard-stat--em_andamento')}${stat('Pendentes · Controller',metrics.pendente,'aa-controller-dashboard-stat--pendente')}${stat('Em andamento · Controller',metrics.em_andamento,'aa-controller-dashboard-stat--em_andamento')}${stat('Finalizados · Controller',metrics.finalizado,'aa-controller-dashboard-stat--finalizado')}${stat('Disponíveis · planilha',metrics.disponivel,'aa-controller-dashboard-stat--total')}</section>
+      ${info}
+      <section class="aa-controller-dashboard-distributions"><article class="aa-card aa-controller-dashboard-table-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">PLANILHA ORIGINAL</span><h2>Status recebidos</h2><p>Contagem dos rótulos importados para o dia e turno selecionados.</p></div></header><div class="aa-controller-dashboard-bars">${controllerDashboardBarMarkup(sourceStatusRows,total)}</div></article><article class="aa-card aa-controller-dashboard-table-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">CONTROLLER</span><h2>Status atuais</h2><p>Contagem de cada status aplicado pela equipe neste recorte.</p></div></header><div class="aa-controller-dashboard-bars">${controllerDashboardBarMarkup(currentStatusRows,total)}</div></article></section>
+      <section class="aa-card aa-controller-dashboard-table-card aa-controller-dashboard-wide"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">DISTRIBUIÇÃO NO DIA</span><h2>Resumo por horário</h2><p>Use o filtro acima para abrir um horário específico; “Todos os horários” compara o turno inteiro.</p></div></header><div class="aa-table-scroll aa-controller-dashboard-table-scroll"><table class="aa-compact-table aa-controller-dashboard-table aa-controller-leadership-table"><thead><tr><th>Horário</th><th>Total</th><th>Agendados</th><th>Pendentes</th><th>Em andamento</th><th>Finalizados</th></tr></thead><tbody>${hourlyTable}</tbody></table></div></section>
+    </section>`;
+    if(scrollTop)window.scrollTo(0,scrollTop);
+  }
+  function controllerStopDashboardRefresh(){if(controllerDashboardRefreshTimer){clearInterval(controllerDashboardRefreshTimer);controllerDashboardRefreshTimer=null;}}
+  function controllerStartDashboardRefresh(){controllerStopDashboardRefresh();controllerDashboardRefreshTimer=setInterval(()=>{if(controllerView==='dashboard'&&document.visibilityState==='visible')window.aaControllerRefreshDashboard(true);},10000);}
+  window.aaControllerRefreshDashboard=async function(silent){if(!controllerAllowed()||!controllerCan('controller_dashboard_ver')||controllerView!=='dashboard'||controllerDashboardRefreshing)return;controllerDashboardRefreshing=true;try{controllerDashboardRecords=await loadControllerDashboardRecords(controllerDashboardFrom,controllerDashboardTo);controllerDashboardLastUpdated=new Date().toISOString();if(controllerView==='dashboard')renderControllerDashboard();}catch(error){console.warn('Não foi possível atualizar o Monitor ao vivo.',error);if(!silent)alert('Não foi possível atualizar o Monitor ao vivo. Tente novamente.');}finally{controllerDashboardRefreshing=false;const button=document.querySelector('.aa-controller-live-refresh');if(button){button.disabled=false;button.textContent='Atualizar agora';}}};
+  function controllerStopLeadershipRefresh(){if(controllerLeadershipRefreshTimer){clearInterval(controllerLeadershipRefreshTimer);controllerLeadershipRefreshTimer=null;}}
+  function controllerLeadershipPanelVisible(){const panel=document.getElementById('aa-rhtab-controller');return !!panel&&!panel.hidden&&panel.style.display!=='none'&&(!panel.getClientRects||panel.getClientRects().length>0);}
+  function controllerStartLeadershipRefresh(){controllerStopLeadershipRefresh();controllerLeadershipRefreshTimer=setInterval(()=>{if(controllerView==='leadership'&&document.visibilityState==='visible'&&controllerLeadershipPanelVisible())window.aaControllerRefreshLeadership(true);},10000);}
   const CONTROLLER_STATUS_CATEGORIES=[['pendente','Pendente'],['em_andamento','Em andamento'],['finalizado','Finalizado']];
   function controllerStatusCategoryOptions(selected){return CONTROLLER_STATUS_CATEGORIES.map(([value,label])=>'<option value="'+value+'" '+(value===selected?'selected':'')+'>'+label+'</option>').join('');}
   function controllerStatusCodeFromLabel(label){return String(label||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,60);}
@@ -5849,6 +5929,34 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     if(focusId){const next=document.getElementById(focusId);if(next){next.focus();if(selectionStart!==null&&typeof next.setSelectionRange==='function')next.setSelectionRange(selectionStart,selectionEnd);}}
   };
   window.aaControllerClearProfessionalSearch=function(){controllerProfessionalSearchName='';renderControllerProfessionalSearch();document.getElementById('aa-controller-professional-search-name')?.focus();};
+  window.aaControllerRefreshLeadership=async function(silent){
+    if(!controllerAllowed()||!controllerLeadershipAdminAllowed())return;
+    if(controllerLeadershipRefreshing)return;
+    const out=document.getElementById('aa-controller-view-subpaginas'),active=document.activeElement;
+    if(silent&&out&&active&&out.contains(active)&&['INPUT','SELECT'].includes(String(active.tagName||'')))return;
+    controllerLeadershipRefreshing=true;
+    try{
+      controllerLeadershipRecords=await loadControllerLeadershipRecords(controllerLeadershipDate);
+      controllerLeadershipLastUpdated=new Date().toISOString();
+      controllerLeadershipRefreshError='';
+    }catch(error){
+      controllerLeadershipRefreshError='Não foi possível atualizar os dados agora. A última atualização bem-sucedida permanece exibida.';
+      console.error('Erro ao atualizar o acompanhamento da liderança.',error);
+    }finally{controllerLeadershipRefreshing=false;}
+    if(controllerView==='leadership')renderControllerLeadershipDashboard();
+  };
+  window.aaControllerChangeLeadershipFilter=async function(kind){
+    if(!controllerAllowed()||!controllerLeadershipAdminAllowed()){alert('Apenas ADM e ADM geral podem acessar o acompanhamento da liderança.');return;}
+    const selectedDate=String(document.getElementById('aa-controller-leadership-date')?.value||'');
+    if(!selectedDate){alert('Selecione um dia para acompanhar.');renderControllerLeadershipDashboard();return;}
+    if(kind==='date'){
+      const changed=selectedDate!==controllerLeadershipDate;controllerLeadershipDate=selectedDate;controllerLeadershipHourFilter='all';
+      if(changed){await window.aaControllerRefreshLeadership(false);return;}
+    }
+    if(kind==='shift'){controllerLeadershipShiftFilter=String(document.getElementById('aa-controller-leadership-shift')?.value||'all');controllerLeadershipHourFilter='all';}
+    if(kind==='hour')controllerLeadershipHourFilter=String(document.getElementById('aa-controller-leadership-hour')?.value||'all');
+    renderControllerLeadershipDashboard();
+  };
   let controllerHoursToolMounted=false;
   function mountControllerHoursTool(){
     const out=document.getElementById('aa-controller-view-subpaginas');
@@ -6344,15 +6452,22 @@ $("todos").addEventListener("click",function(){
     if(view==='dashboard'&&!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para visualizar o painel de acompanhamento.');return;}
     if(view==='professional-search'&&!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para pesquisar profissionais no Controller.');return;}
     if(view==='hours'&&!(controllerLeadershipAdminAllowed()||controllerHoursAllowed())){alert('A Divisão de horas está disponível somente para ADM, ADM Geral e Gestão.');return;}
+    if(view==='leadership'&&!controllerLeadershipAdminAllowed()){alert('Apenas ADM e ADM geral podem acessar o acompanhamento da liderança.');return;}
     if(view==='status'&&!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para configurar os status do Controller.');return;}
-    controllerStopDashboardRefresh();
-    controllerView=view==='dashboard'?'dashboard':view==='professional-search'?'professional-search':view==='hours'?'hours':view==='status'?'status':'subpaginas';
+    controllerStopLeadershipRefresh();controllerStopDashboardRefresh();
+    controllerView=view==='dashboard'?'dashboard':view==='professional-search'?'professional-search':view==='leadership'?'leadership':view==='hours'?'hours':view==='status'?'status':'subpaginas';
     const immediateOut=document.getElementById('aa-controller-view-subpaginas');
-    if(immediateOut)immediateOut.innerHTML=controllerViewNav()+'<div class="aa-card aa-controller-loading"><span class="aa-controller-loading-dot"></span>Carregando '+(controllerView==='dashboard'?'a visão geral':controllerView==='professional-search'?'a busca de profissionais':controllerView==='hours'?'a divisão de horas':controllerView==='status'?'a configuração de status':'os atendimentos')+'...</div>';
+    if(immediateOut)immediateOut.innerHTML=controllerViewNav()+'<div class="aa-card aa-controller-loading"><span class="aa-controller-loading-dot"></span>Carregando '+(controllerView==='dashboard'?'a visão geral':controllerView==='professional-search'?'a busca de profissionais':controllerView==='leadership'?'a visão da liderança':controllerView==='hours'?'a divisão de horas':controllerView==='status'?'a configuração de status':'os atendimentos')+'...</div>';
     await loadControllerStatusConfig();
     if(controllerView==='status'){renderControllerStatusSettings();return;}
     await loadControllerPages();
     if(controllerView==='hours'){renderControllerHours();return;}
+    if(controllerView==='leadership'){
+      const out=document.getElementById('aa-controller-view-subpaginas');if(out)out.innerHTML=controllerViewNav()+'<div class="aa-card">Carregando acompanhamento detalhado...</div>';
+      controllerStartLeadershipRefresh();
+      await window.aaControllerRefreshLeadership(false);
+      return;
+    }
     if(controllerView==='professional-search'){
       const out=document.getElementById('aa-controller-view-subpaginas');if(out)out.innerHTML=controllerViewNav()+'<div class="aa-card">Carregando profissionais...</div>';
       try{controllerProfessionalSearchRecords=await loadControllerProfessionalSearchRecords(controllerProfessionalSearchFrom,controllerProfessionalSearchTo);if(controllerView==='professional-search')renderControllerProfessionalSearch();}
@@ -6490,7 +6605,7 @@ $("todos").addEventListener("click",function(){
   const client=()=>window.__aaSupabaseClient;
   const session=()=>typeof window.__aaGetPresenceSession==='function'?window.__aaGetPresenceSession():null;
   const safe=v=>typeof aaHtmlSafe==='function'?aaHtmlSafe(v==null?'':String(v)):String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const labels={dashboard:'Dashboard',agendas:'Agendas Ativas',banco:'Banco de Dados',ajustes:'Ajuste de Agenda',controller:'Controller', 'operational-report':'Relatório Operacional', 'controller:subpaginas':'Controller · Acompanhamento individual', 'controller:dashboard':'Controller · Painel geral', 'controller:professional-search':'Controller · Pesquisa de profissional', 'controller:hours':'Controller · Divisão de horas', 'controller:status':'Controller · Configuração de status',portal:'Portal',controler:'Administração',historico:'Histórico',permissoes:'Administração · Usuários e permissões',operacoes:'Administração · Operações',perfis:'Administração · Perfis de acesso',config:'Administração · Configurações'};
+  const labels={dashboard:'Dashboard',agendas:'Agendas Ativas',banco:'Banco de Dados',ajustes:'Ajuste de Agenda',controller:'Controller', 'operational-report':'Relatório Operacional', 'controller:subpaginas':'Controller · Acompanhamento individual', 'controller:dashboard':'Controller · Painel geral', 'controller:professional-search':'Controller · Pesquisa de profissional', 'controller:leadership':'Controller · Visão da liderança', 'controller:hours':'Controller · Divisão de horas', 'controller:status':'Controller · Configuração de status',portal:'Portal',controler:'Administração',historico:'Histórico',permissoes:'Administração · Usuários e permissões',operacoes:'Administração · Operações',perfis:'Administração · Perfis de acesso',config:'Administração · Configurações'};
   const pageLabel=tab=>labels[String(tab||'')]||labels[String(tab||'').split(':')[0]]||String(tab||'Sistema');
   const lastSeenLabel=value=>{if(!value)return 'Sem registro';const date=new Date(value);if(Number.isNaN(date.getTime()))return 'Sem registro';return date.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});};
   let selectedEmails=new Set(),filterMode='all';
