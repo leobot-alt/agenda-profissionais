@@ -5191,6 +5191,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   const CONTROLLER_PAGES_KEY='controller:independent-subpages';
   const controllerDb=window.__aaSupabaseClient;
   let controllerPages=[];
+  let controllerCurrentAuthUserId='';
   function controllerAllowed(){
     try{
       const profile=(typeof rhCurrentProfile!=='undefined'&&rhCurrentProfile)||null;
@@ -5218,7 +5219,17 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   }
   function controllerPageText(value){return typeof aaHtmlSafe==='function'?aaHtmlSafe(value==null?'':String(value)):String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   let controllerPagesLoaded=false,controllerPagesLoading=null;
-  async function loadControllerPages(force){if(controllerPagesLoaded&&!force)return controllerPages;if(controllerPagesLoading)return controllerPagesLoading;controllerPagesLoading=(async()=>{try{if(!controllerDb?.from)throw new Error('Cliente Supabase indisponível.');const result=await controllerDb.from('controller_subpages').select('id,nome,descricao,criada_em,turno,arquivada').order('criada_em',{ascending:true});if(result.error)throw result.error;controllerPages=(result.data||[]).map(p=>({id:p.id,nome:p.nome,descricao:p.descricao||'',turno:p.turno||'',arquivada:p.arquivada===true,criadaEm:p.criada_em}));controllerPagesLoaded=true;}catch(e){if(!controllerPagesLoaded)controllerPages=[];console.warn('Não foi possível carregar as áreas de acompanhamento do Controller.',e);}return controllerPages;})().finally(()=>{controllerPagesLoading=null;});return controllerPagesLoading;}
+  async function loadControllerPages(force){if(controllerPagesLoaded&&!force)return controllerPages;if(controllerPagesLoading)return controllerPagesLoading;controllerPagesLoading=(async()=>{try{if(!controllerDb?.from)throw new Error('Cliente Supabase indisponível.');const result=await controllerDb.from('controller_subpages').select('id,nome,descricao,criada_em,turno,arquivada,responsavel_auth_id').order('criada_em',{ascending:true});if(result.error)throw result.error;controllerPages=(result.data||[]).map(p=>({id:p.id,nome:p.nome,descricao:p.descricao||'',turno:p.turno||'',arquivada:p.arquivada===true,responsavelAuthId:String(p.responsavel_auth_id||''),criadaEm:p.criada_em}));controllerPagesLoaded=true;}catch(e){if(!controllerPagesLoaded)controllerPages=[];console.warn('Não foi possível carregar as áreas de acompanhamento do Controller.',e);}return controllerPages;})().finally(()=>{controllerPagesLoading=null;});return controllerPagesLoading;}
+  async function controllerLoadCurrentAuthUser(){
+    try{const result=await controllerDb.auth.getUser();if(result.error)throw result.error;controllerCurrentAuthUserId=String(result.data?.user?.id||'');}
+    catch(error){controllerCurrentAuthUserId='';console.warn('Não foi possível identificar a conta atual do Controller.',error);}
+    return controllerCurrentAuthUserId;
+  }
+  function controllerEligibleAssignees(){
+    return (Array.isArray(allRHUsers)?allRHUsers:[]).filter(user=>user&&user.ativo!==false&&!user.removido&&String(user.auth_user_id||'').trim()&&Array.isArray(user.permissions)&&user.permissions.includes('controller_ver')).sort((a,b)=>String(a.nomeCompleto||a.username||'').localeCompare(String(b.nomeCompleto||b.username||''),'pt-BR',{sensitivity:'base'}));
+  }
+  function controllerAssigneeLabel(authId){if(!authId)return 'Sem responsável';const user=(Array.isArray(allRHUsers)?allRHUsers:[]).find(item=>String(item?.auth_user_id||'')===String(authId));if(!user)return 'Usuário sem acesso ao Controller';return String(user.nomeCompleto||user.username||'Usuário sem nome')+(user.ativo===false||user.removido?' (inativo/removido)':'');}
+  function controllerPageAssignedToCurrentUser(page){return !!page?.responsavelAuthId&&!!controllerCurrentAuthUserId&&String(page.responsavelAuthId)===String(controllerCurrentAuthUserId);}
   async function saveControllerPages(){const rows=controllerPages.map(p=>({id:String(p.id),nome:String(p.nome||'').trim(),descricao:String(p.descricao||''),criada_em:p.criadaEm||new Date().toISOString()}));if(rows.length){const result=await controllerDb.from('controller_subpages').upsert(rows,{onConflict:'id'});if(result.error)throw result.error;}}
   async function controllerAudit(action,target,details,beforeValue,afterValue){
     if(typeof aaLogChange!=='function')return;
@@ -5355,7 +5366,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
       if(!controllerActivePageId||controllerView!=='subpaginas'||controllerSelectedDay!==controllerLocalDateInputValue(new Date())){controllerStopFollowupRefresh();return;}
       const out=document.getElementById('aa-controller-view-subpaginas');
       if(document.visibilityState!=='visible'||(out&&out.contains(document.activeElement)))return;
-      try{await loadControllerPageRecords(controllerActivePageId,controllerSelectedDay);renderControllerPageDetail();}catch(error){console.warn('Não foi possível atualizar os atendimentos em tempo real.',error);}
+      try{const pageResult=await controllerDb.from('controller_subpages').select('responsavel_auth_id').eq('id',String(controllerActivePageId)).maybeSingle();if(!pageResult.error){const activePage=controllerPages.find(item=>String(item.id)===String(controllerActivePageId));if(activePage)activePage.responsavelAuthId=String(pageResult.data?.responsavel_auth_id||'');}await loadControllerPageRecords(controllerActivePageId,controllerSelectedDay);renderControllerPageDetail();}catch(error){console.warn('Não foi possível atualizar os atendimentos em tempo real.',error);}
     },15000);
   }
   window.aaControllerDismissFollowupAlert=function(){controllerFollowupDismissedUntil=Date.now()+60000;renderControllerPageDetail();};
@@ -5372,7 +5383,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const out=document.getElementById('aa-controller-view-subpaginas'),page=controllerPages.find(item=>String(item.id)===String(controllerActivePageId));if(!out||!page)return;
     const canEdit=controllerCan('controller_status_atual_editar'),canDeleteRecords=controllerCan('controller_registros_excluir');
     const followupGuard=controllerFollowupGuard();
-    if(!followupGuard){controllerFollowupDismissedUntil=0;controllerFollowupAlertKey='';}else if(controllerFollowupAlertKey!==followupGuard.key){controllerFollowupAlertKey=followupGuard.key;controllerFollowupDismissedUntil=0;}
+    const followupAlertOwnerKey=followupGuard?followupGuard.key+'|'+String(page.responsavelAuthId||'')+'|'+String(controllerCurrentAuthUserId||''):'';
+    if(!followupGuard){controllerFollowupDismissedUntil=0;controllerFollowupAlertKey='';}else if(controllerFollowupAlertKey!==followupAlertOwnerKey){controllerFollowupAlertKey=followupAlertOwnerKey;controllerFollowupDismissedUntil=0;}
     const currentIds=new Set(controllerPageRecords.map(record=>String(record.id)));
     [...controllerSelectedRecordIds].forEach(id=>{if(!currentIds.has(id))controllerSelectedRecordIds.delete(id);});
     const selectedRecordCount=controllerPageRecords.filter(record=>controllerSelectedRecordIds.has(String(record.id))).length;
@@ -5407,9 +5419,9 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     </section>`;
     if(!canDeleteRecords)out.querySelectorAll('.aa-btn-danger').forEach(button=>button.style.display='none');
     const previousAlert=document.getElementById('aa-controller-followup-alert');if(previousAlert)previousAlert.remove();
-    if(followupGuard&&Date.now()>=controllerFollowupDismissedUntil)out.insertAdjacentHTML('beforeend',controllerFollowupAlertMarkup(followupGuard));
+    if(followupGuard&&controllerPageAssignedToCurrentUser(page)&&Date.now()>=controllerFollowupDismissedUntil)out.insertAdjacentHTML('beforeend',controllerFollowupAlertMarkup(followupGuard));
   }
-  window.aaControllerOpenPage=async function(id,day){if(!controllerAllowed())return;const targetPage=String(id),targetDay=day||controllerToday();if(targetPage!==controllerActivePageId||targetDay!==controllerSelectedDay){controllerRecordHourFilter='';controllerRecordStatusFilter='';controllerRecordNameSearch='';}controllerSelectedRecordIds.clear();controllerView='subpaginas';controllerActivePageId=targetPage;controllerSelectedDay=targetDay;try{await loadControllerStatusConfig();await loadControllerPageRecords(id,controllerSelectedDay);renderControllerPageDetail();controllerStartFollowupRefresh();}catch(e){alert('Não foi possível carregar os atendimentos desta área: '+(e?.message||''));console.error(e);}};
+  window.aaControllerOpenPage=async function(id,day){if(!controllerAllowed())return;const targetPage=String(id),targetDay=day||controllerToday();if(targetPage!==controllerActivePageId||targetDay!==controllerSelectedDay){controllerRecordHourFilter='';controllerRecordStatusFilter='';controllerRecordNameSearch='';}controllerSelectedRecordIds.clear();controllerView='subpaginas';controllerActivePageId=targetPage;controllerSelectedDay=targetDay;try{await controllerLoadCurrentAuthUser();await loadControllerStatusConfig();await loadControllerPageRecords(id,controllerSelectedDay);renderControllerPageDetail();controllerStartFollowupRefresh();}catch(e){alert('Não foi possível carregar os atendimentos desta área: '+(e?.message||''));console.error(e);}};
   window.aaControllerChangeDay=async function(day){if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!controllerActivePageId)return;await window.aaControllerOpenPage(controllerActivePageId,day);};
   window.aaControllerFilterRecords=function(element){const focusId=element?.id||'',selectionStart=element&&typeof element.selectionStart==='number'?element.selectionStart:null,selectionEnd=element&&typeof element.selectionEnd==='number'?element.selectionEnd:null;controllerRecordHourFilter=document.getElementById('aa-controller-record-hour-filter')?.value||'';controllerRecordStatusFilter=document.getElementById('aa-controller-record-status-filter')?.value||'';controllerRecordNameSearch=document.getElementById('aa-controller-record-name-search')?.value||'';renderControllerPageDetail();if(focusId){const next=document.getElementById(focusId);if(next){next.focus();if(selectionStart!==null&&typeof next.setSelectionRange==='function')next.setSelectionRange(selectionStart,selectionEnd);}}};
   window.aaControllerClearRecordFilters=function(){controllerRecordHourFilter='';controllerRecordStatusFilter='';controllerRecordNameSearch='';renderControllerPageDetail();document.getElementById('aa-controller-record-name-search')?.focus();};
@@ -5530,9 +5542,14 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const id=controllerPageText(page.id),name=controllerPageText(page.nome),initial=controllerPageText(String(page.nome||'?').trim().charAt(0).toLocaleUpperCase('pt-BR'));
     const nameAction=!archived&&controllerLeadershipAdminAllowed()?`<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerEditPageName('${id}')">Editar nome</button>`:'';
     const shiftAction=controllerCan('controller_subpaginas_gerenciar')?`<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerEditShift('${id}')">Editar turno</button>`:'';
+    const assignees=controllerEligibleAssignees();
+    const assigneeOptions=assignees.map(user=>{const userId=controllerPageText(user.auth_user_id),userName=controllerPageText(user.nomeCompleto||user.username||'Usuário sem nome');return `<option value="${userId}" ${String(page.responsavelAuthId||'')===String(user.auth_user_id)?'selected':''}>${userName}</option>`;}).join('');
+    const assignedUserStillEligible=assignees.some(user=>String(user.auth_user_id)===String(page.responsavelAuthId||''));
+    const unavailableAssigneeOption=page.responsavelAuthId&&!assignedUserStillEligible?`<option value="${controllerPageText(page.responsavelAuthId)}" selected disabled>${controllerPageText(controllerAssigneeLabel(page.responsavelAuthId))}</option>`:'';
+    const assigneeAction=!archived&&controllerCan('controller_subpaginas_gerenciar')?`<div style="display:flex;align-items:end;gap:7px;flex-wrap:wrap"><div style="min-width:185px"><label for="aa-controller-assignee-${id}" style="display:block;margin:0 0 4px;color:#56657A;font-size:10px;font-weight:800">Responsável pelo acompanhamento</label><select id="aa-controller-assignee-${id}" style="min-height:36px;max-width:230px;padding:6px 9px;border:1px solid #D8E0EA;border-radius:9px;background:#fff;color:#344760"><option value="">Sem responsável</option>${unavailableAssigneeOption}${assigneeOptions}</select></div><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerAssignPage('${id}')">Salvar responsável</button></div>`:`<small style="color:#69778B;font-size:11px"><strong>Responsável:</strong> ${controllerPageText(controllerAssigneeLabel(page.responsavelAuthId))}</small>`;
     const archivedActions=controllerCan('controller_subpaginas_gerenciar')?`<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerRestorePage('${id}')">Restaurar</button><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeletePage('${id}')">Excluir</button>`:'';
     const activeActions=`<button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaControllerOpenPage('${id}')">Abrir acompanhamento</button>${controllerCan('controller_subpaginas_gerenciar')?`<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerArchivePage('${id}')">Arquivar</button><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeletePage('${id}')">Excluir</button>`:''}`;
-    return `<article class="aa-controller-collaborator-card${archived?' aa-controller-collaborator-card--archived':''}"><div class="aa-controller-collaborator-main"><span class="aa-controller-avatar" aria-hidden="true">${initial}</span><div class="aa-controller-collaborator-copy"><h3>${name}</h3><p>${controllerPageText(page.descricao||'Acompanhamentos atribuídos a este colaborador.')}</p><p><strong>Turno:</strong> ${controllerPageText(page.turno||'Não informado')}</p>${archived?'<small class="aa-controller-archived-note">Arquivado; histórico preservado.</small>':''}</div></div><div class="aa-controller-page-actions">${archived?archivedActions:nameAction+shiftAction+activeActions}</div></article>`;
+    return `<article class="aa-controller-collaborator-card${archived?' aa-controller-collaborator-card--archived':''}"><div class="aa-controller-collaborator-main"><span class="aa-controller-avatar" aria-hidden="true">${initial}</span><div class="aa-controller-collaborator-copy"><h3>${name}</h3><p>${controllerPageText(page.descricao||'Acompanhamentos atribuídos a este colaborador.')}</p><p><strong>Turno:</strong> ${controllerPageText(page.turno||'Não informado')}</p>${archived?'<small class="aa-controller-archived-note">Arquivado; histórico preservado.</small>':''}</div></div><div class="aa-controller-page-actions">${assigneeAction}${archived?archivedActions:nameAction+shiftAction+activeActions}</div></article>`;
   }
   function renderControllerPages(){
     const out=document.getElementById('aa-controller-view-subpaginas');if(!out)return;
@@ -6605,6 +6622,18 @@ $("todos").addEventListener("click",function(){
   }
   window.aaControllerArchivePage=function(id){return controllerSetPageArchived(id,true);};
   window.aaControllerRestorePage=function(id){return controllerSetPageArchived(id,false);};
+  window.aaControllerAssignPage=async function(id){
+    if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para atribuir responsáveis às áreas do Controller.');return;}
+    const page=controllerPages.find(item=>String(item.id)===String(id)),select=document.getElementById('aa-controller-assignee-'+String(id));if(!page||!select)return;
+    const before=String(page.responsavelAuthId||''),responsavelAuthId=String(select.value||'');
+    if(before===responsavelAuthId){if(typeof aaToast==='function')aaToast('Este responsável já está atribuído.','info');return;}
+    try{
+      const result=await controllerDb.from('controller_subpages').update({responsavel_auth_id:responsavelAuthId||null}).eq('id',String(id));if(result.error)throw result.error;
+      page.responsavelAuthId=responsavelAuthId;
+      await controllerAudit('Responsável do acompanhamento alterado',page.nome,'Responsável pela área do Controller atualizado.',controllerAssigneeLabel(before),controllerAssigneeLabel(responsavelAuthId));
+      renderControllerPages();if(typeof aaToast==='function')aaToast(responsavelAuthId?'Responsável atribuído ao acompanhamento.':'Responsável removido do acompanhamento.','success');
+    }catch(error){alert('Não foi possível atribuir o responsável. Verifique se ele está ativo e tem acesso ao Controller.');console.error('Falha ao atribuir responsável da área do Controller:',error);await loadControllerPages(true);renderControllerPages();}
+  };
   window.aaControllerDeletePage=async function(id){if(!controllerAllowed()||!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para gerenciar áreas de acompanhamento.');return;}const page=controllerPages.find(p=>String(p.id)===String(id));if(!page||!confirm('Excluir a área de acompanhamento “'+page.nome+'”?'))return;const old=controllerPages.slice();controllerPages=controllerPages.filter(p=>String(p.id)!==String(id));try{const result=await controllerDb.from('controller_subpages').delete().eq('id',String(id));if(result.error)throw result.error;await controllerAudit('Subpágina excluída',page.nome,'Acompanhamento e atendimentos vinculados excluídos.','Ativo','Excluído');renderControllerPages();if(typeof aaToast==='function')aaToast('Área de acompanhamento excluída.','success');}catch(e){controllerPages=old;renderControllerPages();alert('Não foi possível excluir a área de acompanhamento agora.');console.error(e);}};
   const oldSwitch=window.aaSwitchRHTab;
   window.aaSwitchRHTab=function(tab){if(tab==='controller'){window.aaControllerOpen();return;}const panel=document.getElementById('aa-rhtab-controller');if(panel)panel.style.display='none';return oldSwitch(tab);};
