@@ -1224,6 +1224,10 @@ async function loadRHUsers(){
   allRHUsers.sort((a,b)=>String(a.username||'').localeCompare(String(b.username||''),'pt-BR'));
   dataLoadState.rhusers=true;
 }
+window.__aaGetControllerAssigneeUsers=function(){
+  if(typeof window.__aaCanPermission!=='function'||!window.__aaCanPermission('controller_ver'))return [];
+  return (Array.isArray(allRHUsers)?allRHUsers:[]).filter(user=>user&&String(user.auth_user_id||'').trim()).map(user=>({auth_user_id:String(user.auth_user_id||''),nomeCompleto:String(user.nomeCompleto||user.nome||'').trim(),username:String(user.username||'').trim(),permissions:Array.isArray(user.permissions)?user.permissions:[],ativo:user.ativo!==false,removido:user.removido===true}));
+};
 async function loadPerfis(){
   allPerfis=JSON.parse(JSON.stringify(PERFIL_DEFINICOES_PADRAO));
   Object.keys(PERFIL_DEFINICOES_PADRAO).forEach(key=>{ allPerfis[key].sistema=true; allPerfis[key].ativo=true; });
@@ -5225,10 +5229,11 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     catch(error){controllerCurrentAuthUserId='';console.warn('Não foi possível identificar a conta atual do Controller.',error);}
     return controllerCurrentAuthUserId;
   }
+  function controllerAssigneeUsers(){try{const getter=window.__aaGetControllerAssigneeUsers;const users=typeof getter==='function'?getter():[];return Array.isArray(users)?users:[];}catch(error){console.warn('Não foi possível obter os usuários do Controller.',error);return [];}}
   function controllerEligibleAssignees(){
-    return (Array.isArray(allRHUsers)?allRHUsers:[]).filter(user=>user&&user.ativo!==false&&!user.removido&&String(user.auth_user_id||'').trim()&&Array.isArray(user.permissions)&&user.permissions.includes('controller_ver')).sort((a,b)=>String(a.nomeCompleto||a.username||'').localeCompare(String(b.nomeCompleto||b.username||''),'pt-BR',{sensitivity:'base'}));
+    return controllerAssigneeUsers().filter(user=>user&&user.ativo!==false&&!user.removido&&String(user.auth_user_id||'').trim()&&Array.isArray(user.permissions)&&user.permissions.includes('controller_ver')).sort((a,b)=>String(a.nomeCompleto||a.username||'').localeCompare(String(b.nomeCompleto||b.username||''),'pt-BR',{sensitivity:'base'}));
   }
-  function controllerAssigneeLabel(authId){if(!authId)return 'Sem responsável';const user=(Array.isArray(allRHUsers)?allRHUsers:[]).find(item=>String(item?.auth_user_id||'')===String(authId));if(!user)return 'Usuário sem acesso ao Controller';return String(user.nomeCompleto||user.username||'Usuário sem nome')+(user.ativo===false||user.removido?' (inativo/removido)':'');}
+  function controllerAssigneeLabel(authId){if(!authId)return 'Sem responsável';const user=controllerAssigneeUsers().find(item=>String(item?.auth_user_id||'')===String(authId));if(!user)return 'Usuário sem acesso ao Controller';return String(user.nomeCompleto||user.username||'Usuário sem nome')+(user.ativo===false||user.removido?' (inativo/removido)':'');}
   function controllerPageAssignedToCurrentUser(page){return !!page?.responsavelAuthId&&!!controllerCurrentAuthUserId&&String(page.responsavelAuthId)===String(controllerCurrentAuthUserId);}
   async function saveControllerPages(){const rows=controllerPages.map(p=>({id:String(p.id),nome:String(p.nome||'').trim(),descricao:String(p.descricao||''),criada_em:p.criadaEm||new Date().toISOString()}));if(rows.length){const result=await controllerDb.from('controller_subpages').upsert(rows,{onConflict:'id'});if(result.error)throw result.error;}}
   async function controllerAudit(action,target,details,beforeValue,afterValue){
