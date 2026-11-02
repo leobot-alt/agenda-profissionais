@@ -5658,8 +5658,9 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     return records;
   }
   function controllerViewNav(){
-    const dashboardAllowed=controllerCan('controller_dashboard_ver'),leadershipAllowed=controllerLeadershipAdminAllowed(),settingsAllowed=controllerCan('controller_subpaginas_gerenciar');
-    return '<nav class="aa-controller-nav" aria-label="Navegação do Controller">'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='dashboard'?'active':'')+'" aria-current="'+(controllerView==='dashboard'?'page':'false')+'" onclick="aaControllerSwitchView(\'dashboard\')">Monitor ao vivo</button>':'')+'<button type="button" class="aa-controller-tab '+(controllerView==='subpaginas'?'active':'')+'" aria-current="'+(controllerView==='subpaginas'?'page':'false')+'" onclick="aaControllerSwitchView(\'subpaginas\')">Atendimentos por colaborador</button>'+(dashboardAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='professional-search'?'active':'')+'" aria-current="'+(controllerView==='professional-search'?'page':'false')+'" onclick="aaControllerSwitchView(\'professional-search\')">Buscar profissional</button>':'')+(leadershipAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='leadership'?'active':'')+'" aria-current="'+(controllerView==='leadership'?'page':'false')+'" onclick="aaControllerSwitchView(\'leadership\')">Visão da liderança</button>':'')+((leadershipAllowed||controllerHoursAllowed())?'<button type="button" class="aa-controller-tab '+(controllerView==='hours'?'active':'')+'" aria-current="'+(controllerView==='hours'?'page':'false')+'" onclick="aaControllerSwitchView(\'hours\')">Divisão de horas</button>':'')+(settingsAllowed?'<button type="button" class="aa-controller-tab '+(controllerView==='status'?'active':'')+'" aria-current="'+(controllerView==='status'?'page':'false')+'" onclick="aaControllerSwitchView(\'status\')">Configurar status</button>':'')+'</nav>';
+    const dashboardAllowed=controllerCan('controller_dashboard_ver'),hoursAllowed=controllerLeadershipAdminAllowed()||controllerHoursAllowed(),settingsAllowed=controllerCan('controller_subpaginas_gerenciar');
+    const tab=(key,label)=>'<button type="button" class="aa-controller-tab '+(controllerView===key?'active':'')+'" aria-current="'+(controllerView===key?'page':'false')+'" onclick="aaControllerSwitchView(\''+key+'\')">'+label+'</button>';
+    return '<nav class="aa-controller-nav" aria-label="Navegação do Controller">'+(dashboardAllowed?tab('dashboard','Monitor ao vivo'):'')+tab('subpaginas','Atendimentos por colaborador')+(dashboardAllowed?tab('professional-search','Buscar profissional'):'')+(hoursAllowed?tab('hours','Divisão de horas'):'')+(settingsAllowed?tab('status','Configurar status'):'')+'</nav>';
   }
   window.aaControllerCopyProfessional=async function(button){
     const name=String(button?.textContent||'').trim();
@@ -6553,22 +6554,15 @@ $("todos").addEventListener("click",function(){
     if(view==='dashboard'&&!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para visualizar o painel de acompanhamento.');return;}
     if(view==='professional-search'&&!controllerCan('controller_dashboard_ver')){alert('Você não tem permissão para pesquisar profissionais no Controller.');return;}
     if(view==='hours'&&!(controllerLeadershipAdminAllowed()||controllerHoursAllowed())){alert('A Divisão de horas está disponível somente para ADM, ADM Geral e Gestão.');return;}
-    if(view==='leadership'&&!controllerLeadershipAdminAllowed()){alert('Apenas ADM e ADM geral podem acessar o acompanhamento da liderança.');return;}
     if(view==='status'&&!controllerCan('controller_subpaginas_gerenciar')){alert('Você não tem permissão para configurar os status do Controller.');return;}
     controllerStopLeadershipRefresh();controllerStopDashboardRefresh();controllerStopFollowupRefresh();
-    controllerView=view==='dashboard'?'dashboard':view==='professional-search'?'professional-search':view==='leadership'?'leadership':view==='hours'?'hours':view==='status'?'status':'subpaginas';
+    controllerView=view==='dashboard'?'dashboard':view==='professional-search'?'professional-search':view==='hours'?'hours':view==='status'?'status':'subpaginas';
     const immediateOut=document.getElementById('aa-controller-view-subpaginas');
-    if(immediateOut)immediateOut.innerHTML=controllerViewNav()+'<div class="aa-card aa-controller-loading"><span class="aa-controller-loading-dot"></span>Carregando '+(controllerView==='dashboard'?'a visão geral':controllerView==='professional-search'?'a busca de profissionais':controllerView==='leadership'?'a visão da liderança':controllerView==='hours'?'a divisão de horas':controllerView==='status'?'a configuração de status':'os atendimentos')+'...</div>';
+    if(immediateOut)immediateOut.innerHTML=controllerViewNav()+'<div class="aa-card aa-controller-loading"><span class="aa-controller-loading-dot"></span>Carregando '+(controllerView==='dashboard'?'a visão geral':controllerView==='professional-search'?'a busca de profissionais':controllerView==='hours'?'a divisão de horas':controllerView==='status'?'a configuração de status':'os atendimentos')+'...</div>';
     await loadControllerStatusConfig();
     if(controllerView==='status'){renderControllerStatusSettings();return;}
     await loadControllerPages();
     if(controllerView==='hours'){renderControllerHours();return;}
-    if(controllerView==='leadership'){
-      const out=document.getElementById('aa-controller-view-subpaginas');if(out)out.innerHTML=controllerViewNav()+'<div class="aa-card">Carregando acompanhamento detalhado...</div>';
-      controllerStartLeadershipRefresh();
-      await window.aaControllerRefreshLeadership(false);
-      return;
-    }
     if(controllerView==='professional-search'){
       const out=document.getElementById('aa-controller-view-subpaginas');if(out)out.innerHTML=controllerViewNav()+'<div class="aa-card">Carregando profissionais...</div>';
       try{controllerProfessionalSearchRecords=await loadControllerProfessionalSearchRecords(controllerProfessionalSearchFrom,controllerProfessionalSearchTo);if(controllerView==='professional-search')renderControllerProfessionalSearch();}
@@ -6718,7 +6712,7 @@ $("todos").addEventListener("click",function(){
   const client=()=>window.__aaSupabaseClient;
   const session=()=>typeof window.__aaGetPresenceSession==='function'?window.__aaGetPresenceSession():null;
   const safe=v=>typeof aaHtmlSafe==='function'?aaHtmlSafe(v==null?'':String(v)):String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const labels={dashboard:'Dashboard',agendas:'Agendas Ativas',banco:'Banco de Dados',ajustes:'Ajuste de Agenda',controller:'Controller', 'operational-report':'Relatório Operacional', 'controller:subpaginas':'Controller · Acompanhamento individual', 'controller:dashboard':'Controller · Painel geral', 'controller:professional-search':'Controller · Pesquisa de profissional', 'controller:leadership':'Controller · Visão da liderança', 'controller:hours':'Controller · Divisão de horas', 'controller:status':'Controller · Configuração de status',portal:'Portal',controler:'Administração',historico:'Histórico',permissoes:'Administração · Usuários e permissões',operacoes:'Administração · Operações',perfis:'Administração · Perfis de acesso',config:'Administração · Configurações'};
+  const labels={dashboard:'Dashboard',agendas:'Agendas Ativas',banco:'Banco de Dados',ajustes:'Ajuste de Agenda',controller:'Controller', 'operational-report':'Relatório Operacional', 'controller:subpaginas':'Controller · Acompanhamento individual', 'controller:dashboard':'Controller · Painel geral', 'controller:professional-search':'Controller · Pesquisa de profissional', 'controller:hours':'Controller · Divisão de horas', 'controller:status':'Controller · Configuração de status',portal:'Portal',controler:'Administração',historico:'Histórico',permissoes:'Administração · Usuários e permissões',operacoes:'Administração · Operações',perfis:'Administração · Perfis de acesso',config:'Administração · Configurações'};
   const pageLabel=tab=>labels[String(tab||'')]||labels[String(tab||'').split(':')[0]]||String(tab||'Sistema');
   const lastSeenLabel=value=>{if(!value)return 'Sem registro';const date=new Date(value);if(Number.isNaN(date.getTime()))return 'Sem registro';return date.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});};
   let selectedEmails=new Set(),filterMode='all';
