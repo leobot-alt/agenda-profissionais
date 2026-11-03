@@ -5399,6 +5399,9 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   function renderControllerPageDetail(){
     const out=document.getElementById('aa-controller-view-subpaginas'),page=controllerPages.find(item=>String(item.id)===String(controllerActivePageId));if(!out||!page)return;
     const canEdit=controllerCan('controller_status_atual_editar'),canDeleteRecords=controllerCan('controller_registros_excluir');
+    const canTransferRecords=canDeleteRecords&&controllerCan('controller_subpaginas_gerenciar')&&canEdit;
+    const transferTargetPages=canTransferRecords?controllerPages.filter(item=>!item.arquivada&&String(item.id)!==String(controllerActivePageId)):[];
+    const transferTargetOptions=transferTargetPages.map(item=>'<option value="'+controllerPageText(item.id)+'">'+controllerPageText(item.nome)+'</option>').join('');
     const followupGuard=controllerFollowupGuard();
     const currentIds=new Set(controllerPageRecords.map(record=>String(record.id)));
     [...controllerSelectedRecordIds].forEach(id=>{if(!currentIds.has(id))controllerSelectedRecordIds.delete(id);});
@@ -5428,7 +5431,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
       </header>
       <section class="aa-card aa-controller-records-card"><header class="aa-controller-section-heading"><div><span class="aa-controller-overline">AGENDA DO DIA</span><h2>Atendimentos para acompanhar</h2><p>Atualize o status e, quando necessário, ajuste a observação do atendimento.</p></div><span class="aa-controller-pending-hint">Ordem: horário e nome (A–Z)</span></header>
         ${filterControls}
-        ${canDeleteRecords&&controllerPageRecords.length?`<div class="aa-controller-record-bulk-actions"><label class="aa-controller-record-select-all"><input type="checkbox" ${allRecordsSelected?'checked':''} onchange="aaControllerSelectAllRecords(this.checked)" aria-label="Selecionar todos os horários exibidos"><span>Selecionar horários exibidos</span></label><span>${selectedRecordCount} selecionado(s) no total</span><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeleteSelectedRecords()" ${selectedRecordCount?'':'disabled'}>Excluir horários selecionados${selectedRecordCount?' ('+selectedRecordCount+')':''}</button></div>`:''}
+        ${canDeleteRecords&&controllerPageRecords.length?`<div class="aa-controller-record-bulk-actions"><label class="aa-controller-record-select-all"><input type="checkbox" ${allRecordsSelected?'checked':''} onchange="aaControllerSelectAllRecords(this.checked)" aria-label="Selecionar todos os horários exibidos"><span>Selecionar horários exibidos</span></label><span>${selectedRecordCount} selecionado(s) no total</span>${canTransferRecords?`<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:1 1 360px;flex-wrap:wrap"><select id="aa-controller-record-transfer-target" aria-label="Colaborador que receberá os atendimentos" style="flex:1 1 220px;min-width:220px;max-width:100%;min-height:38px;padding:7px 10px;border:1px solid #D8E0EA;border-radius:9px;background:#fff;color:#344760" ${transferTargetPages.length?'':'disabled'}><option value="">${transferTargetPages.length?'Transferir para colaborador…':'Nenhum outro colaborador disponível'}</option>${transferTargetOptions}</select><button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaControllerTransferSelectedRecords()" ${selectedRecordCount&&transferTargetPages.length?'':'disabled'}>Transferir selecionados${selectedRecordCount?' ('+selectedRecordCount+')':''}</button></div>`:''}<button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeleteSelectedRecords()" ${selectedRecordCount?'':'disabled'}>Excluir horários selecionados${selectedRecordCount?' ('+selectedRecordCount+')':''}</button></div>`:''}
         ${rows?`<div class="aa-table-scroll aa-controller-record-scroll"><table class="aa-compact-table aa-controller-record-table"><thead><tr>${canDeleteRecords?`<th scope="col"><input type="checkbox" ${allRecordsSelected?'checked':''} onchange="aaControllerSelectAllRecords(this.checked)" aria-label="Selecionar todos os horários exibidos"></th>`:''}<th>Agenda / profissional</th><th>Hora</th><th>Status da planilha</th><th>Status atual</th><th>Última alteração</th><th>Observação</th><th>Ação</th></tr></thead><tbody>${rows}</tbody></table></div>`:emptyState}
       </section>
     </section>`;
@@ -5488,6 +5491,35 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     if(!controllerAllowed()||!controllerCan('controller_registros_excluir'))return;
     const visibleIds=controllerFilteredPageRecords().map(record=>String(record.id));visibleIds.forEach(id=>{if(checked)controllerSelectedRecordIds.add(id);else controllerSelectedRecordIds.delete(id);});
     renderControllerPageDetail();
+  };
+  window.aaControllerTransferSelectedRecords=async function(){
+    if(!controllerAllowed()||!controllerCan('controller_registros_excluir')||!controllerCan('controller_subpaginas_gerenciar')||!controllerCan('controller_status_atual_editar')){alert('Você não tem permissão para transferir atendimentos.');return;}
+    if(controllerBulkDeletingRecords)return;
+    const selected=controllerPageRecords.filter(record=>controllerSelectedRecordIds.has(String(record.id)));
+    if(!selected.length){alert('Selecione ao menos um atendimento para transferir.');return;}
+    const sourcePage=controllerPages.find(item=>String(item.id)===String(controllerActivePageId));
+    const targetId=String(document.getElementById('aa-controller-record-transfer-target')?.value||'');
+    const targetPage=controllerPages.find(item=>String(item.id)===targetId&&!item.arquivada&&String(item.id)!==String(controllerActivePageId));
+    if(!targetPage){alert('Selecione um colaborador de destino válido.');return;}
+    const preview=selected.slice(0,8).map(record=>'• '+record.profissional+' às '+String(record.hora_atendimento||'').slice(0,5)).join('\n');
+    const message='Transferir '+selected.length+' atendimento(s) de '+(sourcePage?.nome||'esta área')+' para '+targetPage.nome+' em '+controllerRenderDayDate(controllerSelectedDay)+'?\n\n'+preview+(selected.length>8?'\n• e mais '+(selected.length-8)+' atendimento(s)':'')+'\n\nData, horário, status e observação serão preservados. Os registros sairão da área atual e passarão para a área de destino.';
+    if(!confirm(message))return;
+    controllerBulkDeletingRecords=true;
+    try{
+      const ids=selected.map(record=>String(record.id));
+      const result=await controllerDb.from('controller_page_records').update({page_id:String(targetPage.id),operador:String(targetPage.nome||'')}).in('id',ids).eq('page_id',String(controllerActivePageId)).eq('data_atendimento',controllerSelectedDay).select('id');
+      if(result.error)throw result.error;
+      const movedIds=new Set((result.data||[]).map(row=>String(row.id)));
+      const moved=selected.filter(record=>movedIds.has(String(record.id)));
+      if(!moved.length){await loadControllerPageRecords(controllerActivePageId,controllerSelectedDay);controllerBulkDeletingRecords=false;renderControllerPageDetail();alert('Nenhum atendimento foi transferido. Atualize a lista e tente novamente.');return;}
+      const details='Transferidos '+moved.length+' atendimento(s) no dia '+controllerRenderDayDate(controllerSelectedDay)+': '+moved.map(record=>record.profissional+' às '+String(record.hora_atendimento||'').slice(0,5)).join('; ');
+      try{await controllerAudit('Transferência de atendimentos',(sourcePage?.nome||controllerActivePageId)+' → '+targetPage.nome,details,sourcePage?.nome||'',targetPage.nome);}catch(auditError){console.warn('Não foi possível registrar a auditoria da transferência.',auditError);}
+      moved.forEach(record=>controllerSelectedRecordIds.delete(String(record.id)));
+      await loadControllerPageRecords(controllerActivePageId,controllerSelectedDay);controllerBulkDeletingRecords=false;renderControllerPageDetail();
+      if(moved.length<selected.length)alert('Foram transferidos '+moved.length+' de '+selected.length+' atendimentos. Atualize a lista para conferir os demais.');
+      else if(typeof aaToast==='function')aaToast(moved.length+' atendimento(s) transferido(s) para '+targetPage.nome+'.','success');
+    }catch(error){alert('Não foi possível transferir os atendimentos: '+(error?.message||''));console.error('Erro ao transferir atendimentos no Controller:',error);}
+    finally{controllerBulkDeletingRecords=false;}
   };
   window.aaControllerDeleteSelectedRecords=async function(){
     if(!controllerAllowed()||!controllerCan('controller_registros_excluir')){alert('Você não tem permissão para excluir atendimentos.');return;}
