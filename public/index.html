@@ -5434,7 +5434,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     </section>`;
     if(!canDeleteRecords)out.querySelectorAll('.aa-btn-danger').forEach(button=>button.style.display='none');
     const previousAlert=document.getElementById('aa-controller-followup-alert');if(previousAlert)previousAlert.remove();
-    if(followupGuard&&controllerPageAssignedToCurrentUser(page))out.insertAdjacentHTML('afterbegin',controllerFollowupAlertMarkup(followupGuard));
+    if(followupGuard&&(controllerLeadershipAdminAllowed()||controllerPageAssignedToCurrentUser(page)))out.insertAdjacentHTML('afterbegin',controllerFollowupAlertMarkup(followupGuard));
   }
   window.aaControllerOpenPage=async function(id,day){if(!controllerAllowed())return;const targetPage=String(id),targetDay=day||controllerToday();if(targetPage!==controllerActivePageId||targetDay!==controllerSelectedDay){controllerRecordHourFilter='';controllerRecordStatusFilter='';controllerRecordNameSearch='';}controllerSelectedRecordIds.clear();controllerView='subpaginas';controllerActivePageId=targetPage;controllerSelectedDay=targetDay;try{await controllerLoadCurrentAuthUser();await loadControllerStatusConfig();await loadControllerPageRecords(id,controllerSelectedDay);renderControllerPageDetail();controllerStartFollowupRefresh();}catch(e){alert('Não foi possível carregar os atendimentos desta área: '+(e?.message||''));console.error(e);}};
   window.aaControllerChangeDay=async function(day){if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!controllerActivePageId)return;await window.aaControllerOpenPage(controllerActivePageId,day);};
