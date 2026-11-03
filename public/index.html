@@ -5399,7 +5399,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   function renderControllerPageDetail(){
     const out=document.getElementById('aa-controller-view-subpaginas'),page=controllerPages.find(item=>String(item.id)===String(controllerActivePageId));if(!out||!page)return;
     const canEdit=controllerCan('controller_status_atual_editar'),canDeleteRecords=controllerCan('controller_registros_excluir');
-    const canTransferRecords=canDeleteRecords&&controllerCan('controller_subpaginas_gerenciar')&&canEdit;
+    const canTransferRecords=canDeleteRecords&&controllerLeadershipAdminAllowed()&&controllerCan('controller_subpaginas_gerenciar')&&canEdit;
     const transferTargetPages=canTransferRecords?controllerPages.filter(item=>!item.arquivada&&String(item.id)!==String(controllerActivePageId)):[];
     const transferTargetOptions=transferTargetPages.map(item=>'<option value="'+controllerPageText(item.id)+'">'+controllerPageText(item.nome)+'</option>').join('');
     const followupGuard=controllerFollowupGuard();
@@ -5493,7 +5493,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     renderControllerPageDetail();
   };
   window.aaControllerTransferSelectedRecords=async function(){
-    if(!controllerAllowed()||!controllerCan('controller_registros_excluir')||!controllerCan('controller_subpaginas_gerenciar')||!controllerCan('controller_status_atual_editar')){alert('Você não tem permissão para transferir atendimentos.');return;}
+    if(!controllerAllowed()||!controllerLeadershipAdminAllowed()||!controllerCan('controller_registros_excluir')||!controllerCan('controller_subpaginas_gerenciar')||!controllerCan('controller_status_atual_editar')){alert('Somente Administrador e Administrador geral podem transferir atendimentos.');return;}
     if(controllerBulkDeletingRecords)return;
     const selected=controllerPageRecords.filter(record=>controllerSelectedRecordIds.has(String(record.id)));
     if(!selected.length){alert('Selecione ao menos um atendimento para transferir.');return;}
