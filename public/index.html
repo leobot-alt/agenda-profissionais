@@ -5556,7 +5556,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
   window.aaControllerCanImportHours=function(){return controllerAllowed()&&controllerCan('controller_importar');};
   window.aaControllerRefreshLatestImport=async function(){
     const box=document.getElementById('aa-controller-last-import-content');if(!box)return;
-    if(!controllerAllowed()||!controllerCan('controller_importar')||!controllerCan('controller_registros_excluir')){box.textContent='Seu perfil não tem permissão para desfazer envios.';return;}
+    if(!controllerAllowed()||!controllerLeadershipAdminAllowed()||!controllerCan('controller_importar')||!controllerCan('controller_registros_excluir')){box.textContent='Recurso disponível somente para Administradores e Administradores gerais.';return;}
     box.textContent='Consultando o último envio...';
     try{
       const auth=await controllerDb.auth.getUser();if(auth.error)throw auth.error;const userId=String(auth.data?.user?.id||'');if(!userId)throw new Error('Sessão autenticada indisponível.');
@@ -5570,7 +5570,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     }catch(error){controllerLatestImportBatch=null;box.textContent='Não foi possível consultar o último envio. Tente atualizar a página.';console.error('Erro ao consultar último lote importado:',error);}
   };
   window.aaControllerUndoLatestImport=async function(){
-    if(!controllerAllowed()||!controllerCan('controller_importar')||!controllerCan('controller_registros_excluir')){alert('Você não tem permissão para desfazer envios.');return;}
+    if(!controllerAllowed()||!controllerLeadershipAdminAllowed()||!controllerCan('controller_importar')||!controllerCan('controller_registros_excluir')){alert('O desfazer de envios está disponível somente para Administradores e Administradores gerais.');return;}
     const batch=controllerLatestImportBatch;if(!batch?.id)return alert('Atualize o último envio antes de tentar desfazê-lo.');
     try{
       const auth=await controllerDb.auth.getUser();if(auth.error)throw auth.error;const userId=String(auth.data?.user?.id||'');if(!userId||userId!==batch.userId)throw new Error('A conta atual não corresponde à conta que realizou o envio.');
@@ -5685,7 +5685,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
       </details>
     </section>`;
     const importForm=out.querySelector('form[onsubmit^="aaControllerImportPlanilha"]');if(importForm)importForm.style.display=controllerCan('controller_importar')?'':'none';
-    const lastImportCard=out.querySelector('#aa-controller-last-import-card');if(lastImportCard)lastImportCard.style.display=controllerCan('controller_importar')&&controllerCan('controller_registros_excluir')?'':'none';
+    const lastImportCard=out.querySelector('#aa-controller-last-import-card');if(lastImportCard)lastImportCard.style.display=controllerLeadershipAdminAllowed()&&controllerCan('controller_importar')&&controllerCan('controller_registros_excluir')?'':'none';
     if(lastImportCard&&lastImportCard.style.display!=='none')setTimeout(()=>window.aaControllerRefreshLatestImport(),0);
     const management=out.querySelector('.aa-controller-management:not(.aa-controller-archived-management)');if(management)management.style.display=controllerCan('controller_subpaginas_gerenciar')?'':'none';
     const archivedSection=out.querySelector('.aa-controller-archived-management');if(archivedSection)archivedSection.style.display=controllerCan('controller_subpaginas_gerenciar')?'':'none';
