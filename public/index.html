@@ -5552,12 +5552,48 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     await controllerAudit('Atendimento excluído', (page?.nome||record.operador||'')+' · '+record.profissional,'Dia '+controllerRenderDayDate(record.data_atendimento)+' às '+String(record.hora_atendimento||'').slice(0,5),controllerStatusLabel(record.status),'Excluído');
     controllerSelectedRecordIds.delete(String(id));await loadControllerPageRecords(controllerActivePageId,controllerSelectedDay);renderControllerPageDetail();
   };
+  let controllerLatestImportBatch=null;
   window.aaControllerCanImportHours=function(){return controllerAllowed()&&controllerCan('controller_importar');};
+  window.aaControllerRefreshLatestImport=async function(){
+    const box=document.getElementById('aa-controller-last-import-content');if(!box)return;
+    if(!controllerAllowed()||!controllerCan('controller_importar')||!controllerCan('controller_registros_excluir')){box.textContent='Seu perfil não tem permissão para desfazer envios.';return;}
+    box.textContent='Consultando o último envio...';
+    try{
+      const auth=await controllerDb.auth.getUser();if(auth.error)throw auth.error;const userId=String(auth.data?.user?.id||'');if(!userId)throw new Error('Sessão autenticada indisponível.');
+      const latest=await controllerDb.from('controller_page_records').select('import_batch_id,data_atendimento,criado_em').eq('criado_por',userId).not('import_batch_id','is',null).order('criado_em',{ascending:false}).limit(1).maybeSingle();if(latest.error)throw latest.error;
+      if(!latest.data?.import_batch_id){controllerLatestImportBatch=null;box.innerHTML='<p class="aa-controller-card-description">Ainda não há envios recentes rastreados por esta função. Ela vale para os envios realizados após a atualização do sistema; lançamentos anteriores não podem ser identificados com segurança.</p>';return;}
+      const batch=latest.data,summary=await controllerDb.from('controller_page_records').select('id',{count:'exact',head:true}).eq('criado_por',userId).eq('import_batch_id',String(batch.import_batch_id));if(summary.error)throw summary.error;
+      controllerLatestImportBatch={id:String(batch.import_batch_id),day:String(batch.data_atendimento||''),createdAt:String(batch.criado_em||''),count:Number(summary.count||0),userId};
+      if(!controllerLatestImportBatch.count){box.textContent='O último envio rastreado não tem registros disponíveis para desfazer.';return;}
+      const created=controllerLatestImportBatch.createdAt?new Date(controllerLatestImportBatch.createdAt).toLocaleString('pt-BR'):'horário indisponível';
+      box.innerHTML='<p class="aa-controller-card-description"><strong>Último envio desta conta:</strong> '+controllerPageText(controllerRenderDayDate(batch.data_atendimento))+' · '+controllerLatestImportBatch.count+' atendimento(s) · '+controllerPageText(created)+'.</p><p class="aa-controller-card-description">A exclusão remove somente os registros desse envio. Não remove áreas de acompanhamento nem outros lançamentos.</p><button type="button" class="aa-btn aa-btn-danger" onclick="aaControllerUndoLatestImport()">Excluir somente este último envio</button>';
+    }catch(error){controllerLatestImportBatch=null;box.textContent='Não foi possível consultar o último envio. Tente atualizar a página.';console.error('Erro ao consultar último lote importado:',error);}
+  };
+  window.aaControllerUndoLatestImport=async function(){
+    if(!controllerAllowed()||!controllerCan('controller_importar')||!controllerCan('controller_registros_excluir')){alert('Você não tem permissão para desfazer envios.');return;}
+    const batch=controllerLatestImportBatch;if(!batch?.id)return alert('Atualize o último envio antes de tentar desfazê-lo.');
+    try{
+      const auth=await controllerDb.auth.getUser();if(auth.error)throw auth.error;const userId=String(auth.data?.user?.id||'');if(!userId||userId!==batch.userId)throw new Error('A conta atual não corresponde à conta que realizou o envio.');
+      const latest=await controllerDb.from('controller_page_records').select('import_batch_id,data_atendimento,criado_em').eq('criado_por',userId).not('import_batch_id','is',null).order('criado_em',{ascending:false}).limit(1).maybeSingle();if(latest.error)throw latest.error;
+      if(String(latest.data?.import_batch_id||'')!==batch.id){await window.aaControllerRefreshLatestImport();alert('O último envio mudou desde que a tela foi carregada. Confira os dados atualizados e tente novamente.');return;}
+      const current=await controllerDb.from('controller_page_records').select('id',{count:'exact',head:true}).eq('criado_por',userId).eq('import_batch_id',batch.id);if(current.error)throw current.error;
+      const count=Number(current.count||0);if(!count){await window.aaControllerRefreshLatestImport();alert('Não há registros desse envio para excluir.');return;}
+      const day=String(latest.data.data_atendimento||batch.day);const message='Excluir permanentemente somente '+count+' atendimento(s) do seu último envio para '+controllerRenderDayDate(day)+'?\n\nOs outros atendimentos desse dia e os demais envios serão mantidos. Esta exclusão não pode ser desfeita.';
+      if(!window.confirm(message))return;
+      const confirmedLatest=await controllerDb.from('controller_page_records').select('import_batch_id').eq('criado_por',userId).not('import_batch_id','is',null).order('criado_em',{ascending:false}).limit(1).maybeSingle();if(confirmedLatest.error)throw confirmedLatest.error;
+      if(String(confirmedLatest.data?.import_batch_id||'')!==batch.id){await window.aaControllerRefreshLatestImport();alert('Um envio mais recente foi registrado. Nenhum registro foi excluído; confira o lote atualizado.');return;}
+      const deleted=await controllerDb.from('controller_page_records').delete({count:'exact'}).eq('criado_por',userId).eq('import_batch_id',batch.id).select('id');if(deleted.error)throw deleted.error;
+      const removed=Number(deleted.count||(deleted.data||[]).length);
+      if(!removed){alert('Nenhum registro foi excluído. Atualize a tela e tente novamente.');await window.aaControllerRefreshLatestImport();return;}
+      try{await controllerAudit('Último envio de acompanhamentos desfeito','Lote '+batch.id,'Excluídos '+removed+' atendimento(s) do envio de '+controllerRenderDayDate(day)+'.','Importado','Desfeito');}catch(auditError){console.warn('Os registros foram excluídos, mas não foi possível registrar a auditoria.',auditError);}
+      await window.aaControllerRefreshLatestImport();if(typeof aaToast==='function')aaToast(removed+' atendimento(s) do último envio foram excluídos.','success');
+    }catch(error){alert('Não foi possível desfazer o último envio: '+(error?.message||''));console.error('Erro ao desfazer lote de acompanhamentos:',error);}
+  };
   window.aaControllerImportWorkbook=async function(book,importDay){
     if(!controllerAllowed()||!controllerCan('controller_importar')){alert('Você não tem permissão para importar planilhas.');return false;}
     if(!book||!Array.isArray(book.SheetNames)||!book.SheetNames.length||!importDay){alert('Não foi possível preparar a importação. Confira o resultado e a data.');return false;}
     try{
-      const auth=await controllerDb.auth.getUser();if(auth.error)throw auth.error;const creatorId=auth.data?.user?.id;if(!creatorId)throw new Error('Sessão autenticada indisponível. Faça login novamente.');const records=[],errors=[],createdPages=[];
+      const auth=await controllerDb.auth.getUser();if(auth.error)throw auth.error;const creatorId=auth.data?.user?.id;if(!creatorId)throw new Error('Sessão autenticada indisponível. Faça login novamente.');const batchId='import-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10),records=[],errors=[],createdPages=[];
       for(const sheetName of book.SheetNames){
         let page=controllerPageByName(sheetName,true);
         if(page?.arquivada){errors.push('Aba "'+sheetName+'" corresponde à área arquivada "'+page.nome+'"; restaure-a antes de importar.');continue;}
@@ -5571,15 +5607,15 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
         }
         const rows=XLSX.utils.sheet_to_json(book.Sheets[sheetName],{defval:''}),keys=rows[0]?Object.keys(rows[0]):[],findKey=names=>keys.find(k=>names.includes(controllerImportHeader(k))),kAgenda=findKey(['agenda']),kHora=findKey(['hora','horario']),kStatus=findKey(['status','situacao']),kNote=findKey(['observacao','observacoes','obs']);
         if(!kAgenda||!kHora){errors.push('Aba "'+sheetName+'": use as colunas Agenda e Hora.');continue;}
-        rows.forEach((row,i)=>{const profissional=String(row[kAgenda]||'').trim(),hora=controllerImportTime(row[kHora]);if(!profissional&&!hora)return;if(!profissional||!hora){errors.push('Aba "'+sheetName+'", linha '+(i+2)+': Agenda ou Hora vazia.');return;}records.push({id:'record-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)+'-'+records.length,page_id:page.id,operador:page.nome,profissional,data_atendimento:importDay,hora_atendimento:hora,status:'pendente',status_original:String(kStatus?row[kStatus]||'':'').trim(),criado_por:creatorId,observacao:String(kNote?row[kNote]||'':'').trim(),criado_em:new Date().toISOString(),atualizado_em:new Date().toISOString()});});
+        rows.forEach((row,i)=>{const profissional=String(row[kAgenda]||'').trim(),hora=controllerImportTime(row[kHora]);if(!profissional&&!hora)return;if(!profissional||!hora){errors.push('Aba "'+sheetName+'", linha '+(i+2)+': Agenda ou Hora vazia.');return;}records.push({id:'record-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)+'-'+records.length,page_id:page.id,operador:page.nome,profissional,data_atendimento:importDay,hora_atendimento:hora,status:'pendente',status_original:String(kStatus?row[kStatus]||'':'').trim(),import_batch_id:batchId,criado_por:creatorId,observacao:String(kNote?row[kNote]||'':'').trim(),criado_em:new Date().toISOString(),atualizado_em:new Date().toISOString()});});
       }
       if(!records.length){renderControllerPages();alert('Nenhum atendimento válido foi encontrado.'+(createdPages.length?'\nÁreas de acompanhamento criadas: '+createdPages.join(', '):'')+(errors.length?'\n'+errors.slice(0,6).join('\n'):''));return false;}
       const result=await controllerDb.from('controller_page_records').insert(records);if(result.error)throw result.error;
-      await controllerAudit('Importação de atendimentos',createdPages.length?createdPages.join(', '):[...new Set(records.map(record=>record.operador))].join(', '),'Importados '+records.length+' horário(s) para '+controllerRenderDayDate(importDay)+(createdPages.length?'; subpáginas criadas: '+createdPages.join(', '):''),'',records.length+' importado(s)');
+      await controllerAudit('Importação de atendimentos',createdPages.length?createdPages.join(', '):[...new Set(records.map(record=>record.operador))].join(', '),'Importados '+records.length+' horário(s) para '+controllerRenderDayDate(importDay)+(createdPages.length?'; subpáginas criadas: '+createdPages.join(', '):'')+'; lote: '+batchId,'',records.length+' importado(s)');
       let msg='Importados '+records.length+' atendimento(s) para o dia '+controllerRenderDayDate(importDay)+'.';
       if(createdPages.length)msg+='\nÁrea(s) de acompanhamento criada(s) automaticamente: '+createdPages.join(', ')+'.';
       if(errors.length)msg+='\nAvisos: '+errors.length;
-      alert(msg);const input=document.getElementById('aa-controller-import-file');if(input)input.value='';renderControllerPages();return true;
+      alert(msg);const input=document.getElementById('aa-controller-import-file');if(input)input.value='';renderControllerPages();setTimeout(()=>window.aaControllerRefreshLatestImport(),0);return true;
     }catch(e){alert('Não foi possível importar a planilha: '+(e?.message||''));console.error('Importação Controller:',e);return false;}
   };
   window.aaControllerImportHoursDirect=async function(book,importDay){
@@ -5617,6 +5653,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const list=activePages.map(page=>controllerPageCardMarkup(page,false)).join('');
     const archivedList=archivedPages.map(page=>controllerPageCardMarkup(page,true)).join('');
     out.innerHTML=controllerViewNav()+`<section class="aa-controller-workspace">
+      <section class="aa-card aa-controller-import-card" id="aa-controller-last-import-card"><div class="aa-controller-card-heading"><div><span class="aa-controller-overline">CONTROLE DE IMPORTAÇÃO</span><h2>Último envio</h2></div></div><div id="aa-controller-last-import-content" aria-live="polite">Consultando o último envio...</div></section>
       <form onsubmit="aaControllerImportPlanilha(event)" class="aa-card aa-controller-import-card">
         <div class="aa-controller-card-heading"><div><span class="aa-controller-overline">ROTINA DO DIA</span><h2>Importar atendimentos</h2></div><span class="aa-controller-step">01</span></div>
         <p class="aa-controller-card-description">Envie a planilha preenchida para distribuir os atendimentos nas áreas de acompanhamento dos colaboradores. Cada aba deve ter o mesmo nome do colaborador e as colunas: Agenda, Hora, Status e Observação.</p>
@@ -5648,6 +5685,8 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
       </details>
     </section>`;
     const importForm=out.querySelector('form[onsubmit^="aaControllerImportPlanilha"]');if(importForm)importForm.style.display=controllerCan('controller_importar')?'':'none';
+    const lastImportCard=out.querySelector('#aa-controller-last-import-card');if(lastImportCard)lastImportCard.style.display=controllerCan('controller_importar')&&controllerCan('controller_registros_excluir')?'':'none';
+    if(lastImportCard&&lastImportCard.style.display!=='none')setTimeout(()=>window.aaControllerRefreshLatestImport(),0);
     const management=out.querySelector('.aa-controller-management:not(.aa-controller-archived-management)');if(management)management.style.display=controllerCan('controller_subpaginas_gerenciar')?'':'none';
     const archivedSection=out.querySelector('.aa-controller-archived-management');if(archivedSection)archivedSection.style.display=controllerCan('controller_subpaginas_gerenciar')?'':'none';
     if(!controllerCan('controller_subpaginas_gerenciar'))out.querySelectorAll('.aa-btn-danger').forEach(btn=>btn.style.display='none');
