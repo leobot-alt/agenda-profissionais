@@ -5552,13 +5552,12 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     await controllerAudit('Atendimento excluído', (page?.nome||record.operador||'')+' · '+record.profissional,'Dia '+controllerRenderDayDate(record.data_atendimento)+' às '+String(record.hora_atendimento||'').slice(0,5),controllerStatusLabel(record.status),'Excluído');
     controllerSelectedRecordIds.delete(String(id));await loadControllerPageRecords(controllerActivePageId,controllerSelectedDay);renderControllerPageDetail();
   };
-  window.aaControllerImportPlanilha=async function(event){
-    if(event)event.preventDefault();
-    if(!controllerAllowed()||!controllerCan('controller_importar')){alert('Você não tem permissão para importar planilhas.');return;}
-    const file=document.getElementById('aa-controller-import-file')?.files?.[0],importDay=String(document.getElementById('aa-controller-import-day')?.value||'');
-    if(!file||!importDay)return alert('Selecione a planilha e informe o dia dos atendimentos.');
+  window.aaControllerCanImportHours=function(){return controllerAllowed()&&controllerCan('controller_importar');};
+  window.aaControllerImportWorkbook=async function(book,importDay){
+    if(!controllerAllowed()||!controllerCan('controller_importar')){alert('Você não tem permissão para importar planilhas.');return false;}
+    if(!book||!Array.isArray(book.SheetNames)||!book.SheetNames.length||!importDay){alert('Não foi possível preparar a importação. Confira o resultado e a data.');return false;}
     try{
-      const auth=await controllerDb.auth.getUser();if(auth.error)throw auth.error;const creatorId=auth.data?.user?.id;if(!creatorId)throw new Error('Sessão autenticada indisponível. Faça login novamente.');const data=await file.arrayBuffer(),book=XLSX.read(data,{type:'array',cellDates:true}),records=[],errors=[],createdPages=[];
+      const auth=await controllerDb.auth.getUser();if(auth.error)throw auth.error;const creatorId=auth.data?.user?.id;if(!creatorId)throw new Error('Sessão autenticada indisponível. Faça login novamente.');const records=[],errors=[],createdPages=[];
       for(const sheetName of book.SheetNames){
         let page=controllerPageByName(sheetName,true);
         if(page?.arquivada){errors.push('Aba "'+sheetName+'" corresponde à área arquivada "'+page.nome+'"; restaure-a antes de importar.');continue;}
@@ -5574,15 +5573,28 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
         if(!kAgenda||!kHora){errors.push('Aba "'+sheetName+'": use as colunas Agenda e Hora.');continue;}
         rows.forEach((row,i)=>{const profissional=String(row[kAgenda]||'').trim(),hora=controllerImportTime(row[kHora]);if(!profissional&&!hora)return;if(!profissional||!hora){errors.push('Aba "'+sheetName+'", linha '+(i+2)+': Agenda ou Hora vazia.');return;}records.push({id:'record-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)+'-'+records.length,page_id:page.id,operador:page.nome,profissional,data_atendimento:importDay,hora_atendimento:hora,status:'pendente',status_original:String(kStatus?row[kStatus]||'':'').trim(),criado_por:creatorId,observacao:String(kNote?row[kNote]||'':'').trim(),criado_em:new Date().toISOString(),atualizado_em:new Date().toISOString()});});
       }
-      if(!records.length){renderControllerPages();return alert('Nenhum atendimento válido foi encontrado.'+(createdPages.length?'\nÁreas de acompanhamento criadas: '+createdPages.join(', '):'')+(errors.length?'\n'+errors.slice(0,6).join('\n'):''));}
+      if(!records.length){renderControllerPages();alert('Nenhum atendimento válido foi encontrado.'+(createdPages.length?'\nÁreas de acompanhamento criadas: '+createdPages.join(', '):'')+(errors.length?'\n'+errors.slice(0,6).join('\n'):''));return false;}
       const result=await controllerDb.from('controller_page_records').insert(records);if(result.error)throw result.error;
       await controllerAudit('Importação de atendimentos',createdPages.length?createdPages.join(', '):[...new Set(records.map(record=>record.operador))].join(', '),'Importados '+records.length+' horário(s) para '+controllerRenderDayDate(importDay)+(createdPages.length?'; subpáginas criadas: '+createdPages.join(', '):''),'',records.length+' importado(s)');
       let msg='Importados '+records.length+' atendimento(s) para o dia '+controllerRenderDayDate(importDay)+'.';
       if(createdPages.length)msg+='\nÁrea(s) de acompanhamento criada(s) automaticamente: '+createdPages.join(', ')+'.';
       if(errors.length)msg+='\nAvisos: '+errors.length;
-      alert(msg);
-      const input=document.getElementById('aa-controller-import-file');if(input)input.value='';renderControllerPages();
-    }catch(e){alert('Não foi possível importar a planilha: '+(e?.message||''));console.error('Importação Controller:',e);}
+      alert(msg);const input=document.getElementById('aa-controller-import-file');if(input)input.value='';renderControllerPages();return true;
+    }catch(e){alert('Não foi possível importar a planilha: '+(e?.message||''));console.error('Importação Controller:',e);return false;}
+  };
+  window.aaControllerImportHoursDirect=async function(book,importDay){
+    if(!window.aaControllerCanImportHours()){alert('Você não tem permissão para importar atendimentos para Acompanhamentos.');return;}
+    if(!importDay){alert('Selecione a data do arquivo antes de enviar para Acompanhamentos.');return;}
+    if(!window.confirm('Os atendimentos serão adicionados a Acompanhamentos no dia '+controllerRenderDayDate(importDay)+'. Os registros existentes não serão substituídos; se você enviar novamente, poderão ser criados duplicados. Deseja continuar?'))return;
+    return window.aaControllerImportWorkbook(book,importDay);
+  };
+  window.aaControllerImportPlanilha=async function(event){
+    if(event)event.preventDefault();
+    if(!controllerAllowed()||!controllerCan('controller_importar')){alert('Você não tem permissão para importar planilhas.');return;}
+    const file=document.getElementById('aa-controller-import-file')?.files?.[0],importDay=String(document.getElementById('aa-controller-import-day')?.value||'');
+    if(!file||!importDay)return alert('Selecione a planilha e informe o dia dos atendimentos.');
+    try{const data=await file.arrayBuffer(),book=XLSX.read(data,{type:'array',cellDates:true});await window.aaControllerImportWorkbook(book,importDay);}
+    catch(e){alert('Não foi possível importar a planilha: '+(e?.message||''));console.error('Importação Controller:',e);}
   };
   function controllerPageCardMarkup(page,archived){
     const id=controllerPageText(page.id),name=controllerPageText(page.nome),initial=controllerPageText(String(page.nome||'?').trim().charAt(0).toLocaleUpperCase('pt-BR'));
@@ -6158,7 +6170,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
 <section id="out" class="hide">
 <h2>4. Resultado</h2>
 <div id="lista"></div>
-<div style="margin-top:12px"><button id="todos">Baixar planilha (uma aba por colaborador)</button></div>
+<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button id="todos">Baixar planilha (uma aba por colaborador)</button><button id="enviarAcompanhamentos" type="button">Enviar para Acompanhamentos</button></div>
 <div id="msg" class="hint"></div>
 <div id="conf" style="margin-top:12px"></div>
 <div class="tw" id="prev"></div>
@@ -6568,6 +6580,13 @@ $("todos").addEventListener("click",function(){
   try{wb=construir()}catch(e){$("msg").textContent="Não consegui montar a planilha: "+(e&&e.message);return}
   salvar(wb,nomeArquivo());
 });
+$("enviarAcompanhamentos").addEventListener("click",function(){
+  var wb;
+  try{wb=construir()}catch(e){$("msg").textContent="Não consegui preparar os dados: "+(e&&e.message);return}
+  if(typeof window.aaControllerImportHoursDirect!=="function"){$("msg").textContent="A integração com Acompanhamentos não está disponível agora.";return}
+  window.aaControllerImportHoursDirect(wb,$("dataArq").value);
+});
+if(!window.aaControllerCanImportHours())$("enviarAcompanhamentos").hidden=true;
 (function(){var n=new Date();$("dataArq").value=n.getFullYear()+"-"+("0"+(n.getMonth()+1)).slice(-2)+"-"+("0"+n.getDate()).slice(-2)})();
 
     })();
