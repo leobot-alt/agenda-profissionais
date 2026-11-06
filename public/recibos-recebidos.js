@@ -15,7 +15,7 @@
     .aa-received-receipts-card{margin:0;padding:22px;background:linear-gradient(135deg,#fff 0%,#FAF9FD 100%);border:1px solid #D8CFF4;box-shadow:0 10px 28px rgba(75,50,168,.08)}
     .aa-received-receipts-header h2{margin:4px 0;color:var(--primary-dark)}
     .aa-received-receipts-header p{margin:4px 0 0}
-    .aa-received-receipts-filters{display:grid;grid-template-columns:minmax(180px,240px) minmax(240px,1fr);gap:12px;margin:18px 0 14px;padding:14px;border:1px solid #E7E3EF;border-radius:12px;background:#FAF9FD}
+    .aa-received-receipts-filters{display:grid;grid-template-columns:minmax(180px,240px) minmax(240px,1fr) minmax(180px,240px);gap:12px;margin:18px 0 14px;padding:14px;border:1px solid #E7E3EF;border-radius:12px;background:#FAF9FD}
     .aa-received-receipts-filters .aa-field{margin:0}
     .aa-received-receipts-summary{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
     .aa-received-receipts-count{display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border:1px solid #E6E2EF;border-radius:999px;background:#fff;color:var(--ink-soft);font-size:12px}
@@ -54,12 +54,14 @@
   function render() {
     const tbody = byId('aa-recebidos-lista');
     const search = normalize(byId('aa-recebidos-busca') && byId('aa-recebidos-busca').value);
+    const statusFilter = byId('aa-recebidos-filtro-status') && byId('aa-recebidos-filtro-status').value;
     const summary = byId('aa-recebidos-resumo');
     if (!tbody) return;
 
     const rows = state.professionals.filter((professional) => {
       const name = String(professional.nomeCompleto || '').trim();
-      return name && normalize(name).includes(search);
+      const status = state.statuses.get(String(professional.id)) || 'pendente';
+      return name && normalize(name).includes(search) && (!statusFilter || status === statusFilter);
     });
     const counts = { enviado: 0, coletado: 0, nao_enviado: 0, pendente: 0 };
     state.professionals.forEach((professional) => {
@@ -77,7 +79,8 @@
     }
     if (!rows.length) {
       tbody.innerHTML = '';
-      showMessage(search ? 'Nenhum profissional corresponde à pesquisa.' : 'Não há profissionais cadastrados para exibir.', 'empty');
+      const hasFilters = search || statusFilter;
+      showMessage(hasFilters ? 'Nenhum profissional corresponde aos filtros selecionados.' : 'Não há profissionais cadastrados para exibir.', 'empty');
       return;
     }
 
@@ -176,12 +179,14 @@
   function initialize() {
     const monthInput = byId('aa-recebidos-mes');
     const searchInput = byId('aa-recebidos-busca');
+    const statusInput = byId('aa-recebidos-filtro-status');
     const tbody = byId('aa-recebidos-lista');
-    if (!monthInput || !searchInput || !tbody) return;
+    if (!monthInput || !searchInput || !statusInput || !tbody) return;
 
     monthInput.value = currentMonth();
     monthInput.addEventListener('change', loadMonth);
     searchInput.addEventListener('input', render);
+    statusInput.addEventListener('change', render);
     tbody.addEventListener('change', (event) => {
       if (event.target && event.target.matches('.aa-received-receipts-status')) saveStatus(event.target);
     });
