@@ -17,6 +17,8 @@
     .aa-received-receipts-header p{margin:4px 0 0}
     .aa-received-receipts-filters{display:grid;grid-template-columns:minmax(180px,240px) minmax(240px,1fr) minmax(180px,240px);gap:12px;margin:18px 0 14px;padding:14px;border:1px solid #E7E3EF;border-radius:12px;background:#FAF9FD}
     .aa-received-receipts-filters .aa-field{margin:0}
+    .aa-received-receipts-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 15px}
+    .aa-received-receipts-actions span{color:var(--ink-soft);font-size:12px}
     .aa-received-receipts-summary{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
     .aa-received-receipts-count{display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border:1px solid #E6E2EF;border-radius:999px;background:#fff;color:var(--ink-soft);font-size:12px}
     .aa-received-receipts-count b{color:var(--primary-dark)}
@@ -58,11 +60,7 @@
     const summary = byId('aa-recebidos-resumo');
     if (!tbody) return;
 
-    const rows = state.professionals.filter((professional) => {
-      const name = String(professional.nomeCompleto || '').trim();
-      const status = state.statuses.get(String(professional.id)) || 'pendente';
-      return name && normalize(name).includes(search) && (!statusFilter || status === statusFilter);
-    });
+    const rows = visibleProfessionals();
     const counts = { enviado: 0, coletado: 0, nao_enviado: 0, pendente: 0 };
     state.professionals.forEach((professional) => {
       const status = state.statuses.get(String(professional.id)) || 'pendente';
@@ -93,6 +91,16 @@
       const options = STATUS.map((item) => `<option value="${item.value}"${item.value === value ? ' selected' : ''}>${item.label}</option>`).join('');
       return `<tr><td><strong>${escapeHtml(name)}</strong></td><td><select class="aa-received-receipts-status" data-professional-id="${escapeHtml(id)}" aria-label="Status do recibo de ${escapeHtml(name)}"${editable ? '' : ' disabled'}>${options}</select></td></tr>`;
     }).join('');
+  }
+
+  function visibleProfessionals() {
+    const search = normalize(byId('aa-recebidos-busca') && byId('aa-recebidos-busca').value);
+    const statusFilter = byId('aa-recebidos-filtro-status') && byId('aa-recebidos-filtro-status').value;
+    return state.professionals.filter((professional) => {
+      const name = String(professional.nomeCompleto || '').trim();
+      const status = state.statuses.get(String(professional.id)) || 'pendente';
+      return name && normalize(name).includes(search) && (!statusFilter || status === statusFilter);
+    });
   }
 
   async function loadMonth() {
@@ -176,17 +184,142 @@
     }
   }
 
+  function statusFromSpreadsheet(value) {
+    const key = normalize(value).replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+    return ({ enviado: 'enviado', coletado: 'coletado', 'nao enviado': 'nao_enviado', pendente: 'pendente' })[key] || '';
+  }
+
+  function exportWorkbook() {
+    const xlsx = window.XLSX;
+    if (!xlsx) return window.alert('A biblioteca Excel ainda não está disponível. Atualize a página e tente novamente.');
+    const professionals = visibleProfessionals();
+    if (!professionals.length) return window.alert('Não há profissionais na lista atual para exportar.');
+    const rows = [['ID profissional', 'Profissional', 'Competência', 'Status']];
+    professionals.forEach((professional) => {
+      const status = state.statuses.get(String(professional.id)) || 'pendente';
+      const label = STATUS.find((item) => item.value === status)?.label || 'Pendente';
+      rows.push([String(professional.id), String(professional.nomeCompleto || ''), state.month, label]);
+    });
+    const sheet = xlsx.utils.aoa_to_sheet(rows);
+    sheet['!cols'] = [{ wch: 20 }, { wch: 42 }, { wch: 16 }, { wch: 20 }];
+    sheet['!autofilter'] = { ref: `A1:D${rows.length}` };
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, sheet, 'Recibos recebidos');
+    xlsx.writeFile(workbook, `recibos-recebidos-${state.month}.xlsx`);
+  }
+
+  async function importWorkbook(file) {
+    if (!file) return;
+    if (!canManage()) throw new Error('Você não tem permissão para importar status.');
+    if (!state.month || !state.professionals.length) throw new Error('Carregue a lista do mês antes de importar.');
+    const xlsx = window.XLSX;
+    if (!xlsx) throw new Error('A biblioteca Excel ainda não está disponível. Atualize a página e tente novamente.');
+
+    const workbook = xlsx.read(await file.arrayBuffer(), { type: 'array', raw: false });
+    const sheetName = workbook.SheetNames && workbook.SheetNames[0];
+    if (!sheetName) throw new Error('A planilha não contém uma aba para importar.');
+    const sheet = workbook.Sheets[sheetName];
+    const records = xlsx.utils.sheet_to_json(sheet, { defval: '', raw: false })
+      .filter((row) => Object.values(row).some((value) => String(value == null ? '' : value).trim()));
+    if (!records.length) throw new Error('A planilha está vazia.');
+
+    const headers = Object.keys(records[0]);
+    const headerMap = new Map(headers.map((header) => [normalize(header).replace(/\s+/g, ' '), header]));
+    const findHeader = (aliases) => aliases.map((alias) => headerMap.get(alias)).find(Boolean) || '';
+    const idColumn = findHeader(['id profissional', 'id do profissional', 'id']);
+    const nameColumn = findHeader(['profissional', 'nome do profissional', 'nome']);
+    const statusColumn = findHeader(['status']);
+    const monthColumn = findHeader(['competencia', 'mes', 'mes de referencia']);
+    if ((!idColumn && !nameColumn) || !statusColumn) {
+      throw new Error('A planilha deve ter uma coluna Profissional ou ID profissional e uma coluna Status.');
+    }
+
+    const byId = new Map(state.professionals.map((professional) => [String(professional.id), professional]));
+    const rowsToSave = [];
+    const errors = [];
+    const seen = new Set();
+    records.forEach((record, index) => {
+      const line = index + 2;
+      const id = idColumn ? String(record[idColumn] || '').trim() : '';
+      const name = nameColumn ? String(record[nameColumn] || '').trim() : '';
+      const rawStatus = String(record[statusColumn] || '').trim();
+      const status = statusFromSpreadsheet(rawStatus);
+      const rowMonth = monthColumn ? String(record[monthColumn] || '').trim() : '';
+      let professional = id ? byId.get(id) : null;
+      if (id && !professional) errors.push(`Linha ${line}: ID de profissional não encontrado ou inativo (${id}).`);
+      if (!id && name) {
+        const matches = state.professionals.filter((item) => normalize(item.nomeCompleto) === normalize(name));
+        if (matches.length === 1) professional = matches[0];
+        else if (!matches.length) errors.push(`Linha ${line}: profissional não encontrado ou inativo (${name}).`);
+        else errors.push(`Linha ${line}: nome duplicado; use o ID do profissional (${name}).`);
+      }
+      if (!professional && !id && !name) errors.push(`Linha ${line}: informe o ID ou nome do profissional.`);
+      if (!status) errors.push(`Linha ${line}: status inválido (${rawStatus || 'vazio'}).`);
+      if (rowMonth && rowMonth !== state.month) errors.push(`Linha ${line}: competência ${rowMonth} difere do mês selecionado (${state.month}).`);
+      if (professional && status) {
+        const professionalId = String(professional.id);
+        if (seen.has(professionalId)) errors.push(`Linha ${line}: profissional repetido na planilha (${professional.nomeCompleto}).`);
+        else {
+          seen.add(professionalId);
+          rowsToSave.push({ professionalId, status });
+        }
+      }
+    });
+    if (errors.length) {
+      const details = errors.slice(0, 10).join('\n') + (errors.length > 10 ? `\n… e mais ${errors.length - 10} erro(s).` : '');
+      throw new Error(`A planilha não foi importada; corrija os problemas antes de salvar:\n${details}`);
+    }
+    if (!rowsToSave.length) throw new Error('A planilha não contém status válidos para importar.');
+    if (!window.confirm(`Importar ${rowsToSave.length} status para ${state.month}?\n\nOs status desses profissionais nesse mês serão substituídos pelos valores da planilha.`)) return;
+
+    const client = db();
+    const auth = await client.auth.getUser();
+    if (auth.error || !auth.data || !auth.data.user) throw new Error('Sua sessão expirou. Entre novamente no Painel RH.');
+    const updatedAt = new Date().toISOString();
+    const payload = rowsToSave.map((row) => ({
+      profissional_id: row.professionalId,
+      competencia: state.month,
+      status: row.status,
+      updated_by: auth.data.user.id,
+      updated_at: updatedAt
+    }));
+    const result = await client.from(TABLE).upsert(payload, { onConflict: 'profissional_id,competencia' });
+    if (result.error) throw result.error;
+    rowsToSave.forEach((row) => state.statuses.set(row.professionalId, row.status));
+    render();
+    if (typeof window.aaToast === 'function') window.aaToast(`${rowsToSave.length} status importados para ${state.month}.`, 'success');
+  }
+
   function initialize() {
     const monthInput = byId('aa-recebidos-mes');
     const searchInput = byId('aa-recebidos-busca');
     const statusInput = byId('aa-recebidos-filtro-status');
+    const importButton = byId('aa-recebidos-importar');
+    const exportButton = byId('aa-recebidos-exportar');
+    const fileInput = byId('aa-recebidos-arquivo');
     const tbody = byId('aa-recebidos-lista');
-    if (!monthInput || !searchInput || !statusInput || !tbody) return;
+    if (!monthInput || !searchInput || !statusInput || !importButton || !exportButton || !fileInput || !tbody) return;
 
     monthInput.value = currentMonth();
     monthInput.addEventListener('change', loadMonth);
     searchInput.addEventListener('input', render);
     statusInput.addEventListener('change', render);
+    exportButton.addEventListener('click', exportWorkbook);
+    importButton.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      importButton.disabled = true;
+      try {
+        await importWorkbook(file);
+      } catch (error) {
+        window.alert(error && error.message || 'Não foi possível importar a planilha.');
+        console.error('Falha ao importar planilha de Recibos recebidos:', error);
+      } finally {
+        fileInput.value = '';
+        importButton.disabled = false;
+      }
+    });
     tbody.addEventListener('change', (event) => {
       if (event.target && event.target.matches('.aa-received-receipts-status')) saveStatus(event.target);
     });
