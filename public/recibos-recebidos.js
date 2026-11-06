@@ -118,7 +118,7 @@
       if (result.error) throw result.error;
       if (request !== state.request) return;
 
-      state.professionals = professionals.filter((item) => item && item.id && String(item.nomeCompleto || '').trim());
+      state.professionals = professionals.filter((item) => item && item.ativo === true && item.id && String(item.nomeCompleto || '').trim());
       state.statuses = new Map((result.data || []).map((row) => [String(row.profissional_id), row.status]));
       state.loading = false;
       render();
