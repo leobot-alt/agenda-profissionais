@@ -3883,6 +3883,7 @@ document.getElementById('aa-dash-trimestre').innerHTML = TRIMESTRES.map(t=>'<opt
   window.__aaGetProfissionais = function(){ return allProfissionais; };
 
   window.__aaGetProfissionais = function(){ return allProfissionais; };
+  window.__aaLoadProfissionais = loadProfissionais;
   window.__aaSaveProfissionais = async function(){ await saveAllProfissionais(); };
   window.__aaIsGeneralProfile = function(){ return isGeneralProfile(rhCurrentProfile) || String((typeof rhCurrentUser!=='undefined'&&rhCurrentUser)||'').trim().toLowerCase()===String((window.__AA_ADMIN_EMAIL || 'adm@adm.com')||'').trim().toLowerCase(); };
 
@@ -6907,6 +6908,6 @@ if(!window.aaControllerCanImportHours())$("enviarAcompanhamentos").hidden=true;
 })();
 </script>
 <script src="operational-report.js"></script>
-<script src="recibos-recebidos.js?v=202611061140"></script>
+<script src="recibos-recebidos.js?v=202611061152"></script>
 </body>
 </html>

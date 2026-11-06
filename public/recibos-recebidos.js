@@ -104,10 +104,10 @@
     render();
     try {
       if (!canManage()) throw new Error('A página requer a permissão de edição do Banco de Dados de profissionais.');
-      if (typeof window.loadProfissionais !== 'function' || typeof window.__aaGetProfissionais !== 'function') {
+      if (typeof window.__aaLoadProfissionais !== 'function' || typeof window.__aaGetProfissionais !== 'function') {
         throw new Error('Não foi possível acessar a lista de profissionais do sistema.');
       }
-      await window.loadProfissionais();
+      await window.__aaLoadProfissionais();
       const professionals = window.__aaGetProfissionais() || [];
       const client = db();
       if (!client) throw new Error('A conexão com o banco de dados não está disponível.');
