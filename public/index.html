@@ -530,6 +530,7 @@
           <button class="aa-tab" data-rhtab="controller" onclick="aaControllerOpen()">Controller</button>
           <button class="aa-tab" data-rhtab="operational-report" onclick="aaSwitchRHTab('operational-report')">Relatório Operacional</button>
           <button class="aa-tab" data-rhtab="recibos" onclick="aaSwitchRHTab('recibos')">Recibos</button>
+          <button class="aa-tab" data-rhtab="recibos-recebidos" onclick="aaSwitchRHTab('recibos-recebidos')">Recibos recebidos</button>
           <button class="aa-tab" data-rhtab="portal" onclick="aaSwitchRHTab('portal')">Portal</button>
           <button class="aa-tab" data-rhtab="controler" onclick="aaSwitchRHTab('controler')">Administração</button>
         <section id="aa-presence-sidebar" class="aa-presence-sidebar" hidden aria-live="polite"><div class="aa-presence-sidebar-head"><strong>Equipe conectada</strong><span id="aa-presence-sidebar-count">0 online</span></div><button type="button" class="aa-presence-filter-toggle" onclick="window.aaPresenceToggleFilter()">Selecionar usuários</button><div id="aa-presence-filter" class="aa-presence-filter" hidden><div class="aa-presence-filter-actions"><button type="button" onclick="window.aaPresenceSelectAll(true)">Todos</button><button type="button" onclick="window.aaPresenceSelectAll(false)">Limpar</button></div><div id="aa-presence-filter-list" class="aa-presence-filter-list"></div></div><div id="aa-presence-sidebar-list" class="aa-presence-sidebar-list"><div class="aa-presence-sidebar-empty">Carregando...</div></div></section>
@@ -869,6 +870,15 @@
           </div>
         </div>
         <div class="aa-rh-subpanel" id="aa-rhtab-recibos" style="display:none;"><div class="aa-card" style="margin:0;padding:14px;background:#FAF9FD;"><div class="aa-tabs" style="margin-bottom:14px;"><button type="button" class="aa-tab active" data-recibos-subpagina="gerador" onclick="aaRecibosSubpagina('gerador')">Gerador de recibos</button><button type="button" class="aa-tab" data-recibos-subpagina="salvos" onclick="aaRecibosSubpagina('salvos')">Recibos salvos</button></div><div id="aa-recibos-salvos-actions" style="display:none;gap:8px;flex-wrap:wrap;margin:0 0 12px;"><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaRecibosAcaoSalvos('baixar')">Baixar selecionados</button><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaRecibosAcaoSalvos('excluir')">Excluir todos</button></div><iframe id="aa-recibos-frame" title="Gerador de recibos" src="recibos.html?view=generator&v=202610241521" style="display:block;width:100%;min-height:1100px;border:0;border-radius:14px;background:#f7f8fb;"></iframe></div></div>
+        <div class="aa-rh-subpanel" id="aa-rhtab-recibos-recebidos" style="display:none;">
+          <section class="aa-card aa-received-receipts-card">
+            <header class="aa-received-receipts-header"><div><span class="aa-overline">CONTROLE MENSAL</span><h2>Recibos recebidos</h2><p class="aa-hint">Acompanhe o status de cada profissional por competência. Alterações são salvas automaticamente.</p></div></header>
+            <div class="aa-received-receipts-filters"><div class="aa-field"><label for="aa-recebidos-mes">Mês de referência</label><input type="month" id="aa-recebidos-mes"></div><div class="aa-field"><label for="aa-recebidos-busca">Pesquisar profissional</label><input type="search" id="aa-recebidos-busca" placeholder="Digite o nome do profissional" autocomplete="off"></div></div>
+            <div id="aa-recebidos-resumo" class="aa-received-receipts-summary" aria-live="polite"></div>
+            <div id="aa-recebidos-mensagem" class="aa-received-receipts-message" role="status">Selecione um mês para carregar a lista.</div>
+            <div class="aa-table-scroll aa-received-receipts-table-wrap"><table class="aa-compact-table aa-received-receipts-table"><thead><tr><th scope="col">Profissional</th><th scope="col">Status</th></tr></thead><tbody id="aa-recebidos-lista"></tbody></table></div>
+          </section>
+        </div>
         <div class="aa-rh-subpanel" id="aa-rhtab-controller" style="display:none;">
           <section class="aa-controller-root">
             <header class="aa-controller-root-header"><div><span class="aa-controller-overline">CONTROLE OPERACIONAL</span><h1>Controller</h1><p>Organize a importação e a conferência dos atendimentos da equipe.</p></div></header>
@@ -1055,7 +1065,7 @@ const LEGACY_PERMISSION_MAP = {
 };
 const RH_TAB_PERMISSION = {
   dashboard:'dashboard_ver', agendas:'agendas_ativas_ver', agendas2:'agendas_desativadas_ver',
-  banco:'banco_ver', historico:'historico_ver', config:'config_ver', ajustes:'ajustes_solicitar', controller:'controller_ver', permissoes:'usuarios_ver', operacoes:'perfis_gerenciar', perfis:'usuarios_ver', portal:'portal_escala_ver', recibos:'dashboard_ver'
+  banco:'banco_ver', historico:'historico_ver', config:'config_ver', ajustes:'ajustes_solicitar', controller:'controller_ver', permissoes:'usuarios_ver', operacoes:'perfis_gerenciar', perfis:'usuarios_ver', portal:'portal_escala_ver', recibos:'dashboard_ver', 'recibos-recebidos':'banco_profissionais_editar'
 };
   const REMOVED_PORTAL_PERMISSIONS = new Set(['portal_escala_solicitar']);
   function normalizePermissionKeys(keys){
@@ -4883,7 +4893,7 @@ window.aaRenderProfissionaisList=function(){
     if(parts[0]!=='painel')return;
     routing=true;originalTab('painel');routing=false;
     if(!rhAuthenticated)return;
-    const target={profissionais:'banco',usuarios:'permissoes',ajustes:'ajustes',operacoes:'operacoes',perfis:'perfis',config:'config',historico:'historico',portal:'portal',recibos:'recibos',controller:'controller','relatorio-operacional':'operational-report'}[parts[1]];
+    const target={profissionais:'banco',usuarios:'permissoes',ajustes:'ajustes',operacoes:'operacoes',perfis:'perfis',config:'config',historico:'historico',portal:'portal',recibos:'recibos','recibos-recebidos':'recibos-recebidos',controller:'controller','relatorio-operacional':'operational-report'}[parts[1]];
     if(target&&typeof window.aaSwitchRHTab==='function'){routing=true;window.aaSwitchRHTab(target);routing=false;}
   }
   window.addEventListener('hashchange',apply);
@@ -6897,5 +6907,6 @@ if(!window.aaControllerCanImportHours())$("enviarAcompanhamentos").hidden=true;
 })();
 </script>
 <script src="operational-report.js"></script>
+<script src="recibos-recebidos.js?v=202611061140"></script>
 </body>
 </html>
