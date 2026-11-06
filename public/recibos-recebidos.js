@@ -8,7 +8,7 @@
     { value: 'nao_enviado', label: 'Não enviado' },
     { value: 'pendente', label: 'Pendente' }
   ];
-  const state = { month: '', professionals: [], statuses: new Map(), updatedBy: new Map(), loading: false, request: 0 };
+  const state = { month: '', professionals: [], statuses: new Map(), updatedBy: new Map(), updatedAt: new Map(), loading: false, request: 0 };
   const byId = (id) => document.getElementById(id);
   const style = document.createElement('style');
   style.textContent = `
@@ -31,6 +31,9 @@
     .aa-received-receipts-table td:first-child{width:48%}
     .aa-received-receipts-table td:nth-child(2){width:24%}
     .aa-received-receipts-table td:nth-child(3){width:28%;color:var(--ink-soft);font-size:13px}
+    .aa-received-receipts-audit{display:flex;flex-direction:column;gap:3px}
+    .aa-received-receipts-audit strong{color:var(--ink);font-size:13px}
+    .aa-received-receipts-audit small{font-size:11px;line-height:1.4}
     .aa-received-receipts-status{min-width:170px;padding:8px 10px;border:1px solid #D9D2EE;border-radius:9px;background:#fff;color:var(--ink);font:inherit;font-weight:700}
     .aa-received-receipts-status:disabled{opacity:.75}
     @media(max-width:640px){.aa-received-receipts-card{padding:16px}.aa-received-receipts-filters{grid-template-columns:1fr}.aa-received-receipts-table{min-width:650px}}
@@ -44,6 +47,15 @@
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   };
   const normalize = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
+  const formatDateTime = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      hourCycle: 'h23', timeZone: 'America/Sao_Paulo'
+    }).format(date).replace(',', ' às');
+  };
   const db = () => window.__aaSupabaseClient;
   const canManage = () => typeof window.__aaCanPermission === 'function' && window.__aaCanPermission('banco_profissionais_editar');
 
@@ -90,9 +102,13 @@
       const id = String(professional.id);
       const name = String(professional.nomeCompleto || '').trim();
       const value = state.statuses.get(id) || 'pendente';
-      const updater = state.updatedBy.get(id) || '—';
+      const updater = state.updatedBy.get(id) || '';
+      const updatedAt = formatDateTime(state.updatedAt.get(id));
+      const audit = updater || updatedAt
+        ? `<div class="aa-received-receipts-audit"><strong>${escapeHtml(updater || 'Usuário não identificado')}</strong>${updatedAt ? `<small>${escapeHtml(updatedAt)}</small>` : ''}</div>`
+        : '—';
       const options = STATUS.map((item) => `<option value="${item.value}"${item.value === value ? ' selected' : ''}>${item.label}</option>`).join('');
-      return `<tr><td><strong>${escapeHtml(name)}</strong></td><td><select class="aa-received-receipts-status" data-professional-id="${escapeHtml(id)}" aria-label="Status do recibo de ${escapeHtml(name)}"${editable ? '' : ' disabled'}>${options}</select></td><td>${escapeHtml(updater)}</td></tr>`;
+      return `<tr><td><strong>${escapeHtml(name)}</strong></td><td><select class="aa-received-receipts-status" data-professional-id="${escapeHtml(id)}" aria-label="Status do recibo de ${escapeHtml(name)}"${editable ? '' : ' disabled'}>${options}</select></td><td>${audit}</td></tr>`;
     }).join('');
   }
 
@@ -116,6 +132,7 @@
     state.loading = true;
     state.statuses = new Map();
     state.updatedBy = new Map();
+    state.updatedAt = new Map();
     render();
     try {
       if (!canManage()) throw new Error('A página requer a permissão de edição do Banco de Dados de profissionais.');
@@ -128,7 +145,7 @@
       if (!client) throw new Error('A conexão com o banco de dados não está disponível.');
 
       const result = await client.from(TABLE)
-        .select('profissional_id,competencia,status,updated_by_name')
+        .select('profissional_id,competencia,status,updated_by_name,updated_at')
         .eq('competencia', month);
       if (result.error) throw result.error;
       if (request !== state.request) return;
@@ -136,6 +153,7 @@
       state.professionals = professionals.filter((item) => item && item.ativo === true && item.id && String(item.nomeCompleto || '').trim());
       state.statuses = new Map((result.data || []).map((row) => [String(row.profissional_id), row.status]));
       state.updatedBy = new Map((result.data || []).filter((row) => row.updated_by_name).map((row) => [String(row.profissional_id), row.updated_by_name]));
+      state.updatedAt = new Map((result.data || []).filter((row) => row.updated_at).map((row) => [String(row.profissional_id), row.updated_at]));
       state.loading = false;
       render();
     } catch (error) {
@@ -144,6 +162,7 @@
       state.professionals = [];
       state.statuses = new Map();
       state.updatedBy = new Map();
+      state.updatedAt = new Map();
       render();
       const detail = String(error && error.message || 'Falha ao carregar os dados.');
       const migrationHint = /recibos_recebidos|does not exist|schema cache/i.test(detail)
@@ -177,12 +196,13 @@
         status: next,
         updated_by: auth.data.user.id,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'profissional_id,competencia' }).select('profissional_id,status,updated_by_name');
+      }, { onConflict: 'profissional_id,competencia' }).select('profissional_id,status,updated_by_name,updated_at');
       if (result.error) throw result.error;
       const saved = result.data && result.data[0];
       state.statuses.set(professionalId, saved && saved.status || next);
       const updater = saved && saved.updated_by_name || (byId('aa-rh-session-name') && byId('aa-rh-session-name').textContent.trim()) || auth.data.user.email || '';
       if (updater) state.updatedBy.set(professionalId, updater);
+      if (saved && saved.updated_at) state.updatedAt.set(professionalId, saved.updated_at);
       if (typeof window.aaToast === 'function') window.aaToast(`Status de ${professional.nomeCompleto} salvo.`, 'success');
       render();
     } catch (error) {
@@ -203,15 +223,16 @@
     if (!xlsx) return window.alert('A biblioteca Excel ainda não está disponível. Atualize a página e tente novamente.');
     const professionals = visibleProfessionals();
     if (!professionals.length) return window.alert('Não há profissionais na lista atual para exportar.');
-    const rows = [['ID profissional', 'Profissional', 'Competência', 'Status', 'Última atualização por']];
+    const rows = [['ID profissional', 'Profissional', 'Competência', 'Status', 'Última atualização por', 'Data e horário']];
     professionals.forEach((professional) => {
       const status = state.statuses.get(String(professional.id)) || 'pendente';
       const label = STATUS.find((item) => item.value === status)?.label || 'Pendente';
-      rows.push([String(professional.id), String(professional.nomeCompleto || ''), state.month, label, state.updatedBy.get(String(professional.id)) || '']);
+      const id = String(professional.id);
+      rows.push([id, String(professional.nomeCompleto || ''), state.month, label, state.updatedBy.get(id) || '', formatDateTime(state.updatedAt.get(id))]);
     });
     const sheet = xlsx.utils.aoa_to_sheet(rows);
-    sheet['!cols'] = [{ wch: 20 }, { wch: 42 }, { wch: 16 }, { wch: 20 }, { wch: 30 }];
-    sheet['!autofilter'] = { ref: `A1:E${rows.length}` };
+    sheet['!cols'] = [{ wch: 20 }, { wch: 42 }, { wch: 16 }, { wch: 20 }, { wch: 30 }, { wch: 24 }];
+    sheet['!autofilter'] = { ref: `A1:F${rows.length}` };
     const workbook = xlsx.utils.book_new();
     xlsx.utils.book_append_sheet(workbook, sheet, 'Recibos recebidos');
     xlsx.writeFile(workbook, `recibos-recebidos-${state.month}.xlsx`);
@@ -292,7 +313,7 @@
       updated_by: auth.data.user.id,
       updated_at: updatedAt
     }));
-    const result = await client.from(TABLE).upsert(payload, { onConflict: 'profissional_id,competencia' }).select('profissional_id,status,updated_by_name');
+    const result = await client.from(TABLE).upsert(payload, { onConflict: 'profissional_id,competencia' }).select('profissional_id,status,updated_by_name,updated_at');
     if (result.error) throw result.error;
     const savedRows = new Map((result.data || []).map((row) => [String(row.profissional_id), row]));
     const fallbackUpdater = (byId('aa-rh-session-name') && byId('aa-rh-session-name').textContent.trim()) || auth.data.user.email || '';
@@ -301,6 +322,7 @@
       state.statuses.set(row.professionalId, saved && saved.status || row.status);
       const updater = saved && saved.updated_by_name || fallbackUpdater;
       if (updater) state.updatedBy.set(row.professionalId, updater);
+      if (saved && saved.updated_at) state.updatedAt.set(row.professionalId, saved.updated_at);
     });
     render();
     if (typeof window.aaToast === 'function') window.aaToast(`${rowsToSave.length} status importados para ${state.month}.`, 'success');
