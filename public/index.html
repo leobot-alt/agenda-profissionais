@@ -1217,6 +1217,10 @@ window.aaSetHistoricoPage=function(page){ historicoPagina=Math.max(1,Number(page
 
 // ---------- Usuários do painel RH ----------
 async function loadOperacoes(){try{const result=await supabase.from('operacoes').select('key,nome,dados').order('nome',{ascending:true});if(result.error)throw result.error;const loaded={};(result.data||[]).forEach(row=>{const raw=row.dados&&typeof row.dados==='object'?row.dados:{};const blocks=Array.isArray(raw.blocos)?raw.blocos.map((b,i)=>typeof b==='string'?{key:normalizeBlocoKey(b),nome:b}:{key:normalizeBlocoKey(b.key||('BLOCO-'+i)),nome:String(b.nome||b.key||('Bloco '+(i+1))).trim()}).filter(b=>b.key&&b.nome):[];loaded[row.key]={key:row.key,nome:String(row.nome||raw.nome||row.key).trim()||row.key,blocos:blocks};});Object.keys(allOperacoes).forEach(key=>delete allOperacoes[key]);Object.assign(allOperacoes,loaded);OPERACOES=Object.keys(allOperacoes);}catch(e){try{const res=await cloudGet('db:operacoes',true),parsed=res&&res.value?JSON.parse(res.value):{};if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed)){Object.keys(allOperacoes).forEach(key=>delete allOperacoes[key]);Object.assign(allOperacoes,parsed);}}catch(ignore){}OPERACOES=Object.keys(allOperacoes);}}
+window.aaGetOperationsForHours=function(){return Object.entries(allOperacoes).map(([key,op])=>({key:String(key),nome:String(op&&op.nome||key)})).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));};
+window.aaNormalizeOperationForHours=function(value){return normalizeOperacao(value);};
+window.aaOperationLabelForHours=function(value){return operacaoLabel(value);};
+window.aaLoadOperationsForHours=async function(){await loadOperacoes();return window.aaGetOperationsForHours();};
 async function saveOperacoes(){const rows=Object.values(allOperacoes).map(op=>({key:op.key,nome:op.nome,dados:op,updated_at:new Date().toISOString()}));const result=await supabase.from('operacoes').upsert(rows,{onConflict:'key'});if(result.error)throw result.error;const blocks=rows.flatMap(row=>(row.dados.blocos||[]).map(b=>({key:b.key,operacao_key:row.key,nome:b.nome,dados:b})));if(blocks.length){const br=await supabase.from('operacao_blocos').upsert(blocks,{onConflict:'key'});if(br.error)throw br.error;}await storageSetRetry('db:operacoes',JSON.stringify(allOperacoes),true);OPERACOES=Object.keys(allOperacoes);}
 async function loadRHUsers(){
   dataLoadState.rhusers=false;
@@ -5623,7 +5627,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
       }
       if(!records.length){renderControllerPages();alert('Nenhum atendimento válido foi encontrado.'+(createdPages.length?'\nÁreas de acompanhamento criadas: '+createdPages.join(', '):'')+(errors.length?'\n'+errors.slice(0,6).join('\n'):''));return false;}
       const result=await controllerDb.from('controller_page_records').insert(records);if(result.error)throw result.error;
-      const operationName=operationKey?operacaoLabel(operationKey):'';
+      const operationName=operationKey?window.aaOperationLabelForHours(operationKey):'';
       await controllerAudit('Importação de atendimentos',createdPages.length?createdPages.join(', '):[...new Set(records.map(record=>record.operador))].join(', '),'Importados '+records.length+' horário(s) para '+controllerRenderDayDate(importDay)+(operationName?'; operação: '+operationName:'')+(createdPages.length?'; subpáginas criadas: '+createdPages.join(', '):'')+'; lote: '+batchId,'',records.length+' importado(s)');
       let msg='Importados '+records.length+' atendimento(s) para o dia '+controllerRenderDayDate(importDay)+(operationName?' na operação '+operationName:'')+'.';
       if(createdPages.length)msg+='\nÁrea(s) de acompanhamento criada(s) automaticamente: '+createdPages.join(', ')+'.';
@@ -5635,7 +5639,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     if(!window.aaControllerCanImportHours()){alert('Você não tem permissão para importar atendimentos para Acompanhamentos.');return;}
     if(!importDay){alert('Selecione a data do arquivo antes de enviar para Acompanhamentos.');return;}
     if(!operationKey){alert('Selecione a operação antes de enviar para Acompanhamentos.');return;}
-    const operationName=operacaoLabel(operationKey);
+    const operationName=window.aaOperationLabelForHours(operationKey);
     if(!window.confirm('Os atendimentos da operação '+operationName+' serão adicionados a Acompanhamentos no dia '+controllerRenderDayDate(importDay)+'. Os registros existentes não serão substituídos; se você enviar novamente, poderão ser criados duplicados. Deseja continuar?'))return;
     return window.aaControllerImportWorkbook(book,importDay,operationKey);
   };
@@ -5659,7 +5663,7 @@ window.aaPortalSalvarEscala=async function(){if(!E.scale)return alert('Selecione
     const archivedActions=controllerCan('controller_subpaginas_gerenciar')?`<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerRestorePage('${id}')">Restaurar</button><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeletePage('${id}')">Excluir</button>`:'';
     const activeActions=`<button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaControllerOpenPage('${id}')">Abrir acompanhamento</button>${controllerCan('controller_subpaginas_gerenciar')?`<button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaControllerArchivePage('${id}')">Arquivar</button><button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaControllerDeletePage('${id}')">Excluir</button>`:''}`;
     const cardActions=archived?archivedActions:nameAction+shiftAction+activeActions;
-    return `<article class="aa-controller-collaborator-card${archived?' aa-controller-collaborator-card--archived':''}"><div class="aa-controller-collaborator-main"><span class="aa-controller-avatar" aria-hidden="true">${initial}</span><div class="aa-controller-collaborator-copy"><h3>${name}</h3><p>${controllerPageText(page.descricao||'Acompanhamentos atribuídos a este colaborador.')}</p><p><strong>Turno:</strong> ${controllerPageText(page.turno||'Não informado')}</p>${page.operacaoKey?`<p><strong>Operação:</strong> ${controllerPageText(operacaoLabel(page.operacaoKey))}</p>`:''}${archived?'<small class="aa-controller-archived-note">Arquivado; histórico preservado.</small>':''}</div></div><div class="aa-controller-assignee-row">${assigneeAction}</div><div class="aa-controller-page-actions">${cardActions}</div></article>`;
+    return `<article class="aa-controller-collaborator-card${archived?' aa-controller-collaborator-card--archived':''}"><div class="aa-controller-collaborator-main"><span class="aa-controller-avatar" aria-hidden="true">${initial}</span><div class="aa-controller-collaborator-copy"><h3>${name}</h3><p>${controllerPageText(page.descricao||'Acompanhamentos atribuídos a este colaborador.')}</p><p><strong>Turno:</strong> ${controllerPageText(page.turno||'Não informado')}</p>${page.operacaoKey?`<p><strong>Operação:</strong> ${controllerPageText(window.aaOperationLabelForHours(page.operacaoKey))}</p>`:''}${archived?'<small class="aa-controller-archived-note">Arquivado; histórico preservado.</small>':''}</div></div><div class="aa-controller-assignee-row">${assigneeAction}</div><div class="aa-controller-page-actions">${cardActions}</div></article>`;
   }
   function renderControllerPages(){
     const out=document.getElementById('aa-controller-view-subpaginas');if(!out)return;
@@ -6266,8 +6270,9 @@ $("arq").addEventListener("change",function(e){
 
 var cols=[0,0], confer=[], equipe=[];
 try{equipe=JSON.parse(localStorage.getItem("equipe")||"[]")||[]}catch(e){equipe=[]}
-function opKey(v){return typeof normalizeOperacao==='function'?normalizeOperacao(v):String(v||'').trim()}
-function opOptions(selected,includeNone){var keys=Object.keys(allOperacoes||{}).sort(function(a,b){return operacaoLabel(a).localeCompare(operacaoLabel(b),'pt-BR')});return (includeNone?'<option value="">Sem operação</option>':'<option value="">Selecione uma operação</option>')+keys.map(function(k){return '<option value="'+aaHtmlSafe(k)+'" '+(k===selected?'selected':'')+'>'+aaHtmlSafe(operacaoLabel(k))+'</option>'}).join('')}
+function opKey(v){return typeof window.aaNormalizeOperationForHours==='function'?window.aaNormalizeOperationForHours(v):String(v||'').trim()}
+function hoursOperations(){return typeof window.aaGetOperationsForHours==='function'?window.aaGetOperationsForHours():[]}
+function opOptions(selected,includeNone){var operations=hoursOperations();return (includeNone?'<option value="">Sem operação</option>':'<option value="">Selecione uma operação</option>')+operations.map(function(op){return '<option value="'+aaHtmlSafe(op.key)+'" '+(op.key===selected?'selected':'')+'>'+aaHtmlSafe(op.nome)+'</option>'}).join('')}
 var savedOperation='';try{savedOperation=opKey(localStorage.getItem('operacaoHoras')||'')}catch(e){}
 var dbDoc=null, ver=0, escrevendo=false, sujo=false;
 function aviso(t){var e=$("avEq"); if(e)e.textContent=t||""}
@@ -6283,7 +6288,7 @@ function salvarDb(){
 function gravar(){ver=Date.now();try{localStorage.setItem("equipe",JSON.stringify(equipe))}catch(e){} salvarDb()}
 function operacaoSelecionada(){return opKey($("operacaoHoras")&&$("operacaoHoras").value||'')}
 function ativos(t){var op=operacaoSelecionada();return equipe.filter(function(c){return c.turno===t&&c.ativo&&opKey(c.operacao)===op})}
-function atualizarSeletoresOperacao(selectedKey){var selector=$("operacaoHoras"),addSelector=$("novoOp");if(!selector||!addSelector)return;var previous=selectedKey||savedOperation||selector.value,options=opOptions(previous,false);selector.innerHTML=options;addSelector.innerHTML=opOptions(previous,true);if(previous&&Object.prototype.hasOwnProperty.call(allOperacoes||{},previous)){selector.value=previous;addSelector.value=previous;savedOperation=previous;try{localStorage.setItem('operacaoHoras',savedOperation)}catch(e){}}else if(selector.options.length>1){selector.selectedIndex=1;addSelector.value=selector.value;if(!savedOperation){savedOperation=selector.value;try{localStorage.setItem('operacaoHoras',savedOperation)}catch(e){}}}else{selector.value='';addSelector.value=''} }
+function atualizarSeletoresOperacao(selectedKey){var selector=$("operacaoHoras"),addSelector=$("novoOp");if(!selector||!addSelector)return;var previous=selectedKey||savedOperation||selector.value,operations=hoursOperations(),options=opOptions(previous,false);selector.innerHTML=options;addSelector.innerHTML=opOptions(previous,true);if(previous&&operations.some(function(op){return op.key===previous})){selector.value=previous;addSelector.value=previous;savedOperation=previous;try{localStorage.setItem('operacaoHoras',savedOperation)}catch(e){}}else if(selector.options.length>1){selector.selectedIndex=1;addSelector.value=selector.value;if(!savedOperation){savedOperation=selector.value;try{localStorage.setItem('operacaoHoras',savedOperation)}catch(e){}}}else{selector.value='';addSelector.value=''} }
 function desenhar(){
   var box=$("equipe"); box.innerHTML="";
   if(!equipe.length){var h=document.createElement("div");h.className="hint";h.textContent="Nenhum colaborador cadastrado ainda.";box.appendChild(h);return}
@@ -6385,7 +6390,7 @@ async function carregarEquipeDaEscala(){
 }
 $("carregarEscala").addEventListener("click",carregarEquipeDaEscala);
 atualizarSeletoresOperacao();desenhar();
-Promise.resolve(typeof loadOperacoes==='function'?loadOperacoes():null).then(function(){if(!$("operacaoHoras"))return;if(savedOperation&&!Object.prototype.hasOwnProperty.call(allOperacoes||{},savedOperation))savedOperation='';atualizarSeletoresOperacao(savedOperation||operacaoSelecionada());desenhar();if(!equipe.length)carregarEquipeDaEscala()}).catch(function(){if(!equipe.length)carregarEquipeDaEscala()});
+Promise.resolve(typeof window.aaLoadOperationsForHours==='function'?window.aaLoadOperationsForHours():null).then(function(){if(!$("operacaoHoras"))return;if(savedOperation&&!hoursOperations().some(function(op){return op.key===savedOperation}))savedOperation='';atualizarSeletoresOperacao(savedOperation||operacaoSelecionada());desenhar();if(!equipe.length)carregarEquipeDaEscala()}).catch(function(){if(!equipe.length)carregarEquipeDaEscala()});
 try{if(window.claude&&claude.use)claude.use("db").then(function(db){
   if(!db)return; dbDoc=db.doc("config/equipe");
   dbDoc.onSnapshot(function(snap){
