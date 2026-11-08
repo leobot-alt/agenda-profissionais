@@ -6273,6 +6273,8 @@ try{equipe=JSON.parse(localStorage.getItem("equipe")||"[]")||[]}catch(e){equipe=
 function opKey(v){return typeof window.aaNormalizeOperationForHours==='function'?window.aaNormalizeOperationForHours(v):String(v||'').trim()}
 function hoursOperations(){return typeof window.aaGetOperationsForHours==='function'?window.aaGetOperationsForHours():[]}
 function opOptions(selected,includeNone){var operations=hoursOperations();return (includeNone?'<option value="">Sem operação</option>':'<option value="">Selecione uma operação</option>')+operations.map(function(op){return '<option value="'+controllerPageText(op.key)+'" '+(op.key===selected?'selected':'')+'>'+controllerPageText(op.nome)+'</option>'}).join('')}
+function pessoaOperacoes(c){var raw=Array.isArray(c.operacoes)&&c.operacoes.length?c.operacoes:(c.operacao?[c.operacao]:[]),seen={};return raw.map(opKey).filter(function(key){if(!key||seen[key])return false;seen[key]=true;return true})}
+function definirOperacoesPessoa(c,values){var unique=[];(values||[]).map(opKey).forEach(function(key){if(key&&unique.indexOf(key)<0)unique.push(key)});c.operacoes=unique;c.operacao=unique[0]||''}
 var savedOperation='';try{savedOperation=opKey(localStorage.getItem('operacaoHoras')||'')}catch(e){}
 var dbDoc=null, ver=0, escrevendo=false, sujo=false;
 function aviso(t){var e=$("avEq"); if(e)e.textContent=t||""}
@@ -6287,7 +6289,7 @@ function salvarDb(){
 }
 function gravar(){ver=Date.now();try{localStorage.setItem("equipe",JSON.stringify(equipe))}catch(e){} salvarDb()}
 function operacaoSelecionada(){return opKey($("operacaoHoras")&&$("operacaoHoras").value||'')}
-function ativos(t){var op=operacaoSelecionada();return equipe.filter(function(c){return c.turno===t&&c.ativo&&opKey(c.operacao)===op})}
+function ativos(t){var op=operacaoSelecionada();return equipe.filter(function(c){return c.turno===t&&c.ativo&&pessoaOperacoes(c).indexOf(op)>=0})}
 function atualizarSeletoresOperacao(selectedKey){var selector=$("operacaoHoras"),addSelector=$("novoOp");if(!selector||!addSelector)return;var previous=selectedKey||savedOperation||selector.value,operations=hoursOperations(),options=opOptions(previous,false);selector.innerHTML=options;addSelector.innerHTML=opOptions(previous,true);if(previous&&operations.some(function(op){return op.key===previous})){selector.value=previous;addSelector.value=previous;savedOperation=previous;try{localStorage.setItem('operacaoHoras',savedOperation)}catch(e){}}else if(selector.options.length>1){selector.selectedIndex=1;addSelector.value=selector.value;if(!savedOperation){savedOperation=selector.value;try{localStorage.setItem('operacaoHoras',savedOperation)}catch(e){}}}else{selector.value='';addSelector.value=''} }
 function desenhar(){
   var box=$("equipe"); box.innerHTML="";
@@ -6295,53 +6297,61 @@ function desenhar(){
   ["07","11","14"].forEach(function(t){
     var lista=equipe.filter(function(c){return c.turno===t});
     if(!lista.length)return;
-    var tt=document.createElement("div");tt.className="hint";tt.style.marginTop="12px";
-    tt.textContent="Turno das "+t+"h ("+lista.filter(function(c){return c.ativo}).length+" ativos)";
+    var tt=document.createElement("div");tt.className="aa-hours-shift-heading";tt.style.cssText="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:18px 0 8px;padding:10px 13px;border-left:4px solid #7354C8;border-radius:8px;background:#F5F2FB;color:#433568;font-weight:750";
+    var count=lista.filter(function(c){return c.ativo}).length;tt.innerHTML="<span>Turno das "+t+"h</span><span style=\"font-size:12px;color:#776E89;font-weight:600\">"+count+" ativo(s) · "+lista.length+" cadastrado(s)</span>";
     box.appendChild(tt);
     lista.forEach(function(c){
-      var d=document.createElement("div");d.className="res";
-      var l=document.createElement("label");l.style.cssText="display:flex;align-items:center;gap:8px;margin:0;flex:1";
+      var d=document.createElement("article");d.className="aa-hours-person-card";d.style.cssText="display:flex;flex-direction:column;gap:12px;margin:0 0 9px;padding:14px 15px;border:1px solid #E4E0EC;border-radius:11px;background:#fff;box-shadow:0 2px 7px rgba(35,28,57,.04)";
+      var head=document.createElement("div");head.style.cssText="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap";
+      var l=document.createElement("label");l.style.cssText="display:flex;align-items:center;gap:9px;margin:0;flex:1;min-width:180px;font-weight:700;color:#30384A";
       var cb=document.createElement("input");cb.type="checkbox";cb.checked=c.ativo;
       cb.addEventListener("change",function(){c.ativo=cb.checked;gravar();desenhar()});
       var sp=document.createElement("span");sp.textContent=c.nome;
       l.appendChild(cb);l.appendChild(sp);
-      var opSelect=document.createElement('select');opSelect.setAttribute('aria-label','Operação de '+c.nome);opSelect.innerHTML=opOptions(opKey(c.operacao),true);opSelect.value=opKey(c.operacao);opSelect.style.cssText='width:auto;min-width:145px';opSelect.addEventListener('change',function(){c.operacao=opKey(opSelect.value);gravar();desenhar()});
-      d.appendChild(l);d.appendChild(opSelect);
       var x=document.createElement("button");x.className="sec";x.textContent="Remover";
       x.addEventListener("click",function(){equipe.splice(equipe.indexOf(c),1);gravar();desenhar()});
-      var lap=document.createElement("label");lap.style.cssText="display:flex;align-items:center;gap:4px;font-size:.85rem;margin:0 10px 0 0;white-space:nowrap";
+      x.style.cssText="padding:6px 10px;border-radius:7px";head.appendChild(l);head.appendChild(x);d.appendChild(head);
+      var opsBox=document.createElement("div");opsBox.style.cssText="padding:10px 11px;border-radius:8px;background:#F8F7FB";
+      var opsTitle=document.createElement("div");opsTitle.textContent="Operações desta pessoa — marque todas as aplicáveis";opsTitle.style.cssText="margin-bottom:8px;color:#666078;font-size:12px;font-weight:700";opsBox.appendChild(opsTitle);
+      var opsList=document.createElement("div");opsList.style.cssText="display:flex;flex-wrap:wrap;gap:7px";
+      var assigned=pessoaOperacoes(c),available=hoursOperations();
+      if(!available.length){var noOps=document.createElement("span");noOps.textContent="Nenhuma operação disponível. Confira Administração → Operações.";noOps.style.cssText="font-size:12px;color:#8A8395";opsList.appendChild(noOps)}
+      available.forEach(function(operation){var chip=document.createElement("label");chip.style.cssText="display:inline-flex;align-items:center;gap:6px;margin:0;padding:6px 9px;border:1px solid "+(assigned.indexOf(operation.key)>=0?"#B9A8E6":"#DDD9E5")+";border-radius:999px;background:"+(assigned.indexOf(operation.key)>=0?"#EEE9FA":"#fff")+";color:#433568;font-size:12px;font-weight:600;cursor:pointer";var check=document.createElement("input");check.type="checkbox";check.checked=assigned.indexOf(operation.key)>=0;check.style.margin=0;check.addEventListener("change",function(){var next=pessoaOperacoes(c);if(check.checked)next.push(operation.key);else next=next.filter(function(key){return key!==operation.key});definirOperacoesPessoa(c,next);gravar();desenhar()});chip.appendChild(check);chip.appendChild(document.createTextNode(operation.nome));opsList.appendChild(chip)});
+      opsBox.appendChild(opsList);d.appendChild(opsBox);
+      var settings=document.createElement("div");settings.style.cssText="display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap;padding-top:2px";
+      var lap=document.createElement("label");lap.style.cssText="display:flex;align-items:center;gap:6px;font-size:12px;margin:0;white-space:nowrap;color:#4E5668";
       var cap=document.createElement("input");cap.type="checkbox";cap.checked=!!c.apoio;
       cap.addEventListener("change",function(){c.apoio=cap.checked;gravar();desenhar()});
       lap.appendChild(cap);lap.appendChild(document.createTextNode("apoio"));
-      d.appendChild(lap);
+      settings.appendChild(lap);
       {
-        var pz=document.createElement("div");pz.style.cssText="display:flex;align-items:center;gap:4px;font-size:.85rem;color:var(--mut);margin-right:8px";
-        pz.appendChild(document.createTextNode("pausa"));
+        var pz=document.createElement("div");pz.style.cssText="display:flex;align-items:center;gap:6px;font-size:12px;color:#687083";
+        pz.appendChild(document.createTextNode("Pausa"));
         [["pi","11:00"],["pf","12:00"]].forEach(function(k,ix){
           if(ix)pz.appendChild(document.createTextNode("às"));
-          var inp=document.createElement("input");inp.type="text";inp.placeholder=k[1];inp.value=c[k[0]]||"";inp.style.cssText="width:68px;padding:5px 6px";
+          var inp=document.createElement("input");inp.type="text";inp.placeholder=k[1];inp.value=c[k[0]]||"";inp.setAttribute("aria-label",(ix?"Fim":"Início")+" da pausa de "+c.nome);inp.style.cssText="width:75px;padding:6px 7px;border:1px solid #DCD8E5;border-radius:6px";
           inp.addEventListener("change",function(){c[k[0]]=inp.value.trim();gravar()});
           pz.appendChild(inp);
         });
-        d.appendChild(pz);
+        settings.appendChild(pz);
       }
-      var lpo=document.createElement("label");lpo.style.cssText="display:flex;align-items:center;gap:4px;font-size:.85rem;margin:0 10px 0 0;white-space:nowrap";
+      var lpo=document.createElement("label");lpo.style.cssText="display:flex;align-items:center;gap:6px;font-size:12px;margin:0;white-space:nowrap;color:#4E5668";
       var cpo=document.createElement("input");cpo.type="checkbox";cpo.checked=!!c.po;
       cpo.addEventListener("change",function(){c.po=cpo.checked;gravar();desenhar()});
       lpo.appendChild(cpo);lpo.appendChild(document.createTextNode("apoio na Poli"));
-      d.appendChild(lpo);
+      settings.appendChild(lpo);
       if(c.po){
-        var pp=document.createElement("div");pp.style.cssText="display:flex;align-items:center;gap:4px;font-size:.85rem;color:var(--mut);margin-right:8px";
+        var pp=document.createElement("div");pp.style.cssText="display:flex;align-items:center;gap:6px;font-size:12px;color:#687083";
         pp.appendChild(document.createTextNode("das"));
         [["poi","19:00"],["pof","22:00"]].forEach(function(k,ix){
           if(ix)pp.appendChild(document.createTextNode("às"));
-          var inp=document.createElement("input");inp.type="text";inp.placeholder=k[1];inp.value=c[k[0]]||"";inp.style.cssText="width:68px;padding:5px 6px";
+          var inp=document.createElement("input");inp.type="text";inp.placeholder=k[1];inp.value=c[k[0]]||"";inp.setAttribute("aria-label",(ix?"Fim":"Início")+" do apoio na Poli de "+c.nome);inp.style.cssText="width:75px;padding:6px 7px;border:1px solid #DCD8E5;border-radius:6px";
           inp.addEventListener("change",function(){c[k[0]]=inp.value.trim();gravar()});
           pp.appendChild(inp);
         });
-        d.appendChild(pp);
+        settings.appendChild(pp);
       }
-      d.appendChild(x);box.appendChild(d);
+      d.appendChild(settings);box.appendChild(d);
     });
   });
 }
@@ -6349,8 +6359,10 @@ function adicionar(){
   var n=$("novo").value.trim(), t=$("novoT").value, op=opKey($("novoOp").value);
   if(!n)return;
   if(!op){aviso('Selecione a operação do colaborador antes de adicioná-lo.');return}
-  var dup=equipe.some(function(c){return opKey(c.operacao)===op&&c.turno===t&&c.nome.toLowerCase()===n.toLowerCase()});
-  if(!dup){equipe.push({nome:n,operacao:op,turno:t,ativo:true,apoio:$("novoF").value==="1",pi:$("novoPi").value.trim(),pf:$("novoPf").value.trim()});gravar();desenhar()}
+  var existing=equipe.find(function(c){return c.turno===t&&c.nome.toLowerCase()===n.toLowerCase()});
+  if(existing){var assigned=pessoaOperacoes(existing);if(assigned.indexOf(op)>=0){aviso('Essa pessoa já está associada a essa operação nesse turno.');return}assigned.push(op);definirOperacoesPessoa(existing,assigned);aviso('A operação foi adicionada à pessoa existente.');}
+  else{equipe.push({nome:n,operacao:op,operacoes:[op],turno:t,ativo:true,apoio:$("novoF").value==="1",pi:$("novoPi").value.trim(),pf:$("novoPf").value.trim()});aviso('Pessoa adicionada à equipe.');}
+  gravar();desenhar();
   $("novo").value="";$("novoPi").value="";$("novoPf").value="";$("novo").focus();
 }
 $("add").addEventListener("click",adicionar);
@@ -6374,8 +6386,9 @@ async function carregarEquipeDaEscala(){
       var name=String(row.usuario_nome||row.usuario_email||"").trim(); if(!name)return;
       var entrance=hora(day.entrada), shift=entrance===null?"07":entrance<9?"07":entrance<13?"11":"14";
       var selectedOperation=operacaoSelecionada();
-      var existing=equipe.find(function(c){return opKey(c.operacao)===selectedOperation&&(String(c.auth_user_id||"")===String(row.usuario_auth_id||"")||c.nome.toLowerCase()===name.toLowerCase());});
-      var item=existing||{nome:name,operacao:selectedOperation,turno:shift,ativo:true,apoio:false,auth_user_id:row.usuario_auth_id||""};
+      var existing=equipe.find(function(c){var samePerson=row.usuario_auth_id&&c.auth_user_id?String(c.auth_user_id)===String(row.usuario_auth_id):c.nome.toLowerCase()===name.toLowerCase();return samePerson&&c.turno===shift;});
+      var item=existing||{nome:name,operacao:selectedOperation,operacoes:[selectedOperation],turno:shift,ativo:true,apoio:false,auth_user_id:row.usuario_auth_id||""};
+      definirOperacoesPessoa(item,pessoaOperacoes(item).concat([selectedOperation]));
       item.nome=name;item.turno=shift;item.ativo=true;item.auth_user_id=row.usuario_auth_id||item.auth_user_id||"";
       item.pi=String(day.inicioAlmoco||day.inicio_almoco||day.inicioAlmoço||"").trim();
       item.pf=String(day.fimAlmoco||day.fim_almoco||day.fimAlmoço||"").trim();
