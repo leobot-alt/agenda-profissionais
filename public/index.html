@@ -6300,7 +6300,28 @@ function salvarDb(){
 }
 function gravar(){ver=Date.now();try{localStorage.setItem("equipe",JSON.stringify(equipe))}catch(e){} salvarDb()}
 function operacaoSelecionada(){return opKey($("operacaoHoras")&&$("operacaoHoras").value||'')}
-function ativos(t){var op=operacaoSelecionada(),base=equipe.filter(function(c){return c.turno===t&&c.ativo}),operationCoverers=base.filter(function(c){return coberturaConfigurada(c)&&c.cobertura.tipo==='operacao'&&opKey(c.cobertura.alvo)===op});if(operationCoverers.length)return operationCoverers.map(function(c){return Object.assign({},c,{_coberturaResultado:'cobrindo toda a operação '+(window.aaOperationLabelForHours?window.aaOperationLabelForHours(op):op)})});var coveredIds={};equipe.forEach(function(target){if(target.turno!==t||pessoaOperacoes(target).indexOf(op)<0)return;base.forEach(function(coverer){if(coberturaConfigurada(coverer)&&coverer.cobertura.tipo==='pessoa'&&String(coverer.cobertura.alvo)===pessoaId(target))coveredIds[pessoaId(target)]=coverer.nome})});var team=base.filter(function(c){return pessoaOperacoes(c).indexOf(op)>=0&&!coveredIds[pessoaId(c)]});Object.keys(coveredIds).forEach(function(targetId){var coverer=base.find(function(c){return coberturaConfigurada(c)&&c.cobertura.tipo==='pessoa'&&String(c.cobertura.alvo)===targetId});if(!coverer)return;var existing=team.findIndex(function(c){return pessoaId(c)===pessoaId(coverer)}),target=equipe.find(function(c){return pessoaId(c)===targetId}),entry=Object.assign({},coverer,{_coberturaResultado:'cobrindo '+(target&&target.nome||'colaborador')});if(existing>=0)team[existing]=entry;else team.push(entry)});return team}
+function ativos(t){
+  var op=operacaoSelecionada(),base=equipe.filter(function(c){return c.turno===t&&c.ativo}),team=base.filter(function(c){return pessoaOperacoes(c).indexOf(op)>=0});
+  function attachCover(coverer,target){
+    var id=pessoaId(coverer),index=team.findIndex(function(c){return pessoaId(c)===id}),entry=Object.assign({},index>=0?team[index]:coverer);
+    if(index<0)entry.apoio=true;
+    entry._cobrePessoaIds=Array.isArray(entry._cobrePessoaIds)?entry._cobrePessoaIds:[];entry._cobreOperacao=!!entry._cobreOperacao;
+    if(target&&target.pessoaId&&entry._cobrePessoaIds.indexOf(target.pessoaId)<0)entry._cobrePessoaIds.push(target.pessoaId);
+    if(target&&target.operacao)entry._cobreOperacao=true;
+    var label=target&&target.operacao?'os almoços da operação '+(window.aaOperationLabelForHours?window.aaOperationLabelForHours(op):op):'o almoço de '+(target&&target.nome||'colaborador');
+    entry._coberturaResultado=entry._coberturaResultado?entry._coberturaResultado+'; designado para cobrir '+label:'designado para cobrir '+label;
+    if(index>=0)team[index]=entry;else team.push(entry);
+  }
+  base.forEach(function(coverer){
+    if(!coberturaConfigurada(coverer))return;
+    if(coverer.cobertura.tipo==='operacao'&&opKey(coverer.cobertura.alvo)===op)attachCover(coverer,{operacao:true});
+    else if(coverer.cobertura.tipo==='pessoa'){
+      var target=equipe.find(function(person){return pessoaId(person)===String(coverer.cobertura.alvo)&&person.turno===t&&pessoaOperacoes(person).indexOf(op)>=0});
+      if(target)attachCover(coverer,{pessoaId:pessoaId(target),nome:target.nome});
+    }
+  });
+  return team;
+}
 function atualizarSeletoresOperacao(selectedKey){var selector=$("operacaoHoras"),addSelector=$("novoOp");if(!selector||!addSelector)return;var previous=selectedKey||savedOperation||selector.value,operations=hoursOperations(),options=opOptions(previous,false);selector.innerHTML=options;addSelector.innerHTML=opOptions(previous,true);if(previous&&operations.some(function(op){return op.key===previous})){selector.value=previous;addSelector.value=previous;savedOperation=previous;try{localStorage.setItem('operacaoHoras',savedOperation)}catch(e){}}else if(selector.options.length>1){selector.selectedIndex=1;addSelector.value=selector.value;if(!savedOperation){savedOperation=selector.value;try{localStorage.setItem('operacaoHoras',savedOperation)}catch(e){}}}else{selector.value='';addSelector.value=''} }
 function desenhar(){
   var box=$("equipe"); box.innerHTML="";
@@ -6332,19 +6353,19 @@ function desenhar(){
       var coverageBox=document.createElement("div");coverageBox.style.cssText="padding:10px 11px;border:1px solid #E8DDBB;border-radius:8px;background:#FFFCF3";
       var coverage= c.cobertura||{},coverageToggle=document.createElement("label");coverageToggle.style.cssText="display:flex;align-items:center;gap:7px;margin:0;color:#665020;font-size:12px;font-weight:700;cursor:pointer";
       var coverageCheck=document.createElement("input");coverageCheck.type="checkbox";coverageCheck.checked=coverage.ativa===true;coverageCheck.addEventListener("change",function(){c.cobertura=c.cobertura||{tipo:'pessoa',alvo:'',inicio:'',fim:''};c.cobertura.ativa=coverageCheck.checked;gravar();desenhar()});
-      coverageToggle.appendChild(coverageCheck);coverageToggle.appendChild(document.createTextNode("Esta pessoa está cobrindo alguém ou uma operação"));coverageBox.appendChild(coverageToggle);
+      coverageToggle.appendChild(coverageCheck);coverageToggle.appendChild(document.createTextNode("Esta pessoa cobre o almoço de alguém ou de uma operação"));coverageBox.appendChild(coverageToggle);
       if(coverage.ativa===true){
         var coverageControls=document.createElement("div");coverageControls.style.cssText="display:flex;align-items:end;gap:8px;flex-wrap:wrap;margin-top:9px";
         var typeField=document.createElement("label");typeField.style.cssText="display:flex;flex-direction:column;gap:4px;min-width:160px;margin:0;color:#5E5A50;font-size:11px;font-weight:700";typeField.appendChild(document.createTextNode("Tipo de cobertura"));
-        var typeSelect=document.createElement("select");typeSelect.style.cssText="min-height:36px;padding:6px 8px;border:1px solid #DED7C7;border-radius:7px;background:#fff;color:#344";typeSelect.innerHTML='<option value="pessoa">Uma pessoa</option><option value="operacao">Uma operação</option>';typeSelect.value=coverage.tipo==='operacao'?'operacao':'pessoa';typeSelect.addEventListener("change",function(){c.cobertura.tipo=typeSelect.value;c.cobertura.alvo='';gravar();desenhar()});typeField.appendChild(typeSelect);coverageControls.appendChild(typeField);
-        var targetField=document.createElement("label");targetField.style.cssText="display:flex;flex-direction:column;gap:4px;flex:1 1 220px;min-width:190px;margin:0;color:#5E5A50;font-size:11px;font-weight:700";targetField.appendChild(document.createTextNode(coverage.tipo==='operacao'?'Operação coberta':'Pessoa coberta'));
+        var typeSelect=document.createElement("select");typeSelect.style.cssText="min-height:36px;padding:6px 8px;border:1px solid #DED7C7;border-radius:7px;background:#fff;color:#344";typeSelect.innerHTML='<option value="pessoa">Almoço de uma pessoa</option><option value="operacao">Almoços de uma operação</option>';typeSelect.value=coverage.tipo==='operacao'?'operacao':'pessoa';typeSelect.addEventListener("change",function(){c.cobertura.tipo=typeSelect.value;c.cobertura.alvo='';gravar();desenhar()});typeField.appendChild(typeSelect);coverageControls.appendChild(typeField);
+        var targetField=document.createElement("label");targetField.style.cssText="display:flex;flex-direction:column;gap:4px;flex:1 1 220px;min-width:190px;margin:0;color:#5E5A50;font-size:11px;font-weight:700";targetField.appendChild(document.createTextNode(coverage.tipo==='operacao'?'Operação cujos almoços serão cobertos':'Pessoa que terá o almoço coberto'));
         var targetSelect=document.createElement("select");targetSelect.style.cssText="min-height:36px;padding:6px 8px;border:1px solid #DED7C7;border-radius:7px;background:#fff;color:#344";
         var targetOptions='<option value="">Selecione '+(coverage.tipo==='operacao'?'uma operação':'uma pessoa')+'</option>';
         if(coverage.tipo==='operacao')targetOptions+=hoursOperations().map(function(operation){return '<option value="'+hoursHtmlSafe(operation.key)+'">'+hoursHtmlSafe(operation.nome)+'</option>'}).join('');
         else targetOptions+=equipe.filter(function(person){return person!==c&&person.turno===c.turno}).map(function(person){return '<option value="'+hoursHtmlSafe(pessoaId(person))+'">'+hoursHtmlSafe(person.nome)+' ('+hoursHtmlSafe(person.turno)+'h)</option>'}).join('');
         targetSelect.innerHTML=targetOptions;targetSelect.value=String(coverage.alvo||'');targetSelect.addEventListener("change",function(){c.cobertura.alvo=targetSelect.value;gravar();desenhar()});targetField.appendChild(targetSelect);coverageControls.appendChild(targetField);
         [["inicio","Vigência a partir de"],["fim","Vigência até"]].forEach(function(pair){var dateField=document.createElement("label");dateField.style.cssText="display:flex;flex-direction:column;gap:4px;min-width:145px;margin:0;color:#5E5A50;font-size:11px;font-weight:700";dateField.appendChild(document.createTextNode(pair[1]));var dateInput=document.createElement("input");dateInput.type="date";dateInput.value=coverage[pair[0]]||'';dateInput.style.cssText="min-height:36px;padding:6px 8px;border:1px solid #DED7C7;border-radius:7px;background:#fff";dateInput.addEventListener("change",function(){c.cobertura[pair[0]]=dateInput.value;gravar()});dateField.appendChild(dateInput);coverageControls.appendChild(dateField)});
-        var coverageHint=document.createElement("small");coverageHint.style.cssText="flex:1 1 100%;color:#7C7157;font-size:11px;line-height:1.45";coverageHint.textContent=coverage.tipo==='operacao'?'Neste turno e período, quem cobre assume a distribuição da operação selecionada.':'Neste turno e período, quem cobre substitui a pessoa selecionada nas operações associadas a ela.';coverageControls.appendChild(coverageHint);coverageBox.appendChild(coverageControls);
+        var coverageHint=document.createElement("small");coverageHint.style.cssText="flex:1 1 100%;color:#7C7157;font-size:11px;line-height:1.45";coverageHint.textContent=coverage.tipo==='operacao'?'A cobertura só é aplicada durante as pausas/almoços cadastrados para as pessoas dessa operação. Fora desses horários, a divisão normal permanece.':'A cobertura só é aplicada durante a pausa/almoço cadastrada para a pessoa escolhida. Fora desse horário, a divisão normal permanece. Configure o intervalo de pausa dessa pessoa para que a cobertura seja considerada.';coverageControls.appendChild(coverageHint);coverageBox.appendChild(coverageControls);
       }
       d.appendChild(coverageBox);
       var settings=document.createElement("div");settings.style.cssText="display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap;padding-top:2px";
@@ -6520,7 +6541,7 @@ function dividirTudo(linhas,m,t,o){
   function minu(v){var h=hora(v);return h===null?null:Math.round(h*60)}
   function criar(e,sh){
     var pI=minu(e.pi), pF=minu(e.pf);
-    return {nome:e.nome,coberturaResultado:e._coberturaResultado||'',shift:sh,apoio:!!e.apoio,turno:o.sab?"sáb":sh+"h",
+    return {nome:e.nome,equipeId:pessoaId(e),cobrePessoaIds:Array.isArray(e._cobrePessoaIds)?e._cobrePessoaIds:[],cobreOperacao:!!e._cobreOperacao,coberturaResultado:e._coberturaResultado||'',shift:sh,apoio:!!e.apoio,turno:o.sab?"sáb":sh+"h",
       ini:o.sab?o.sabini:(sh==="07"?-1:(sh==="11"?o.iini:o.tini)),fim:o.sab?o.sabfim:(sh==="07"?o.mfim:(sh==="11"?o.ifim:o.tfim)),
       pIni:(pI!==null&&pF!==null&&pF>pI)?pI:null,pFim:pF,pI:e.pi,pF:e.pf,
       poIni:(e.po&&minu(e.poi)!==null&&minu(e.pof)!==null&&minu(e.pof)>minu(e.poi))?minu(e.poi):null,poFim:minu(e.pof),
@@ -6561,7 +6582,7 @@ function dividirTudo(linhas,m,t,o){
     var dentro=colabs.filter(function(c){return S.k>=c.ini&&S.k<=c.fim});
     function emP(c){return c.pIni!==null&&S.k>=c.pIni&&S.k<c.pFim}
     function emPoli(c){return c.poIni!==null&&S.k>=c.poIni&&S.k<c.poFim}
-    var elig=dentro.filter(function(c){return !c.apoio&&!emPoli(c)}), ap=dentro.filter(function(c){return c.apoio&&!emP(c)&&!emPoli(c)});
+    var elig=dentro.filter(function(c){return !c.apoio&&!emPoli(c)}), ap=dentro.filter(function(c){return (c.apoio||c.cobreOperacao||(c.cobrePessoaIds&&c.cobrePessoaIds.length))&&!emP(c)&&!emPoli(c)});
     if(!elig.length){fora=fora.concat(S.l);return}
     if(!ap.length){
       var presentes=elig.filter(function(c){return !emP(c)});
@@ -6572,12 +6593,12 @@ function dividirTudo(linhas,m,t,o){
     function cobrir(cnt,campo,mov,antes){
       elig.forEach(function(c,i){
         if(c.pIni===null||!(S.k>=c.pIni&&S.k<c.pFim))return;
-        var js=-1; ap.forEach(function(a,j){if(a.shift===c.shift&&(js<0||a.tot<ap[js].tot))js=j}); if(js<0)ap.forEach(function(a,j){if(js<0||a.tot<ap[js].tot)js=j});
+        var personalCoverers=ap.filter(function(a){return (a.cobrePessoaIds||[]).indexOf(c.equipeId)>=0}),operationCoverers=ap.filter(function(a){return a.cobreOperacao}),designated=personalCoverers.length?personalCoverers:operationCoverers,candidates=designated.length?designated:ap,js=-1; candidates.forEach(function(a){var j=ap.indexOf(a);if(a.shift===c.shift&&(js<0||a.tot<ap[js].tot))js=j}); if(js<0)candidates.forEach(function(a){var j=ap.indexOf(a);if(js<0||a.tot<ap[js].tot)js=j});
         if(js<0)return;
         var sup=ap[js], novas=c.linhas.splice(antes[i]), n=novas.length;
         if(!n)return;
         novas.forEach(function(l){l.obs="Cobertura da pausa de "+c.nome+" ("+c.pI+" às "+c.pF+")"; sup.linhas.push(l)});
-        c.tot-=n; c[campo]-=n; sup.tot+=n; sup[campo]+=n; cnt[i]-=n; mov[js]+=n;
+        c.tot-=n; c[campo]-=n; sup.tot+=n; sup[campo]+=n; cnt[i]-=n; var covererIndex=elig.indexOf(sup);if(covererIndex>=0)cnt[covererIndex]+=n;mov[js]+=n;
       });
     }
     var a0=elig.map(function(c){return c.linhas.length});
@@ -6585,7 +6606,7 @@ function dividirTudo(linhas,m,t,o){
     var a1=elig.map(function(c){return c.linhas.length});
     var cl=distribuir(li,elig,"tl",o); cobrir(cl,"tl",movLi,a1);
     var nomes=elig.map(function(c){return c.nome+" ("+c.turno+")"+(c.coberturaResultado?" — "+c.coberturaResultado:"")}), cAg=ca.slice(), cLi=cl.slice();
-    ap.forEach(function(a,j){if(movAg[j]||movLi[j]){nomes.push(a.nome+" (apoio)"+(a.coberturaResultado?" — "+a.coberturaResultado:""));cAg.push(movAg[j]);cLi.push(movLi[j])}});
+    ap.forEach(function(a,j){if((movAg[j]||movLi[j])&&elig.indexOf(a)<0){nomes.push(a.nome+" (apoio)"+(a.coberturaResultado?" — "+a.coberturaResultado:""));cAg.push(movAg[j]);cLi.push(movLi[j])}});
     conf.push({rot:rotulo(S.k),nomes:nomes,ag:cAg,li:cLi,temLivre:li.length>0});
   });
   return {colabs:colabs,sem:sem,fora:fora,conf:conf};
