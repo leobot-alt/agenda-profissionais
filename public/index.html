@@ -6272,7 +6272,7 @@ var cols=[0,0], confer=[], equipe=[];
 try{equipe=JSON.parse(localStorage.getItem("equipe")||"[]")||[]}catch(e){equipe=[]}
 function opKey(v){return typeof window.aaNormalizeOperationForHours==='function'?window.aaNormalizeOperationForHours(v):String(v||'').trim()}
 function hoursOperations(){return typeof window.aaGetOperationsForHours==='function'?window.aaGetOperationsForHours():[]}
-function opOptions(selected,includeNone){var operations=hoursOperations();return (includeNone?'<option value="">Sem operação</option>':'<option value="">Selecione uma operação</option>')+operations.map(function(op){return '<option value="'+aaHtmlSafe(op.key)+'" '+(op.key===selected?'selected':'')+'>'+aaHtmlSafe(op.nome)+'</option>'}).join('')}
+function opOptions(selected,includeNone){var operations=hoursOperations();return (includeNone?'<option value="">Sem operação</option>':'<option value="">Selecione uma operação</option>')+operations.map(function(op){return '<option value="'+controllerPageText(op.key)+'" '+(op.key===selected?'selected':'')+'>'+controllerPageText(op.nome)+'</option>'}).join('')}
 var savedOperation='';try{savedOperation=opKey(localStorage.getItem('operacaoHoras')||'')}catch(e){}
 var dbDoc=null, ver=0, escrevendo=false, sujo=false;
 function aviso(t){var e=$("avEq"); if(e)e.textContent=t||""}
