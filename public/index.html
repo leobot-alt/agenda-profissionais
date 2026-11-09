@@ -684,13 +684,14 @@
               </div>
               <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 <button data-permission-action="banco_modelo" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaDownloadTemplate()">Baixar planilha modelo</button>
+                <button data-permission-action="banco_backup_baixar" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaDownloadAllProfessionals()">Exportar profissionais (planilha única)</button>
                 <button data-permission-action="banco_backup_baixar" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaDownloadBackup()">Baixar backup</button>
                 <button type="button" data-permission-action="banco_importar" class="aa-btn aa-btn-ghost aa-btn-sm" id="aa-btn-toggle-database-import" aria-expanded="false" aria-controls="aa-database-import-panel" onclick="aaToggleDatabaseImportPanel()">Importar planilha</button>
                 <button data-permission-action="banco_profissionais_cadastrar" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaShowNovoCadastro()">Novo cadastro</button>
               </div>
             </div>
 
-            <div id="aa-database-import-panel" class="aa-card" hidden data-permission-action="banco_importar" style="background:#F8FBFF; border:1px solid #C9D8E8; margin:0 0 18px; padding:13px 15px;"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;"><div><b style="color:#173B68;">Importar profissionais</b><p class="aa-hint" style="margin:3px 0 0;">Selecione a planilha preenchida para atualizar ou cadastrar profissionais.</p></div><button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="document.getElementById('aa-import-file').click()">Selecionar planilha</button><input type="file" id="aa-import-file" accept=".xlsx,.xls" style="display:none;" onchange="aaImportSpreadsheet(event)"></div></div>
+            <div id="aa-database-import-panel" class="aa-card" hidden data-permission-action="banco_importar" style="background:#F8FBFF; border:1px solid #C9D8E8; margin:0 0 18px; padding:13px 15px;"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;"><div><b style="color:#173B68;">Importar profissionais</b><p class="aa-hint" style="margin:3px 0 0;">Selecione a planilha preenchida para atualizar ou cadastrar profissionais. Para editar vários cadastros de uma vez, use a planilha única exportada; mantenha a coluna ID DO CADASTRO para atualizar cada profissional correto.</p></div><button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="document.getElementById('aa-import-file').click()">Selecionar planilha</button><input type="file" id="aa-import-file" accept=".xlsx,.xls" style="display:none;" onchange="aaImportSpreadsheet(event)"></div></div>
             <div data-permission-action="banco_backup_baixar" class="aa-card" style="background:#FAF9FD; border:1px solid var(--line); margin:0 0 18px; padding:18px;">
               <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
                 <div><h2 style="font-size:16px; margin:0 0 4px;">Backup do sistema</h2></div>
@@ -958,7 +959,7 @@ const ADMIN_PASS = '';
     {key:'banco_profissionais_status', label:'Banco de Dados — ativar ou inativar profissional', group:'Banco de Dados', kind:'Status', description:'Permite alterar se o cadastro do profissional está ativo.'},
     {key:'banco_importar', label:'Banco de Dados — importar planilha', group:'Banco de Dados', kind:'Criar', description:'Permite importar ou atualizar profissionais usando Excel.'},
     {key:'banco_modelo', label:'Banco de Dados — baixar planilha modelo', group:'Banco de Dados', kind:'Exportar', description:'Permite baixar o modelo de importação de profissionais.'},
-    {key:'banco_backup_baixar', label:'Banco de Dados — baixar backup manual completo', group:'Banco de Dados', kind:'Exportar', description:'Permite gerar e baixar manualmente o ZIP com as planilhas individuais.'},
+    {key:'banco_backup_baixar', label:'Banco de Dados — exportar profissionais e baixar backup', group:'Banco de Dados', kind:'Exportar', description:'Permite exportar todos os cadastros em uma planilha única e gerar o backup manual ZIP com planilhas individuais.'},
     {key:'config_ver', label:'Configurações — visualizar área e fechamentos', group:'Configurações', kind:'Visualizar', description:'Permite abrir a configuração de feriados, domingos e dias sem funcionamento.'},
     {key:'config_nacionais_ver', label:'Configurações — visualizar feriados nacionais', group:'Configurações', kind:'Visualizar', description:'Permite consultar os feriados nacionais.'},
     {key:'config_nacionais_editar', label:'Configurações — marcar feriados nacionais', group:'Configurações', kind:'Editar', description:'Permite marcar ou desmarcar feriados nacionais como dias fechados.'},
@@ -1833,6 +1834,20 @@ window.aaDownloadBackup=async function(){
   try{ const blob=await aaBuildBackupZip(); aaDownloadBlob(blob,'backup_agenda_profissionais_'+todayStamp()+'.zip'); try{ await aaLogChange('Backup manual em planilhas','Sistema','ZIP gerado com uma planilha Excel por profissional e arquivo LEIA-ME de resumo.'); }catch(logError){ console.warn('Backup gerado, mas não foi possível registrar o histórico.',logError); } }
   catch(e){ alert('Não foi possível gerar o backup agora.'); console.error(e); }
 };
+window.aaDownloadAllProfessionals=async function(){
+  if(!aaRequire('banco_backup_baixar'))return;
+  if(typeof XLSX==='undefined'){alert('A biblioteca de planilhas ainda está carregando, tente novamente em instantes.');return;}
+  try{
+    if(!dataLoadState.profissionais)await loadProfissionais();
+    const headers=['ID DO CADASTRO','NOME','TELEFONE','EMAIL','RG','CPF','DATA DE NASCIMENTO','CRP/CRM','REGIÃO','DATA DE INSCRIÇÃO','SITUAÇÃO CRP','ENDEREÇO','CEP','TIPO DE CHAVE','CHAVE PIX','RAZÃO SOCIAL','ABORDAGEM','ESPECIALIDADE','PÚBLICO','EXPERIÊNCIA','USUÁRIO MEDICINA','AGENDA NO MEDICINA','CANAL POLI CHAT','GRUPO MICROSOFT TEAMS','E-MAIL MICROSOFT TEAMS','LINK DOXY','ACESSO SISTEMA','OPERAÇÃO','BLOCO DA OPERAÇÃO','ATIVO/INATIVO'];
+    const rows=[headers,...allProfissionais.map(p=>[p.id||'',p.nomeCompleto||'',p.whatsapp||p.telefone||'',p.email||'',p.rg||'',p.cpf||'',p.dataNascimento||'',p.crpCrm||'',p.regiaoCrp||p.regiao||'',p.dataInscricao||'',p.situacaoCrp||'',p.endereco||'',p.cep||'',p.tipoChavePix||'',p.chavePix||'',p.razaoSocial||'',p.abordagem||'',p.especialidade||'',p.publico||'',p.experiencia||'',p.usuarioMedicina||'',p.medicina||p.nomeAgenda||'',p.canalPoliChat||'',p.grupoMicrosoftTeams||'',p.emailMicrosoftTeams||'',p.linkDoxy||p.doxy||'',p.acessoSistema||'',p.operacao||'',p.blocoAgenda||p.bloco||'',p.ativo===false?'Inativo':'Ativo'])];
+    const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:20},{wch:30},{wch:18},{wch:30},{wch:16},{wch:18},{wch:20},{wch:16},{wch:16},{wch:20},{wch:18},{wch:34},{wch:12},{wch:18},{wch:28},{wch:30},{wch:22},{wch:18},{wch:22},{wch:36},{wch:22},{wch:22},{wch:22},{wch:28},{wch:32},{wch:30},{wch:24},{wch:20},{wch:22},{wch:16}];
+    for(let c=0;c<headers.length;c++){const ref=XLSX.utils.encode_cell({r:0,c});if(ws[ref])ws[ref].s={font:{bold:true,color:{rgb:'FFFFFF'}},fill:{patternType:'solid',fgColor:{rgb:'173B68'}},alignment:{horizontal:'center',vertical:'center',wrapText:true}};}
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Profissionais');XLSX.writeFile(wb,'cadastro_profissionais_'+todayStamp()+'.xlsx',{cellStyles:true});
+    try{await aaLogChange('Exportação de profissionais em planilha única','Sistema',rows.length-1+' cadastro(s) exportado(s), incluindo ativos e inativos.');}catch(logError){console.warn('Planilha exportada, mas não foi possível registrar o histórico.',logError);}
+    if(typeof aaToast==='function')aaToast((rows.length-1)+' profissional(is) exportado(s) em uma planilha única.','success');
+  }catch(error){alert('Não foi possível exportar os profissionais: '+(error?.message||''));console.error(error);}
+};
 window.aaDownloadTemplate = function(){
   if(!aaRequire('banco_modelo')) return;
   if(typeof XLSX === 'undefined'){ alert('A biblioteca ainda está carregando, tente novamente em instantes.'); return; }
@@ -1928,6 +1943,7 @@ window.aaImportSpreadsheet = function(event){
       const rows = XLSX.utils.sheet_to_json(sheet, {header:1});
       const headers = (rows[0]||[]).map(h=>normText(h));
       const findHeader = names => { for(const name of names){ const idx=headers.indexOf(normText(name)); if(idx>=0) return idx; } return -1; };
+      const idIdx = findHeader(['id do cadastro','id profissional','id']);
       const nomeIdx = findHeader(['nome','nome completo','profissional']);
       const usuarioMedicinaIdx = findHeader(['usuário medicina','usuario medicina','acesso','usuário','usuario']);
       const emailIdx = findHeader(['email','e-mail']);
@@ -1952,7 +1968,7 @@ window.aaImportSpreadsheet = function(event){
       const publicoIdx = findHeader(['público','publico']);
       const experienciaIdx = findHeader(['experiência','experiencia']);
       const acessoSistemaIdx = findHeader(['acesso sistema']);
-      const medicinaIdx = findHeader(['medicina','agenda medicina']);
+      const medicinaIdx = findHeader(['medicina','agenda medicina','agenda no medicina']);
       const poliChatIdx = findHeader(['canal poli chat','poli chat']);
       const grupoTeamsIdx = findHeader(['grupo microsoft teams','grupo teams']);
       const emailTeamsIdx = findHeader(['e-mail microsoft teams','email microsoft teams']);
@@ -1964,6 +1980,7 @@ window.aaImportSpreadsheet = function(event){
       for(let i=1;i<rows.length;i++){
         const row = rows[i];
         if(!row || !cell(row,nomeIdx)){ continue; }
+        const cadastroId=cell(row,idIdx);
         const nomeCompleto = cell(row,nomeIdx);
         const usuarioMedicina = cell(row,usuarioMedicinaIdx);
         const crpCrm = cell(row,crpIdx);
@@ -1976,16 +1993,18 @@ window.aaImportSpreadsheet = function(event){
         const rg = cell(row,rgIdx), regiaoCrp = cell(row,regiaoCrpIdx), dataInscricao = formatDateNascimento(cell(row,dataInscricaoIdx));
         const tipoChavePix = cell(row,tipoChaveIdx), chavePix = cell(row,chavePixIdx), nomeAgenda = cell(row,medicinaIdx), doxy = cell(row,doxyIdx);
         const ativo = ativoIdx >= 0 ? parseAtivo(cell(row,ativoIdx)) : true;
-        if(!nomeCompleto || !usuarioMedicina){ skipped++; issues.push('Linha '+(i+1)+': nome ou Usuário Medicina ausente.'); continue; }
+        if(!nomeCompleto || (!usuarioMedicina&&!cadastroId)){ skipped++; issues.push('Linha '+(i+1)+': nome ou identificador (ID do cadastro/Usuário Medicina) ausente.'); continue; }
         const userKey=normText(usuarioMedicina);
-        if(seenUsers.has(userKey)){ skipped++; issues.push('Linha '+(i+1)+': Usuário Medicina repetido na própria planilha.'); continue; }
-        seenUsers.add(userKey);
+        if(userKey&&seenUsers.has(userKey)){ skipped++; issues.push('Linha '+(i+1)+': Usuário Medicina repetido na própria planilha.'); continue; }
+        if(userKey)seenUsers.add(userKey);
         if(cell(row,whatsIdx) && normWhatsDigits(cell(row,whatsIdx)).length>0 && ![10,11].includes(normWhatsDigits(cell(row,whatsIdx)).length)){ skipped++; issues.push('Linha '+(i+1)+': Telefone inválido.'); continue; }
         if(especialidadeIdx>=0 && cell(row,especialidadeIdx) && !['psicologo','psiquiatra'].includes(especialidade)){ skipped++; issues.push('Linha '+(i+1)+': especialidade deve ser Psicólogo ou Psiquiatra.'); continue; }
-        let existing = allProfissionais.find(p=>normText(p.usuarioMedicina)===normText(usuarioMedicina));
+        let existing = cadastroId?allProfissionais.find(p=>String(p.id)===String(cadastroId)):null;
+        if(!existing&&usuarioMedicina)existing=allProfissionais.find(p=>normText(p.usuarioMedicina)===userKey);
+        if(!usuarioMedicina&&!existing){skipped++;issues.push('Linha '+(i+1)+': Usuário Medicina é obrigatório para cadastrar um novo profissional.');continue;}
         const id = existing ? existing.id : generateProfissionalId();
         const record = {
-          id, nomeCompleto, usuarioMedicina, email:cell(row,emailIdx), especialidade: existing && !cell(row,especialidadeIdx) ? normalizeEspecialidade(existing.especialidade) : especialidade, blocoAgenda: blocoIdx>=0 ? blocoAgenda : normalizeBlocoAgenda(existing&&existing.blocoAgenda), operacao: operacaoIdx>=0 ? operacao : normalizeOperacao(existing&&existing.operacao), crpCrm, cpf, dataNascimento, whatsapp, rg, regiaoCrp, dataInscricao, situacaoCrp:cell(row,situacaoCrpIdx), endereco:cell(row,enderecoIdx), cep:cell(row,cepIdx), tipoChavePix, chavePix, razaoSocial:cell(row,razaoSocialIdx), abordagem:cell(row,abordagemIdx), publico:cell(row,publicoIdx), experiencia:cell(row,experienciaIdx), medicina:nomeAgenda, canalPoliChat:cell(row,poliChatIdx), grupoMicrosoftTeams:cell(row,grupoTeamsIdx), emailMicrosoftTeams:cell(row,emailTeamsIdx), linkGrupoTeams:cell(row,linkTeamsIdx), nomeAgenda, doxy,
+          id, nomeCompleto, usuarioMedicina, email:cell(row,emailIdx), especialidade: existing && !cell(row,especialidadeIdx) ? normalizeEspecialidade(existing.especialidade) : especialidade, blocoAgenda: blocoIdx>=0 ? blocoAgenda : normalizeBlocoAgenda(existing&&existing.blocoAgenda), operacao: operacaoIdx>=0 ? operacao : normalizeOperacao(existing&&existing.operacao), crpCrm, cpf, dataNascimento, whatsapp, rg, regiaoCrp, dataInscricao, situacaoCrp:cell(row,situacaoCrpIdx), endereco:cell(row,enderecoIdx), cep:cell(row,cepIdx), tipoChavePix, chavePix, razaoSocial:cell(row,razaoSocialIdx), abordagem:cell(row,abordagemIdx), publico:cell(row,publicoIdx), experiencia:cell(row,experienciaIdx), acessoSistema:cell(row,acessoSistemaIdx), medicina:nomeAgenda, canalPoliChat:cell(row,poliChatIdx), grupoMicrosoftTeams:cell(row,grupoTeamsIdx), emailMicrosoftTeams:cell(row,emailTeamsIdx), linkGrupoTeams:cell(row,linkTeamsIdx), nomeAgenda, doxy,
           ativo: ativoIdx >= 0 ? ativo : (existing ? existing.ativo : true),
           createdAt: existing ? existing.createdAt : new Date().toISOString(),
           updatedAt: new Date().toISOString()
