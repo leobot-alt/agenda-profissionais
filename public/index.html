@@ -2228,10 +2228,14 @@ setInterval(function(){ if(rhAuthenticated) aaCheckCurrentUserAccess(); },60000)
 function aaIsAdministrator(){
   return rhAuthenticated && isAdminProfile(rhCurrentProfile);
 }
+window.__aaIsLeadershipDiaryAdmin = function(){
+  const profile = rhCurrentProfile || {};
+  return rhAuthenticated && ['administrador','administrador_geral'].includes(normalizePerfil(profile.perfil)) && profile.ativo !== false && profile.removido !== true;
+};
 function aaApplyRHPermissionsUI(){
   document.querySelectorAll('[data-rhtab]').forEach(btn=>{
     const tab = btn.dataset.rhtab;
-    const allowed = tab==='diario-lideranca' ? (rhAuthenticated && ['administrador','administrador_geral'].includes(normalizePerfil(rhCurrentProfile&&rhCurrentProfile.perfil)) && rhCurrentProfile?.ativo!==false && rhCurrentProfile?.removido!==true) : tab==='controller' ? aaCan('controller_ver') : aaCan(RH_TAB_PERMISSION[tab]);
+    const allowed = tab==='diario-lideranca' ? window.__aaIsLeadershipDiaryAdmin() : tab==='controller' ? aaCan('controller_ver') : aaCan(RH_TAB_PERMISSION[tab]);
     btn.style.display = allowed ? '' : 'none';
   });
   document.querySelectorAll('[data-permission-action]').forEach(el=>{
@@ -7078,6 +7082,6 @@ if(!window.aaControllerCanImportHours())$("enviarAcompanhamentos").hidden=true;
 <script src="operational-report.js"></script>
 <script src="recibos-recebidos.js?v=202611061345"></script>
   <link rel="stylesheet" href="./leadership-diary.css">
-  <script src="./leadership-diary.js?v=4"></script>
+  <script src="./leadership-diary.js?v=5"></script>
 </body>
 </html>

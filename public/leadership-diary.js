@@ -8,12 +8,7 @@
   const currentMonth = () => new Date().toISOString().slice(0, 7);
   const monthDefaultDate = month => { const today = new Date().toISOString().slice(0, 10); return today.startsWith(month) ? today : `${month}-01`; };
   const allowed = () => {
-    if (typeof rhAuthenticated === 'undefined' || !rhAuthenticated) return false;
-    const profile = (typeof rhCurrentProfile !== 'undefined' && rhCurrentProfile) || {};
-    const role = String(profile.perfil || profile.perfilNome || profile.role || profile.tipoPerfil || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-    const recognizedRole = ['administrador', 'administradorgeral', 'administrativo', 'admin', 'admgeneral', 'admgeral'].includes(role);
-    const systemAdmin = typeof window.__aaIsLeadershipAdmin === 'function' && window.__aaIsLeadershipAdmin() === true;
-    return profile.ativo !== false && profile.removido !== true && (recognizedRole || systemAdmin);
+    return typeof window.__aaIsLeadershipDiaryAdmin === 'function' && window.__aaIsLeadershipDiaryAdmin() === true;
   };
   const state = { leaders: [], leaderId: '', month: currentMonth(), busy: false };
   const panel = () => document.getElementById(panelId);
