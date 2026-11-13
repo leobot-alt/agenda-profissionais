@@ -529,6 +529,7 @@
           <button class="aa-tab" data-rhtab="ajustes" onclick="aaSwitchRHTab('ajustes')">Ajuste de Agenda</button>
           <button class="aa-tab" data-rhtab="controller" onclick="aaControllerOpen()">Controller</button>
           <button class="aa-tab" data-rhtab="operational-report" onclick="aaSwitchRHTab('operational-report')">Relatório Operacional</button>
+          <button class="aa-tab" data-rhtab="diario-lideranca" onclick="aaSwitchRHTab('diario-lideranca')" style="display:none">Diário Liderança</button>
           <button class="aa-tab" data-rhtab="recibos" onclick="aaSwitchRHTab('recibos')">Gerador de Recibo</button>
           <button class="aa-tab" data-rhtab="recibos-recebidos" onclick="aaSwitchRHTab('recibos-recebidos')">Controle de Recibos</button>
           <button class="aa-tab" data-rhtab="portal" onclick="aaSwitchRHTab('portal')">Portal</button>
@@ -537,6 +538,21 @@
         </nav>
         <main id="aa-rh-page-mount" aria-live="polite"></main>
         <div id="aa-rh-page-cache" aria-hidden="true"></div>
+        <section class="aa-rh-subpanel aa-dl-page" id="aa-rhtab-diario-lideranca" hidden style="display:none" aria-labelledby="aa-dl-title">
+          <header class="aa-dl-header"><div><span class="aa-dl-eyebrow">Acompanhamento de liderança</span><h1 id="aa-dl-title">Diário Liderança</h1><p>Organize as atividades por liderança, mês e status.</p></div><label class="aa-dl-month">Mês de referência<input id="aa-dl-month" type="month"></label></header>
+          <div id="aa-dl-message" class="aa-dl-message" role="status" hidden></div>
+          <div class="aa-dl-grid">
+            <section class="aa-dl-card" aria-labelledby="aa-dl-leaders-heading"><h2 id="aa-dl-leaders-heading">Lideranças</h2><p>Crie uma subpágina para cada líder e selecione-a para consultar o diário.</p>
+              <form id="aa-dl-add-leader" class="aa-dl-form"><label>Nome da liderança<input id="aa-dl-new-leader" type="text" maxlength="120" required placeholder="Ex.: Ana Silva"></label><button class="aa-dl-btn" type="submit">Criar subpágina</button></form>
+              <div id="aa-dl-leader-list" class="aa-dl-leaders"></div>
+            </section>
+            <section class="aa-dl-card" aria-labelledby="aa-dl-activities-heading"><h2 id="aa-dl-activities-heading">Atividades do mês</h2><p>Registre atividades e acompanhe pendências, conclusões e cancelamentos.</p>
+              <label class="aa-dl-month">Subpágina selecionada<select id="aa-dl-leader"><option value="">Selecione uma liderança</option></select></label>
+              <form id="aa-dl-add-activity" class="aa-dl-activity-form"><label>Atividade<input id="aa-dl-activity" type="text" maxlength="1000" required placeholder="Descreva a atividade"></label><label>Data<input id="aa-dl-date" type="date" required></label><label>Status<select id="aa-dl-new-status"><option value="pendente">Pendente</option><option value="feito">Feito</option><option value="cancelado">Cancelado</option></select></label><button class="aa-dl-btn" type="submit">Registrar</button></form>
+              <p id="aa-dl-summary" class="aa-dl-summary"></p><div id="aa-dl-activities" class="aa-dl-activities"><p class="aa-dl-empty">Escolha uma liderança para visualizar as atividades do mês.</p></div>
+            </section>
+          </div>
+        </section>
 
         <div class="aa-rh-subpanel" id="aa-rhtab-ajustes" style="display:none;">
           <div class="aa-card">
@@ -4921,7 +4937,7 @@ window.aaRenderProfissionaisList=function(){
     if(parts[0]!=='painel')return;
     routing=true;originalTab('painel');routing=false;
     if(!rhAuthenticated)return;
-    const target={profissionais:'banco',usuarios:'permissoes',ajustes:'ajustes',operacoes:'operacoes',perfis:'perfis',config:'config',historico:'historico',portal:'portal',recibos:'recibos','recibos-recebidos':'recibos-recebidos',controller:'controller','relatorio-operacional':'operational-report'}[parts[1]];
+    const target={profissionais:'banco',usuarios:'permissoes',ajustes:'ajustes',operacoes:'operacoes',perfis:'perfis',config:'config',historico:'historico',portal:'portal',recibos:'recibos','recibos-recebidos':'recibos-recebidos','diario-lideranca':'diario-lideranca',controller:'controller','relatorio-operacional':'operational-report'}[parts[1]];
     if(target&&typeof window.aaSwitchRHTab==='function'){routing=true;window.aaSwitchRHTab(target);routing=false;}
   }
   window.addEventListener('hashchange',apply);
@@ -7061,5 +7077,7 @@ if(!window.aaControllerCanImportHours())$("enviarAcompanhamentos").hidden=true;
 </script>
 <script src="operational-report.js"></script>
 <script src="recibos-recebidos.js?v=202611061345"></script>
+  <link rel="stylesheet" href="./leadership-diary.css">
+  <script src="./leadership-diary.js"></script>
 </body>
 </html>
