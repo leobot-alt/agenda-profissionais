@@ -1083,7 +1083,7 @@ const LEGACY_PERMISSION_MAP = {
 };
 const RH_TAB_PERMISSION = {
   dashboard:'dashboard_ver', agendas:'agendas_ativas_ver', agendas2:'agendas_desativadas_ver',
-  banco:'banco_ver', historico:'historico_ver', config:'config_ver', ajustes:'ajustes_solicitar', controller:'controller_ver', permissoes:'usuarios_ver', operacoes:'perfis_gerenciar', perfis:'usuarios_ver', portal:'portal_escala_ver', recibos:'dashboard_ver', 'recibos-recebidos':'banco_profissionais_editar'
+  banco:'banco_ver', historico:'historico_ver', config:'config_ver', ajustes:'ajustes_solicitar', controller:'controller_ver', permissoes:'usuarios_ver', operacoes:'perfis_gerenciar', perfis:'usuarios_ver', portal:'portal_escala_ver', recibos:'dashboard_ver', 'recibos-recebidos':'banco_profissionais_editar', 'diario-lideranca':'dashboard_ver'
 };
   const REMOVED_PORTAL_PERMISSIONS = new Set(['portal_escala_solicitar']);
   function normalizePermissionKeys(keys){
@@ -2231,7 +2231,7 @@ function aaIsAdministrator(){
 function aaApplyRHPermissionsUI(){
   document.querySelectorAll('[data-rhtab]').forEach(btn=>{
     const tab = btn.dataset.rhtab;
-    const allowed = tab==='controller' ? aaCan('controller_ver') : aaCan(RH_TAB_PERMISSION[tab]);
+    const allowed = tab==='diario-lideranca' ? (rhAuthenticated && ['administrador','administrador_geral'].includes(normalizePerfil(rhCurrentProfile&&rhCurrentProfile.perfil)) && rhCurrentProfile?.ativo!==false && rhCurrentProfile?.removido!==true) : tab==='controller' ? aaCan('controller_ver') : aaCan(RH_TAB_PERMISSION[tab]);
     btn.style.display = allowed ? '' : 'none';
   });
   document.querySelectorAll('[data-permission-action]').forEach(el=>{
