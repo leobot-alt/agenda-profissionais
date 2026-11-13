@@ -10,10 +10,10 @@
   const allowed = () => {
     if (typeof rhAuthenticated === 'undefined' || !rhAuthenticated) return false;
     const profile = (typeof rhCurrentProfile !== 'undefined' && rhCurrentProfile) || {};
-    const role = typeof window.normalizePerfil === 'function'
-      ? window.normalizePerfil(profile.perfil)
-      : String(profile.perfil || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '_');
-    return profile.ativo !== false && profile.removido !== true && ['administrador', 'administrador_geral'].includes(role);
+    const role = String(profile.perfil || profile.perfilNome || profile.role || profile.tipoPerfil || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+    const recognizedRole = ['administrador', 'administradorgeral', 'administrativo', 'admin', 'admgeneral', 'admgeral'].includes(role);
+    const systemAdmin = typeof window.__aaIsLeadershipAdmin === 'function' && window.__aaIsLeadershipAdmin() === true;
+    return profile.ativo !== false && profile.removido !== true && (recognizedRole || systemAdmin);
   };
   const state = { leaders: [], leaderId: '', month: currentMonth(), busy: false };
   const panel = () => document.getElementById(panelId);
