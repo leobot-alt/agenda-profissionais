@@ -94,7 +94,7 @@
     catch (error) { notice(`Não foi possível carregar o Diário Liderança: ${error.message}`, 'error'); }
   };
   const show = async () => {
-    if (!allowed()) { const first = window.aaFirstAllowedRHTab?.(); if (first) window.aaSwitchRHTab(first); return; }
+    if (!allowed()) { const first = window.aaFirstAllowedRHTab?.(); if (first) window.aaSwitchRHTab(first); window.alert('Acesso ao Diário Liderança restrito aos perfis Administrador e Administrador geral.'); return; }
     const el = panel(), mount = document.getElementById('aa-rh-page-mount'), cache = document.getElementById('aa-rh-page-cache');
     if (!el || !mount) return;
     document.querySelectorAll('#aa-rh-authed-content .aa-rh-subpanel').forEach(item => { item.hidden = true; item.style.display = 'none'; });
@@ -104,6 +104,11 @@
     if (location.hash !== route) history.replaceState(null, '', route);
     await initialize();
   };
+  const navButton = document.querySelector('[data-rhtab="diario-lideranca"]');
+  if (navButton) {
+    navButton.removeAttribute('onclick');
+    navButton.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); show().catch(error => { console.error('Falha ao abrir o Diário Liderança.', error); notice(`Não foi possível abrir a tela: ${error.message}`, 'error'); }); });
+  }
   const previousSwitch = window.aaSwitchRHTab;
   window.aaSwitchRHTab = function (tab) {
     if (tab === 'diario-lideranca') { show(); return; }
