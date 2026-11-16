@@ -5,8 +5,8 @@
   const panelId = 'aa-rhtab-diario-lideranca';
   const route = '#/painel/diario-lideranca';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const currentMonth = () => new Date().toISOString().slice(0, 7);
-  const monthDefaultDate = month => { const today = new Date().toISOString().slice(0, 10); return today.startsWith(month) ? today : `${month}-01`; };
+  const localDate = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; };
+  const currentMonth = () => localDate().slice(0, 7);
   const allowed = () => {
     return typeof window.__aaIsLeadershipDiaryAdmin === 'function' && window.__aaIsLeadershipDiaryAdmin() === true;
   };
@@ -68,7 +68,17 @@
     if (!panel()?.dataset.ready) {
       panel().dataset.ready = 'true';
       document.getElementById('aa-dl-month').value = state.month;
-      document.getElementById('aa-dl-month').addEventListener('change', async event => { state.month = event.target.value || currentMonth(); document.getElementById('aa-dl-date').value = monthDefaultDate(state.month); try { await loadActivities(); } catch (error) { notice(`Erro ao carregar atividades: ${error.message}`, 'error'); } });
+      const dateInput = document.getElementById('aa-dl-date');
+      const setTodayDate = () => { const today = localDate(); dateInput.min = today; dateInput.max = today; dateInput.value = today; };
+      setTodayDate();
+      dateInput.addEventListener('change', setTodayDate);
+      dateInput.addEventListener('input', setTodayDate);
+      const activityInput = document.getElementById('aa-dl-activity');
+      const activityCounter = document.getElementById('aa-dl-activity-counter');
+      const updateActivityCounter = () => { if (activityCounter) activityCounter.textContent = `${activityInput.value.length.toLocaleString('pt-BR')} / 10.000 caracteres`; };
+      activityInput.addEventListener('input', updateActivityCounter);
+      updateActivityCounter();
+      document.getElementById('aa-dl-month').addEventListener('change', async event => { state.month = event.target.value || currentMonth(); try { await loadActivities(); } catch (error) { notice(`Erro ao carregar atividades: ${error.message}`, 'error'); } });
       document.getElementById('aa-dl-leader').addEventListener('change', async event => { state.leaderId = event.target.value; renderLeaders(); try { await loadActivities(); } catch (error) { notice(`Erro ao carregar atividades: ${error.message}`, 'error'); } });
       document.getElementById('aa-dl-add-leader').addEventListener('submit', async event => {
         event.preventDefault(); const name = value('aa-dl-new-leader').trim(); if (!name) return;
@@ -77,13 +87,12 @@
       });
       document.getElementById('aa-dl-add-activity').addEventListener('submit', async event => {
         event.preventDefault(); if (!state.leaderId) { notice('Selecione uma liderança antes de registrar a atividade.', 'error'); return; }
-        const activity = value('aa-dl-activity').trim(), activityDate = value('aa-dl-date'), status = value('aa-dl-new-status');
-        if (!activity || !activityDate) return;
-        if (activityDate.slice(0, 7) !== state.month) { notice('A data da atividade precisa estar dentro do mês selecionado.', 'error'); return; }
-        try { const userId = await identity(); const { error } = await db.from('leadership_diary_activities').insert({leader_id:state.leaderId,activity,activity_date:activityDate,status,created_by:userId,updated_by:userId}); if (error) throw error; event.target.reset(); document.getElementById('aa-dl-date').value = `${state.month}-${new Date(Date.UTC(...state.month.split('-').map(Number),0)).getUTCDate().toString().padStart(2,'0')}`; notice('Atividade registrada.', 'success'); await loadActivities(); }
+        const activity = value('aa-dl-activity').trim(), activityDate = localDate(), status = value('aa-dl-new-status');
+        setTodayDate();
+        if (!activity) return;
+        try { const userId = await identity(); const { error } = await db.from('leadership_diary_activities').insert({leader_id:state.leaderId,activity,activity_date:activityDate,status,created_by:userId,updated_by:userId}); if (error) throw error; event.target.reset(); state.month = currentMonth(); document.getElementById('aa-dl-month').value = state.month; setTodayDate(); updateActivityCounter(); notice('Atividade registrada.', 'success'); await loadActivities(); }
         catch (error) { notice(`Não foi possível registrar a atividade: ${error.message}`, 'error'); }
       });
-      document.getElementById('aa-dl-date').value = monthDefaultDate(state.month);
     }
     try { notice(''); await loadLeaders(); await loadActivities(); }
     catch (error) { notice(`Não foi possível carregar o Diário Liderança: ${error.message}`, 'error'); }
