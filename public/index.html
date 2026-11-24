@@ -664,14 +664,14 @@
             </div>
 
             <div class="aa-agenda-import-panel" id="aa-agenda-import-panel" hidden data-permission-any="agendas_ativas_exportar,agendas_ativas_status,agendas_ativas_importar">
-              <div class="aa-agenda-import-head"><div><h3>Importar agendas ativas</h3><p>Baixe um modelo por mês ou trimestre e importe a agenda vinculando-a a um profissional.</p></div></div>
+              <div class="aa-agenda-import-head"><div><h3>Importar agendas ativas</h3><p>Baixe um único modelo com uma aba por colaborador. Preencha no Excel e envie o arquivo para importar as agendas preenchidas; abas sem horários ou marcações serão ignoradas.</p></div></div>
               <div class="aa-agenda-import-actions">
                 <div class="aa-field"><label>Tipo de período do modelo</label><select id="aa-agenda-template-type" onchange="aaUpdateAgendaTemplatePeriodOptions()"><option value="mes">Mês</option><option value="trimestre">Trimestre</option></select></div>
                 <div class="aa-field"><label>Ano</label><input type="number" id="aa-agenda-template-year" min="2025" max="2035"></div>
                 <div class="aa-field"><label>Período</label><select id="aa-agenda-template-period"></select></div>
                 <button type="button" data-permission-action="agendas_ativas_exportar" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaDownloadAgendaTemplate()">Baixar modelo</button>
-                <div class="aa-field" style="min-width:260px;"><label>Profissional da agenda importada</label><select id="aa-agenda-import-profissional"><option value="">Selecione o profissional</option></select></div>
-                <button type="button" data-permission-action="agendas_ativas_importar" class="aa-btn aa-btn-primary aa-btn-sm" onclick="document.getElementById('aa-agenda-import-file').click()">Importar agenda preenchida</button>
+                <div class="aa-field" style="min-width:260px;"><label>Profissional (somente modelos antigos)</label><select id="aa-agenda-import-profissional"><option value="">Selecione se a planilha antiga tiver uma única aba</option></select></div>
+                <button type="button" data-permission-action="agendas_ativas_importar" class="aa-btn aa-btn-primary aa-btn-sm" onclick="document.getElementById('aa-agenda-import-file').click()">Importar planilha preenchida</button>
                 <input type="file" id="aa-agenda-import-file" accept=".xlsx,.xls" style="display:none;" onchange="aaImportAgendaSpreadsheet(event)">
               </div>
               <div id="aa-agenda-import-status" class="aa-agenda-import-status"></div>
@@ -1892,11 +1892,19 @@ window.aaDownloadAgendaTemplate=function(){
   if(typeof XLSX==='undefined'){alert('A biblioteca de planilhas ainda está carregando.');return;}
   const type=document.getElementById('aa-agenda-template-type')?.value||'mes',year=Number(document.getElementById('aa-agenda-template-year')?.value)||new Date().getFullYear(),selected=document.getElementById('aa-agenda-template-period')?.value||'01';
   const months=type==='trimestre'?(TRIMESTRES.find(t=>t.id===selected)||TRIMESTRES[0]).months.map(m=>year+'-'+pad2(m)):[year+'-'+pad2(Number(selected))];
-  const days={};months.forEach(ym=>{days[ym]={days:buildMonthDays(ym).map(day=>({...day,status:'folga',motivo:'',blocks:[],total:0})),total:0};});
-  const professionalId=document.getElementById('aa-agenda-import-profissional')?.value||'',professional=allProfissionais.find(p=>String(p.id)===String(professionalId))||{};
-  const model=buildWorkbookRows([{protocolo:'MODELO',profissionalId:professional.id||'',nome:professional.nomeCompleto||'Preencher profissional',usuario:professional.usuarioMedicina||'',especialidade:professional.especialidade||'psicologo',operacao:professional.operacao||'',blocoAgenda:professional.blocoAgenda||'',cpf:professional.cpf||'',dataNascimento:professional.dataNascimento||'',whatsapp:professional.whatsapp||'',ano:String(year),trimestreLabel:type==='trimestre'?(TRIMESTRES.find(t=>t.id===selected)||TRIMESTRES[0]).label:monthLabel(months[0]),periodoMeses:months,computedByMonth:days,status:'em_analise'}]);
-  const ws=XLSX.utils.aoa_to_sheet(model.rows);ws['!merges']=model.merges;styleExportWorksheet(ws,model);ws['!cols']=Array.from({length:model.maxCols},(_,i)=>({wch:i===0?18:i===1?16:14}));
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Agendas');XLSX.writeFile(wb,'modelo_agenda_ativa_'+year+'_'+selected+'.xlsx');
+  const periodLabel=type==='trimestre'?(TRIMESTRES.find(t=>t.id===selected)||TRIMESTRES[0]).label:monthLabel(months[0]);
+  const professionals=(allProfissionais||[]).filter(p=>p&&p.ativo!==false&&aaCanSeeOperation(p.operacao)).sort((a,b)=>String(a.nomeCompleto||'').localeCompare(String(b.nomeCompleto||''),'pt-BR',{sensitivity:'base'}));
+  if(!professionals.length){alert('Não há colaboradores ativos disponíveis para incluir no modelo.');return;}
+  const wb=XLSX.utils.book_new(),usedNames=new Set();
+  const sheetName=name=>{let base=String(name||'Colaborador').replace(/[\\/?*\[\]:]/g,' ').trim().replace(/^'+|'+$/g,'').slice(0,31)||'Colaborador',candidate=base,n=2;while(usedNames.has(candidate.toLocaleLowerCase('pt-BR'))){const suffix=' ('+n+++')';candidate=base.slice(0,31-suffix.length)+suffix;}usedNames.add(candidate.toLocaleLowerCase('pt-BR'));return candidate;};
+  professionals.forEach(professional=>{
+    const computedByMonth={};months.forEach(ym=>{const days=buildMonthDays(ym).map(day=>({...day,status:'folga',motivo:'',blocks:[],total:0}));computedByMonth[ym]={days,total:0};});
+    const model=buildWorkbookRows([{protocolo:'MODELO',profissionalId:professional.id||'',nome:professional.nomeCompleto||'',usuario:professional.usuarioMedicina||'',especialidade:professional.especialidade||'psicologo',operacao:professional.operacao||'',blocoAgenda:professional.blocoAgenda||'',cpf:professional.cpf||'',dataNascimento:professional.dataNascimento||'',whatsapp:professional.whatsapp||'',ano:String(year),trimestreLabel:periodLabel,periodoMeses:months,computedByMonth,status:'em_analise'}]);
+    model.rows.unshift(['ID DO CADASTRO',String(professional.id||'')]);model.merges=(model.merges||[]).map(m=>({s:{r:m.s.r+1,c:m.s.c},e:{r:m.e.r+1,c:m.e.c}}));
+    const ws=XLSX.utils.aoa_to_sheet(model.rows);ws['!merges']=model.merges;styleExportWorksheet(ws,model);ws['!cols']=Array.from({length:model.maxCols},(_,i)=>({wch:i===0?18:i===1?22:14}));
+    XLSX.utils.book_append_sheet(wb,ws,sheetName(professional.nomeCompleto||professional.usuarioMedicina||'Colaborador'));
+  });
+  XLSX.writeFile(wb,'modelo_agendas_colaboradores_'+year+'_'+selected+'.xlsx',{cellStyles:true});
 };
 window.aaRefreshAgendaImportProfessionals=function(){
   const select=document.getElementById('aa-agenda-import-profissional');if(!select)return;
@@ -1923,24 +1931,60 @@ window.aaImportAgendaSpreadsheet=function(event){
   if(!file)return;
   const setStatus=msg=>{if(statusEl)statusEl.textContent=msg;};
   if(typeof XLSX==='undefined'){setStatus('A biblioteca de planilhas ainda está carregando.');event.target.value='';return;}
-  const professionalId=select?.value||'';if(!professionalId){setStatus('Selecione o profissional antes de importar a agenda.');event.target.value='';return;}
+  const legacyProfessionalId=select?.value||'';
   const reader=new FileReader();reader.onload=async function(e){
     try{
-      await Promise.all([loadAllSubmissions(),loadProfissionais()]);const professional=allProfissionais.find(p=>String(p.id)===String(professionalId));if(!professional)throw new Error('Profissional não encontrado.');
-      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true}),sheet=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});if(rows.length<2)throw new Error('A planilha não possui linhas de agenda.');
-      const headerRowIndex=rows.findIndex(row=>normText(row?.[0])==='data');if(headerRowIndex<0)throw new Error('Não encontrei a linha DATA. Baixe o modelo atualizado e preencha-o.');const headers=(rows[headerRowIndex]||[]).map(h=>normText(h)),find=names=>{for(const n of names){const i=headers.indexOf(normText(n));if(i>=0)return i;}return -1;};
-      const dateIdx=find(['data','dia','data do atendimento']),statusIdx=find(['status','situação','situacao']),start1=find(['início 1','inicio 1','início','inicio','entrada']),end1=find(['término','termino','fim 1','final 1','saída','saida','fim']),reasonIdx=find(['motivo','observação','observacao']);
-      if(dateIdx<0)throw new Error('Não encontrei a coluna DATA. Baixe o modelo atualizado e preencha-o.');
-      const byDate=new Map(),issues=[];rows.slice(headerRowIndex+1).forEach((row,index)=>{const iso=aaAgendaImportDate(row[dateIdx]);if(!iso)return;const start=aaAgendaImportTime(row[start1>=0?start1:-1]),end=aaAgendaImportTime(row[end1>=0?end1:-1]),blocks=[],pauseIndexes=[];headers.forEach((header,i)=>{if(/^pausa \d+$/.test(header))pauseIndexes.push({pause:i,back:Number(header.replace('pausa ',''))});});if(start&&end&&!pauseIndexes.length)blocks.push([start,end]);else if(start&&end){let cursor=start;pauseIndexes.sort((a,b)=>a.back-b.back).forEach(item=>{const pause=aaAgendaImportTime(row[item.pause]),voltaIdx=headers.indexOf('volta '+item.back),volta=aaAgendaImportTime(row[voltaIdx]);if(pause&&timeToMinutes(pause)>timeToMinutes(cursor)){blocks.push([cursor,pause]);cursor=volta||'';}});if(cursor&&end&&timeToMinutes(end)>timeToMinutes(cursor))blocks.push([cursor,end]);}if((start&&!end)||(!start&&end))issues.push('Linha '+(index+2)+': horário incompleto.');const rawStart=normText(row[start1>=0?start1:-1]),rawStatus=normText(row[statusIdx>=0?statusIdx:-1]),status=blocks.length?'atende':(rawStatus.includes('feriado')||rawStart.includes('feriado')?'feriado':rawStatus.includes('fechado')||rawStart.includes('fechado')?'fechado':rawStatus.includes('domingo')||rawStart.includes('domingo')?'domingo':'folga');byDate.set(iso,{iso,jsDow:new Date(iso+'T12:00:00').getDay(),status,motivo:String(row[reasonIdx>=0?reasonIdx:-1]||''),blocks,total:blocks.reduce((sum,b)=>sum+diffHours(b[0],b[1]),0)});});
-      if(!byDate.size)throw new Error('Nenhuma data válida foi encontrada.');
-      const months=[...new Set([...byDate.keys()].map(iso=>iso.slice(0,7)))].sort(),computedByMonth={};months.forEach(ym=>{const imported=[...byDate.values()].filter(d=>d.iso.startsWith(ym)),map=new Map(imported.map(d=>[d.iso,d]));const days=buildMonthDays(ym).map(day=>map.get(day.iso)||{...day,status:'folga',motivo:'',blocks:[],total:0});computedByMonth[ym]={days,total:days.reduce((sum,d)=>sum+Number(d.total||0),0)};});
-      const trimestre=months.length===1?null:TRIMESTRES.find(t=>t.months.map(m=>String(m).padStart(2,'0')).join(',')===months.map(m=>m.slice(5)).join(','));const protocolo=generateUniqueProtocolo(),now=new Date().toISOString(),submission={protocolo,profissionalId:professional.id,usuario:professional.usuarioMedicina,nome:professional.nomeCompleto,especialidade:normalizeEspecialidade(professional.especialidade),operacao:normalizeOperacao(professional.operacao),blocoAgenda:normalizeBlocoKey(professional.blocoAgenda),cpf:professional.cpf||'',dataNascimento:professional.dataNascimento||'',crpCrm:professional.crpCrm||'',whatsapp:formatWhatsApp(professional.whatsapp),ano:months[0].slice(0,4),trimestreId:trimestre?trimestre.id:'mensal',trimestreLabel:trimestre?trimestre.label:monthLabel(months[0]),mesSelecionado:months.length===1?months[0].slice(5):'',periodoMeses:months,pattern:{},exceptions:[],computedByMonth,periodTotal:months.reduce((sum,ym)=>sum+computedByMonth[ym].total,0),status:'em_analise',motivoStatus:'',lancadaNoMedicina:false,submittedAt:now,reviewedAt:null,importadoPor:rhCurrentUser||'RH'};
-      const duplicate=allSubmissions.find(s=>String(s.profissionalId)===String(professional.id)&&months.some(ym=>(s.periodoMeses||[]).includes(ym))&&s.status!=='desativada'&&s.status!=='desativado');if(duplicate&&!await aaConfirm('Agenda já existente','Já existe uma agenda deste profissional para um dos meses importados. Deseja criar outra agenda mesmo assim?')){event.target.value='';return;}
-      allSubmissions.unshift(submission);await saveAllSubmissions();try{await aaLogChange('Importação de agenda ativa',protocolo,'Agenda importada para '+professional.nomeCompleto+' em '+months.join(', ')+'.');}catch(logError){console.warn(logError);}setStatus('Agenda importada com sucesso. Protocolo: '+protocolo+(issues.length?'\nAvisos: '+issues.join(' | '):''));aaRenderAdminList();aaToast('Agenda importada com sucesso.','success');
+      await Promise.all([loadAllSubmissions(),loadProfissionais()]);
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
+      const pending=[],issues=[];let datedSheets=0;
+      for(const sheetName of wb.SheetNames){
+        const rows=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:''});
+        if(!rows.some(row=>(row||[]).some(cell=>String(cell??'').trim()!=='')))continue;
+        const idRow=rows.find(row=>normText(row?.[0])==='id do cadastro'),id=idRow?String(idRow[1]??'').trim():'';
+        const headerRowIndex=rows.findIndex(row=>normText(row?.[0])==='data');
+        if(headerRowIndex<0){if(id||normText(sheetName)!=='resumo')issues.push('Aba "'+sheetName+'": não encontrei a linha DATA.');continue;}
+        datedSheets++;
+        let professional=id?allProfissionais.find(p=>String(p.id)===id):null;
+        if(!professional){const normalizedSheet=normText(sheetName);const matches=allProfissionais.filter(p=>normText(p.nomeCompleto)===normalizedSheet||normText(p.usuarioMedicina)===normalizedSheet);if(matches.length===1)professional=matches[0];}
+        if(!professional&&wb.SheetNames.length===1&&legacyProfessionalId)professional=allProfissionais.find(p=>String(p.id)===String(legacyProfessionalId));
+        if(!professional){issues.push('Aba "'+sheetName+'": colaborador não identificado; baixe o modelo atualizado ou selecione a pessoa no campo de planilha antiga.');continue;}
+        const headers=(rows[headerRowIndex]||[]).map(h=>normText(h)),find=names=>{for(const n of names){const i=headers.indexOf(normText(n));if(i>=0)return i;}return -1;};
+        const dateIdx=find(['data','dia','data do atendimento']),statusIdx=find(['status','situação','situacao']),start1=find(['início 1','inicio 1','início','inicio','entrada']),end1=find(['término','termino','fim 1','final 1','saída','saida','fim']),reasonIdx=find(['motivo','observação','observacao']);
+        if(dateIdx<0){issues.push('Aba "'+sheetName+'": não encontrei a coluna DATA.');continue;}
+        const byDate=new Map(),sheetIssues=[];let hasScheduleContent=false;
+        rows.slice(headerRowIndex+1).forEach((row,index)=>{
+          const iso=aaAgendaImportDate(row[dateIdx]);if(!iso)return;
+          const start=aaAgendaImportTime(row[start1>=0?start1:-1]),end=aaAgendaImportTime(row[end1>=0?end1:-1]),blocks=[],pauseIndexes=[];
+          headers.forEach((header,i)=>{if(/^pausa \d+$/.test(header))pauseIndexes.push({pause:i,back:Number(header.replace('pausa ',''))});});
+          if(start&&end&&!pauseIndexes.length)blocks.push([start,end]);else if(start&&end){let cursor=start;pauseIndexes.sort((a,b)=>a.back-b.back).forEach(item=>{const pause=aaAgendaImportTime(row[item.pause]),voltaIdx=headers.indexOf('volta '+item.back),volta=aaAgendaImportTime(row[voltaIdx]);if(pause&&timeToMinutes(pause)>timeToMinutes(cursor)){blocks.push([cursor,pause]);cursor=volta||'';}});if(cursor&&end&&timeToMinutes(end)>timeToMinutes(cursor))blocks.push([cursor,end]);}
+          const rawStart=normText(row[start1>=0?start1:-1]),rawStatus=normText(row[statusIdx>=0?statusIdx:-1]),dayStatus=blocks.length?'atende':(rawStatus.includes('feriado')||rawStart.includes('feriado')?'feriado':rawStatus.includes('fechado')||rawStart.includes('fechado')?'fechado':rawStatus.includes('domingo')||rawStart.includes('domingo')?'domingo':'folga');
+          if((start&&!end)||(!start&&end))sheetIssues.push('linha '+(index+headerRowIndex+2)+': horário incompleto.');
+          if((start&&end)||rawStart.includes('feriado')||rawStart.includes('fechado')||rawStart.includes('domingo')||rawStatus.includes('feriado')||rawStatus.includes('fechado')||rawStatus.includes('domingo')||String(row[reasonIdx>=0?reasonIdx:-1]||'').trim())hasScheduleContent=true;
+          byDate.set(iso,{iso,jsDow:new Date(iso+'T12:00:00').getDay(),status:dayStatus,motivo:String(row[reasonIdx>=0?reasonIdx:-1]||''),blocks,total:blocks.reduce((sum,b)=>sum+diffHours(b[0],b[1]),0)});
+        });
+        if(sheetIssues.length){issues.push('Aba "'+sheetName+'": '+sheetIssues.join(', '));continue;}
+        if(!hasScheduleContent)continue;
+        if(!byDate.size){issues.push('Aba "'+sheetName+'": nenhuma data válida foi encontrada.');continue;}
+        const months=[...new Set([...byDate.keys()].map(iso=>iso.slice(0,7)))].sort(),computedByMonth={};
+        months.forEach(ym=>{const imported=[...byDate.values()].filter(d=>d.iso.startsWith(ym)),map=new Map(imported.map(d=>[d.iso,d]));const days=buildMonthDays(ym).map(day=>map.get(day.iso)||{...day,status:'folga',motivo:'',blocks:[],total:0});computedByMonth[ym]={days,total:days.reduce((sum,d)=>sum+Number(d.total||0),0)};});
+        const trimestre=months.length===1?null:TRIMESTRES.find(t=>t.months.map(m=>String(m).padStart(2,'0')).join(',')===months.map(m=>m.slice(5)).join(',')),protocolo=generateUniqueProtocolo(),now=new Date().toISOString();
+        const submission={protocolo,profissionalId:professional.id,usuario:professional.usuarioMedicina,nome:professional.nomeCompleto,especialidade:normalizeEspecialidade(professional.especialidade),operacao:normalizeOperacao(professional.operacao),blocoAgenda:normalizeBlocoKey(professional.blocoAgenda),cpf:professional.cpf||'',dataNascimento:professional.dataNascimento||'',crpCrm:professional.crpCrm||'',whatsapp:formatWhatsApp(professional.whatsapp),ano:months[0].slice(0,4),trimestreId:trimestre?trimestre.id:'mensal',trimestreLabel:trimestre?trimestre.label:monthLabel(months[0]),mesSelecionado:months.length===1?months[0].slice(5):'',periodoMeses:months,pattern:{},exceptions:[],computedByMonth,periodTotal:months.reduce((sum,ym)=>sum+computedByMonth[ym].total,0),status:'em_analise',motivoStatus:'',lancadaNoMedicina:false,submittedAt:now,reviewedAt:null,importadoPor:rhCurrentUser||'RH'};
+        const duplicate=allSubmissions.find(item=>String(item.profissionalId)===String(professional.id)&&months.some(ym=>(item.periodoMeses||[]).includes(ym))&&item.status!=='desativada'&&item.status!=='desativado');
+        if(duplicate)sheetIssues.push('já existe uma agenda para '+professional.nomeCompleto+' em um dos períodos informados.');
+        pending.push({submission,professional,months,issues:sheetIssues});
+      }
+      if(!datedSheets)throw new Error('Não encontrei nenhuma aba de agenda preenchida. Baixe o modelo atualizado e preencha as datas.');
+      if(issues.length)throw new Error('Nada foi importado para evitar uma carga parcial. Corrija: '+issues.join(' | '));
+      if(!pending.length)throw new Error('Nenhuma aba preenchida foi encontrada. Preencha horários ou marcações (feriado, fechado ou domingo); abas sem alterações são ignoradas.');
+      const duplicateEntries=pending.filter(item=>item.issues.length);
+      if(duplicateEntries.length&&!await aaConfirm('Agendas já existentes','Já há agenda para '+duplicateEntries.map(item=>item.professional.nomeCompleto).join(', ')+' em algum dos períodos. Deseja importar as novas agendas mesmo assim?')){event.target.value='';return;}
+      const additions=pending.map(item=>item.submission);allSubmissions.unshift(...additions);await saveAllSubmissions();
+      for(const item of pending){try{await aaLogChange('Importação de agenda ativa',item.submission.protocolo,'Agenda importada pela aba do colaborador '+item.professional.nomeCompleto+' em '+item.months.join(', ')+'.');}catch(logError){console.warn(logError);}}
+      const summary='Importação concluída: '+pending.length+' agenda(s) importada(s); '+Math.max(0,datedSheets-pending.length)+' aba(s) vazia(s) ignorada(s). Protocolo(s): '+additions.map(item=>item.protocolo).join(', ');
+      setStatus(summary);aaRenderAdminList();aaToast(pending.length+' agenda(s) importada(s) com sucesso.','success');
     }catch(err){setStatus('Não foi possível importar: '+(err.message||'verifique o modelo e os horários.'));console.error(err);}finally{event.target.value='';}
   };reader.readAsArrayBuffer(file);
 };
-
 window.aaToggleDatabaseImportPanel=function(){
   if(!aaRequire('banco_importar'))return;
   const panel=document.getElementById('aa-database-import-panel'),button=document.getElementById('aa-btn-toggle-database-import');
