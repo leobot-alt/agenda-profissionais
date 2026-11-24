@@ -825,7 +825,7 @@
               <div class="aa-field" data-escala-admin><label>Usuário</label><select id="aa-escala-usuario" onchange="aaPortalLoadEscala()"><option value="">Carregando usuários...</option></select></div>
               <div class="aa-actions-row" data-escala-admin style="margin:0;"><button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaPortalNovaEscala()">Nova escala</button></div>
             </div>
-            <div class="aa-portal-scale-toolbar" data-escala-admin><div><b>Importação em lote</b><div class="aa-scale-note">Baixe um modelo com uma aba por colaborador, preencha no Excel e envie as escalas do mês selecionado. Escalas existentes vêm preenchidas; abas sem escala ficam em branco.</div></div><div class="aa-actions-row" style="margin:0"><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaPortalDownloadBatchTemplate()">Baixar modelo Excel</button><button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="document.getElementById('aa-portal-scale-import-file').click()">Importar planilha preenchida</button><input type="file" id="aa-portal-scale-import-file" accept=".xlsx,.xls" hidden onchange="aaPortalImportBatch(event)"></div></div>
+            <div class="aa-portal-scale-toolbar" data-escala-admin><div><b>Importação em lote</b><div class="aa-scale-note">Preencha uma linha de segunda a sábado; o padrão se repete em todas as semanas do mês. Domingos permanecem como estão. Alterações substituem variações por data, como sábados alternados.</div></div><div class="aa-actions-row" style="margin:0"><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaPortalDownloadBatchTemplate()">Baixar modelo Excel</button><button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="document.getElementById('aa-portal-scale-import-file').click()">Importar planilha preenchida</button><input type="file" id="aa-portal-scale-import-file" accept=".xlsx,.xls" hidden onchange="aaPortalImportBatch(event)"></div></div>
             <div id="aa-portal-scale-import-status" class="aa-scale-note" aria-live="polite"></div>
             <div id="aa-portal-escala-content" style="margin-top:18px;"><div class="aa-scale-empty">Selecione o mês e o usuário para carregar a escala.</div></div>
             <div id="aa-escala-modal" class="aa-scale-modal" style="display:none;"><div class="aa-scale-modal-card"><div class="aa-scale-modal-head"><div><h3 id="aa-escala-modal-title">Nova escala</h3><p class="aa-hint" id="aa-escala-modal-help">Preencha os horários da escala mensal e salve o lançamento.</p></div><button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" onclick="aaPortalFecharNovaEscala()">Fechar</button></div><div id="aa-escala-modal-content"></div></div></div>
@@ -4919,6 +4919,7 @@ window.aaRenderProfissionaisList=function(){
 .aa-user-ficha-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px;padding:10px;border:1px solid #E1DCF3;border-radius:10px;background:#FAF9FD}.aa-user-ficha-summary span{display:flex;flex-direction:column;gap:2px;min-width:0}.aa-user-ficha-summary small{font-size:10px;text-transform:uppercase;color:var(--ink-faint);font-weight:800}.aa-user-ficha-summary b{font-size:12.5px;overflow-wrap:anywhere}@media(max-width:640px){.aa-user-ficha-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 
+<style id="aa-scale-weekday-pattern-style">.aa-weekday-pattern-table-wrap{overflow:auto}.aa-weekday-pattern-table{width:100%;min-width:620px;border-collapse:collapse}.aa-weekday-pattern-table th{background:#173B68;color:#fff;padding:8px;text-align:left;font-size:11px}.aa-weekday-pattern-table td{padding:6px;border-top:1px solid #E5EAF1}.aa-weekday-pattern-table input{width:100%;min-width:88px;border:1px solid #C9D6E4;border-radius:6px;padding:6px;font-size:12px}</style>
 <script>
 (function(){
   let routing=false;
@@ -4967,17 +4968,15 @@ async function loadUsers(){const el=document.getElementById('aa-escala-usuario')
   function render(){
   const el=document.getElementById(E.modalOpen?'aa-escala-modal-content':'aa-portal-escala-content'),edit=manager()&&E.modalOpen;const modalTitle=document.getElementById('aa-escala-modal-title'),modalHelp=document.getElementById('aa-escala-modal-help');if(modalTitle)modalTitle.textContent=E.scale?.id?'Editar escala':'Nova escala';if(modalHelp)modalHelp.textContent=E.scale?.id?'Atualize os horários e salve. O aceite anterior ficará pendente novamente.':'Preencha os horários da escala mensal e salve o lançamento.';if(!E.scale&&!edit){el.innerHTML='<div class="aa-scale-empty aa-no-scale-message"><strong>ESCALA NÃO LANÇADA</strong><span>Não existe uma escala lançada para este mês.</span></div>';return;}if(!E.scale&&edit){el.innerHTML='<div class="aa-scale-empty aa-no-scale-message"><strong>ESCALA NÃO LANÇADA</strong><span>Nenhuma escala cadastrada para o mês e usuário selecionados.</span><small>Use o botão “Nova escala” para criar a escala mensal.</small></div>';return;}const rows=E.scale.dias;
   const weekdays=rows.filter(r=>['Seg','Ter','Qua','Qui','Sex'].includes(r.dia));
+  const weekdayNames=[['Seg','Segunda'],['Ter','Terça'],['Qua','Quarta'],['Qui','Quinta'],['Sex','Sexta']];
   const saturdays=rows.filter(r=>r.dia==='Sáb');
-  const base=weekdays.find(r=>r.tipo!=='folga')||weekdays[0]||{};
-  const val=k=>String(base[k]||'');
-  const field=(label,k,type='time')=>`<div class="aa-field"><label>${label}</label><input type="${type}" data-weekday-k="${k}" value="${val(k)}" ${edit?'':'disabled'}></div>`;
   const saturdayRows=saturdays.map((r,i)=>{const index=rows.indexOf(r);return `<tr class="${r.tipo==='folga'?'off':''}"><td class="date">${dateBR(r.data)}</td><td>${r.dia}</td><td><select data-i="${index}" data-k="tipo" ${edit?'':'disabled'}><option value="trabalho" ${r.tipo==='trabalho'?'selected':''}>Trabalho</option><option value="folga" ${r.tipo==='folga'?'selected':''}>Folga</option></select></td><td><input type="time" data-i="${index}" data-k="entrada" value="${r.entrada||''}" ${edit&&r.tipo!=='folga'?'':'disabled'}></td><td><input type="time" data-i="${index}" data-k="inicioAlmoco" value="${r.inicioAlmoco||''}" ${edit&&r.tipo!=='folga'?'':'disabled'}></td><td><input type="time" data-i="${index}" data-k="fimAlmoco" value="${r.fimAlmoco||''}" ${edit&&r.tipo!=='folga'?'':'disabled'}></td><td><input type="time" data-i="${index}" data-k="saida" value="${r.saida||''}" ${edit&&r.tipo!=='folga'?'':'disabled'}></td><td><input data-i="${index}" data-k="observacao" value="${String(r.observacao||'').replace(/"/g,'&quot;')}" ${edit?'':'disabled'}></td></tr>`;}).join('');
-  const exceptional=weekdays.filter(r=>r.tipo==='folga');const availableWeekdays=weekdays.filter(r=>r.tipo!=='folga');const exceptionalList=exceptional.length?'<div class="aa-scale-exceptional-list">'+exceptional.map(r=>`<div class="aa-scale-exceptional-item"><span><b>${dateBR(r.data)}</b> — ${r.dia}<small>${r.observacao||'Folga excepcional'}</small></span>${edit?`<button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaPortalRemoverFolga('${r.data}')">Excluir</button>`:''}</div>`).join('')+'</div>':'<p class="aa-scale-note">Nenhuma folga excepcional lançada neste mês.</p>';const exceptionalControl=`<section class="aa-scale-exceptional"><div class="aa-scale-section-heading"><div><h3>Folgas excepcionais</h3><p>${edit?'Adicione ou exclua uma folga em qualquer dia útil por banco de horas, saída antecipada ou outra necessidade.':'Dias de folga lançados na sua escala mensal.'}</p></div></div>${edit?`<div class="aa-scale-exceptional-actions"><select id="aa-escala-folga-data">${availableWeekdays.map(r=>`<option value="${r.data}">${dateBR(r.data)} — ${r.dia}</option>`).join('')}</select><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaPortalAdicionarFolga()">Adicionar folga</button></div>`:''}${exceptionalList}</section>`;const weekdaySummary=`<section class="aa-scale-week-summary"><div class="aa-scale-section-heading"><div><h3>Segunda a sexta</h3><p>Horário padrão dos dias úteis. As alterações são aplicadas de segunda a sexta.</p></div><span class="aa-scale-badge">Resumo</span></div><div class="aa-field-row">${field('Entrada','entrada')}${field('Início almoço','inicioAlmoco')}${field('Fim almoço','fimAlmoco')}${field('Saída','saida')}</div></section>`;
+  const exceptional=weekdays.filter(r=>r.tipo==='folga');const availableWeekdays=weekdays.filter(r=>r.tipo!=='folga');const exceptionalList=exceptional.length?'<div class="aa-scale-exceptional-list">'+exceptional.map(r=>`<div class="aa-scale-exceptional-item"><span><b>${dateBR(r.data)}</b> — ${r.dia}<small>${r.observacao||'Folga excepcional'}</small></span>${edit?`<button type="button" class="aa-btn aa-btn-danger aa-btn-sm" onclick="aaPortalRemoverFolga('${r.data}')">Excluir</button>`:''}</div>`).join('')+'</div>':'<p class="aa-scale-note">Nenhuma folga excepcional lançada neste mês.</p>';const exceptionalControl=`<section class="aa-scale-exceptional"><div class="aa-scale-section-heading"><div><h3>Folgas excepcionais</h3><p>${edit?'Adicione ou exclua uma folga em qualquer dia útil por banco de horas, saída antecipada ou outra necessidade.':'Dias de folga lançados na sua escala mensal.'}</p></div></div>${edit?`<div class="aa-scale-exceptional-actions"><select id="aa-escala-folga-data">${availableWeekdays.map(r=>`<option value="${r.data}">${dateBR(r.data)} — ${r.dia}</option>`).join('')}</select><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaPortalAdicionarFolga()">Adicionar folga</button></div>`:''}${exceptionalList}</section>`;const weekdaySummary=`<section class="aa-scale-week-summary"><div class="aa-scale-section-heading"><div><h3>Segunda a sexta</h3><p>Os horários podem variar por dia da semana e se repetem no padrão semanal.</p></div><span class="aa-scale-badge">Padrão semanal</span></div><div class="aa-weekday-pattern-table-wrap"><table class="aa-weekday-pattern-table"><thead><tr><th>Dia</th><th>Entrada</th><th>Início almoço</th><th>Fim almoço</th><th>Saída</th></tr></thead><tbody>${weekdayNames.map(([key,label])=>{const day=weekdays.find(r=>r.dia===key&&r.tipo!=='folga')||weekdays.find(r=>r.dia===key)||{};return `<tr><td><b>${label}</b></td>${['entrada','inicioAlmoco','fimAlmoco','saida'].map(k=>`<td><input type="time" data-weekday-day="${key}" data-weekday-k="${k}" value="${day[k]||''}" ${edit?'':'disabled'}></td>`).join('')}</tr>`;}).join('')}</tbody></table></div></section>`;
 const saturdayTable=`<section class="aa-scale-saturday"><div class="aa-scale-section-heading"><div><h3>Sábados</h3><p>Detalhamento somente dos sábados trabalhados ou de folga.</p></div><span class="aa-scale-badge">${saturdays.length} sábado(s)</span></div><div class="aa-scale-grid-wrap"><table class="aa-scale-grid"><thead><tr><th>Data</th><th>Dia</th><th>Tipo</th><th>Entrada</th><th>Início almoço</th><th>Fim almoço</th><th>Saída</th><th>Observação</th></tr></thead><tbody>${saturdayRows||'<tr><td colspan="8">Nenhum sábado neste mês.</td></tr>'}</tbody></table></div></section>`;
   const isOwn=String(E.scale.usuario_auth_id)===String(E.authUserId||uid()),accepted=!!(E.accepted&&E.accepted.aceite!==false&&E.accepted.aceito_em),acceptance=!edit&&E.scale.id?`<div class="aa-scale-acceptance ${accepted?'confirmed':'pending'}"><div><strong>${accepted?'Escala aceita':'Aceite pendente'}</strong><span>${accepted?'Confirmada em '+new Date(E.accepted.aceito_em).toLocaleString('pt-BR'):'Confira os horários e confirme sua escala mensal.'}</span></div>${isOwn&&!accepted?'<button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaPortalAceitarEscala()">Aceitar escala</button>':''}</div>`:'';
   const editExisting=!edit&&manager()&&E.scale.id?'<div class="aa-actions-row aa-scale-edit-existing"><span class="aa-hint">Administração e Gestão podem atualizar esta escala. O aceite será solicitado novamente após salvar.</span><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaPortalEditarEscala()">Editar escala</button></div>':'';
   el.innerHTML=editExisting+acceptance+exceptionalControl+weekdaySummary+saturdayTable+(edit?'<div class="aa-actions-row"><span class="aa-hint">'+uname(document.getElementById('aa-escala-usuario').value)+'</span><button type="button" class="aa-btn aa-btn-ghost" onclick="aaPortalCancelarEdicao()">Cancelar edição</button><button class="aa-btn aa-btn-primary" onclick="aaPortalSalvarEscala()">Salvar escala mensal</button></div>':'');
-  el.querySelectorAll('[data-weekday-k]').forEach(x=>x.onchange=()=>{weekdays.forEach(r=>{r[x.dataset.weekdayK]=x.value;});});
+  el.querySelectorAll('[data-weekday-k]').forEach(x=>x.onchange=()=>{weekdays.filter(r=>r.dia===x.dataset.weekdayDay&&r.tipo!=='folga').forEach(r=>{r[x.dataset.weekdayK]=x.value;});});
   el.querySelectorAll('[data-i]').forEach(x=>x.onchange=()=>{const day=rows[Number(x.dataset.i)];day[x.dataset.k]=x.value;if(x.dataset.k==='tipo'){clearFolgaHorario(day);render();}});
 }
 window.aaPortalAdicionarFolga=function(){if(!manager()||!E.scale)return;const date=document.getElementById('aa-escala-folga-data')?.value,r=E.scale.dias.find(x=>x.data===date);if(!r)return;r.tipo='folga';clearFolgaHorario(r);r.observacao=r.observacao||'Folga excepcional';render();};
@@ -5001,7 +5000,15 @@ function portalBatchTime(value){
   const match=String(value??'').trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);if(!match)return '';
   const h=Number(match[1]),m=Number(match[2]);return h<24&&m<60?String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'):'';
 }
-function portalBatchFindHeader(headers,names){for(const name of names){const index=headers.indexOf(normText(name));if(index>=0)return index;}return -1;}
+function portalBatchText(value){return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();}
+function portalBatchFindHeader(headers,names){for(const name of names){const index=headers.findIndex(header=>portalBatchText(header)===portalBatchText(name));if(index>=0)return index;}return -1;}
+function portalBatchWeekdayKey(value){
+  const key=portalBatchText(value).replace(/-feira/g,'').replace(/\s+/g,' ').trim();
+  const days={seg:'Seg',segunda:'Seg',ter:'Ter',terca:'Ter',terça:'Ter',quarta:'Qua',qua:'Qua',quinta:'Qui',qui:'Qui',sexta:'Sex',sex:'Sex',sab:'Sáb',sabado:'Sáb'};
+  return days[key]||'';
+}
+function portalBatchNormalizeType(value){const t=portalBatchText(value);if(['folga','off'].includes(t))return 'folga';if(['trabalho','trabalhar','work'].includes(t))return 'trabalho';return '';}
+function portalBatchPattern(day){return [day?.tipo==='folga'?'Folga':'Trabalho',day?.entrada||'',day?.inicioAlmoco||'',day?.fimAlmoco||'',day?.saida||'',day?.observacao||''];}
 window.aaPortalDownloadBatchTemplate=async function(){
   if(!manager())return alert('Apenas Administração e Gestão podem baixar o modelo.');
   if(typeof XLSX==='undefined')return alert('A biblioteca de planilhas ainda está carregando.');
@@ -5012,15 +5019,24 @@ window.aaPortalDownloadBatchTemplate=async function(){
     const result=await client.from('escalas_mensais').select('id,mes,usuario_auth_id,usuario_nome,usuario_email,dias').eq('mes',month).limit(200);
     if(result.error)throw result.error;
     const existing=new Map((result.data||[]).map(scale=>[String(scale.usuario_auth_id),scale])),wb=XLSX.utils.book_new(),used=new Set();
+    const weekdaySpecs=[['Seg','Segunda'],['Ter','Terça'],['Qua','Quarta'],['Qui','Quinta'],['Sex','Sexta'],['Sáb','Sábado']];
     visibleUsers.forEach(user=>{
-      const id=String(user.auth_user_id||user.authUserId),name=user.nomeCompleto||user.username||user.email||id,scale=existing.get(id),byDate=new Map((Array.isArray(scale?.dias)?scale.dias:[]).map(day=>[String(day.data),day]));
-      const schedule=scale?days(month).map(defaultDay=>{const saved=byDate.get(defaultDay.data);const day=saved?{...defaultDay,...saved}:defaultDay;if(day.tipo==='folga')clearFolgaHorario(day);return day;}):days(month).map(defaultDay=>({...defaultDay,tipo:'',entrada:'',inicioAlmoco:'',fimAlmoco:'',saida:'',observacao:''}));
-      const rows=[['ID DO USUARIO',id],['MES DE REFERENCIA',month],['COLABORADOR',name],[],['DATA','DIA','TIPO','ENTRADA','INICIO ALMOCO','FIM ALMOCO','SAIDA','OBSERVACAO'],...schedule.map(day=>[day.data,day.dia,day.tipo==='folga'?'Folga':'Trabalho',day.entrada||'',day.inicioAlmoco||'',day.fimAlmoco||'',day.saida||'',day.observacao||''])];
-      const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:14},{wch:10},{wch:13},{wch:12},{wch:16},{wch:16},{wch:12},{wch:34}];ws['!autofilter']={ref:'A5:H'+rows.length};
+      const id=String(user.auth_user_id||user.authUserId),name=user.nomeCompleto||user.username||user.email||id,scale=existing.get(id),byDay=new Map();
+      if(scale&&Array.isArray(scale.dias)){
+        weekdaySpecs.forEach(([key])=>{
+          const occurrences=scale.dias.filter(day=>day.dia===key);if(!occurrences.length)return;
+          const counts=new Map();occurrences.forEach((day,index)=>{const value=portalBatchPattern(day),signature=value.map(part=>String(part??'').trim()).join('|'),entry=counts.get(signature)||{value,count:0,first:index};entry.count++;counts.set(signature,entry);});
+          const representative=[...counts.values()].sort((a,b)=>b.count-a.count||a.first-b.first)[0];if(representative)byDay.set(key,representative.value);
+        });
+      }
+      const visibleHeader=['DIA DA SEMANA','TIPO','ENTRADA','INICIO ALMOCO','FIM ALMOCO','SAIDA','OBSERVACAO'],baselineHeader=['BASE DIA','BASE TIPO','BASE ENTRADA','BASE INICIO ALMOCO','BASE FIM ALMOCO','BASE SAIDA','BASE OBSERVACAO'];
+      const rows=[['ID DO USUARIO',id],['MES DE REFERENCIA',month],['COLABORADOR',name],[],[...visibleHeader,...baselineHeader]];
+      weekdaySpecs.forEach(([key,label])=>{const baseline=byDay.get(key)||['','','','','',''];rows.push([label,...baseline,label,...baseline]);});
+      const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:18},{wch:13},{wch:12},{wch:16},{wch:16},{wch:12},{wch:32},...Array.from({length:7},()=>({hidden:true,wch:14}))];ws['!autofilter']={ref:'A5:G11'};
       XLSX.utils.book_append_sheet(wb,ws,portalBatchSheetName(name,used));
     });
     XLSX.writeFile(wb,'modelo_escalas_portal_'+month+'.xlsx');
-    const status=document.getElementById('aa-portal-scale-import-status');if(status)status.textContent=visibleUsers.length+' aba(s) gerada(s) para '+month+'. As escalas já cadastradas foram carregadas no modelo para facilitar a edição.';
+    const status=document.getElementById('aa-portal-scale-import-status');if(status)status.textContent=visibleUsers.length+' aba(s) gerada(s) para '+month+'. Preencha o padrão de segunda a sábado; a importação o repetirá pelas semanas do mês.';
   }catch(error){console.error('Falha ao gerar modelo em lote do Portal.',error);alert('Não foi possível gerar o modelo: '+(error?.message||'erro desconhecido'));}
 };
 window.aaPortalImportBatch=async function(event){
@@ -5031,59 +5047,61 @@ window.aaPortalImportBatch=async function(event){
   if(typeof XLSX==='undefined'){setStatus('A biblioteca de planilhas ainda está carregando.');event.target.value='';return;}
   const month=String(document.getElementById('aa-escala-mes')?.value||mes());
   try{
-    setStatus('Validando as abas da planilha...');
-    const buffer=await file.arrayBuffer(),wb=XLSX.read(buffer,{type:'array',cellDates:true}),allUsers=users().filter(user=>!isHiddenOperationalUser(user)),userById=new Map(allUsers.map(user=>[String(user.auth_user_id||user.authUserId),user])),pending=[],issues=[],seen=new Set();let skipped=0;
-    const headersExpected={data:['data'],tipo:['tipo','situacao','status'],entrada:['entrada'],inicio:['inicio almoco','inicio do almoco'],fim:['fim almoco','fim do almoco'],saida:['saida'],obs:['observacao','observacoes','motivo']};
+    setStatus('Validando os padrões semanais da planilha...');
+    const client=portalState().client,buffer=await file.arrayBuffer(),wb=XLSX.read(buffer,{type:'array',cellDates:true}),allUsers=users().filter(user=>!isHiddenOperationalUser(user)),userById=new Map(allUsers.map(user=>[String(user.auth_user_id||user.authUserId),user])),pending=[],issues=[],seen=new Set();let skipped=0;
+    const existingResult=await client.from('escalas_mensais').select('id,usuario_auth_id,dias').eq('mes',month).limit(200);if(existingResult.error)throw existingResult.error;
+    const existingByUser=new Map((existingResult.data||[]).map(row=>[String(row.usuario_auth_id),row]));
+    const expectedWeekdays=new Set(['Seg','Ter','Qua','Qui','Sex','Sáb']);
+    const expectedHeaders={day:['dia da semana'],type:['tipo'],entry:['entrada'],lunchStart:['inicio almoco'],lunchEnd:['fim almoco'],exit:['saida'],observation:['observacao','observacoes']};
     for(const sheetName of wb.SheetNames){
       const rows=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:''});
-      const idRow=rows.find(row=>normText(row?.[0])==='id do usuario'),id=String(idRow?.[1]??'').trim(),headerIndex=rows.findIndex(row=>normText(row?.[0])==='data');
+      const idRow=rows.find(row=>normText(row?.[0])==='id do usuario'),id=String(idRow?.[1]??'').trim(),headerIndex=rows.findIndex(row=>normText(row?.[0])==='dia da semana');
       if(!idRow&&headerIndex<0)continue;
       if(!idRow){issues.push('Aba "'+sheetName+'": faltou o ID do usuário.');continue;}
-      if(headerIndex<0){issues.push('Aba "'+sheetName+'": não encontrei a linha de cabeçalho DATA.');continue;}
+      if(headerIndex<0){issues.push('Aba "'+sheetName+'": não encontrei o cabeçalho DIA DA SEMANA.');continue;}
       if(seen.has(id)){issues.push('O mesmo colaborador aparece em mais de uma aba: '+sheetName+'.');continue;}seen.add(id);
       const user=userById.get(id);if(!user){issues.push('Aba "'+sheetName+'": usuário não encontrado ou inativo.');continue;}
       const monthRow=rows.find(row=>normText(row?.[0])==='mes de referencia'),sheetMonth=String(monthRow?.[1]??'').trim();
       if(sheetMonth&&sheetMonth!==month){issues.push('Aba "'+sheetName+'": o mês do modelo ('+sheetMonth+') difere do mês selecionado ('+month+').');continue;}
-      const headers=(rows[headerIndex]||[]).map(value=>normText(value)),idx={};Object.keys(headersExpected).forEach(key=>{idx[key]=portalBatchFindHeader(headers,headersExpected[key]);});
-      const missing=Object.entries({data:'DATA',tipo:'TIPO',entrada:'ENTRADA',inicio:'INÍCIO ALMOÇO',fim:'FIM ALMOÇO',saida:'SAÍDA'}).filter(([key])=>idx[key]<0).map(([,label])=>label);
-      if(missing.length){issues.push('Aba "'+sheetName+'": faltam colunas '+missing.join(', ')+'.');continue;}
-      const dataRows=rows.slice(headerIndex+1),datedRows=dataRows.filter(row=>portalBatchDate(row[idx.data]));
-      if(!datedRows.length){issues.push('Aba "'+sheetName+'": nenhuma data válida foi encontrada.');continue;}
-      const editableColumns=[idx.tipo,idx.entrada,idx.inicio,idx.fim,idx.saida,idx.obs].filter(index=>index>=0);
-      if(datedRows.every(row=>editableColumns.every(index=>String(row[index]??'').trim()===''))){skipped++;continue;}
-      const monthDays=days(month),expected=new Set(monthDays.map(day=>day.data)),byDate=new Map(),workdayPatterns=new Set();
+      const headers=(rows[headerIndex]||[]).map(value=>normText(value)),idx={};Object.keys(expectedHeaders).forEach(key=>{idx[key]=portalBatchFindHeader(headers,expectedHeaders[key]);});
+      const requiredLabels={day:'DIA DA SEMANA',type:'TIPO',entry:'ENTRADA',lunchStart:'INÍCIO ALMOÇO',lunchEnd:'FIM ALMOÇO',exit:'SAÍDA'};
+      const missing=Object.entries(requiredLabels).filter(([key])=>idx[key]<0).map(([,label])=>label);if(missing.length){issues.push('Aba "'+sheetName+'": faltam colunas '+missing.join(', ')+'.');continue;}
+      const baselineHeaders={baseDay:['base dia'],baseType:['base tipo'],baseEntry:['base entrada'],baseLunchStart:['base inicio almoco'],baseLunchEnd:['base fim almoco'],baseExit:['base saida'],baseObservation:['base observacao']},baseIdx={};Object.keys(baselineHeaders).forEach(key=>{baseIdx[key]=portalBatchFindHeader(headers,baselineHeaders[key]);});
+      const dataRows=rows.slice(headerIndex+1).filter(row=>(row||[]).some(cell=>String(cell??'').trim()!==''));
+      if(!dataRows.length){skipped++;continue;}
+      const baseKeys=['baseDay','baseType','baseEntry','baseLunchStart','baseLunchEnd','baseExit','baseObservation'],hasBaseline=baseKeys.every(key=>baseIdx[key]>=0);
+      let changed=!hasBaseline;
+      if(hasBaseline){for(const row of dataRows){const actualDay=portalBatchWeekdayKey(row[idx.day]),baseDay=portalBatchWeekdayKey(row[baseIdx.baseDay]);if(actualDay!==baseDay){changed=true;break;}const actual=[portalBatchNormalizeType(row[idx.type]),portalBatchTime(row[idx.entry]),portalBatchTime(row[idx.lunchStart]),portalBatchTime(row[idx.lunchEnd]),portalBatchTime(row[idx.exit]),String(row[idx.observation>=0?idx.observation:-1]??'').trim()],baseline=[portalBatchNormalizeType(row[baseIdx.baseType]),portalBatchTime(row[baseIdx.baseEntry]),portalBatchTime(row[baseIdx.baseLunchStart]),portalBatchTime(row[baseIdx.baseLunchEnd]),portalBatchTime(row[baseIdx.baseExit]),String(row[baseIdx.baseObservation>=0?baseIdx.baseObservation:-1]??'').trim()];if(actual.some((value,i)=>value!==baseline[i])){changed=true;break;}}}
+      if(!changed){skipped++;continue;}
+      const patterns=new Map();
       dataRows.forEach((row,rowOffset)=>{
-        const iso=portalBatchDate(row[idx.data]);if(!iso&&!(row||[]).some(cell=>String(cell??'').trim()))return;
-        if(!iso){issues.push('Aba "'+sheetName+'", linha '+(headerIndex+rowOffset+2)+': data inválida.');return;}
-        if(!expected.has(iso)){issues.push('Aba "'+sheetName+'": '+dateBR(iso)+' não pertence ao mês '+month+'.');return;}
-        if(byDate.has(iso)){issues.push('Aba "'+sheetName+'": data repetida '+dateBR(iso)+'.');return;}
-        const type=normText(row[idx.tipo]),isOff=['folga','off'].includes(type),isWork=['trabalho','trabalhar','work'].includes(type);
-        if(!isOff&&!isWork){issues.push('Aba "'+sheetName+'", '+dateBR(iso)+': TIPO deve ser Trabalho ou Folga.');return;}
-        const day=monthDays.find(item=>item.data===iso),entry=isWork?portalBatchTime(row[idx.entrada]):'',lunchStart=isWork?portalBatchTime(row[idx.inicio]):'',lunchEnd=isWork?portalBatchTime(row[idx.fim]):'',exit=isWork?portalBatchTime(row[idx.saida]):'';
-        if(isWork&&(!entry||!lunchStart||!lunchEnd||!exit)){issues.push('Aba "'+sheetName+'", '+dateBR(iso)+': preencha os quatro horários ou marque Folga.');return;}
-        if(isWork){const minutes=value=>{const [h,m]=value.split(':').map(Number);return h*60+m;};if(!(minutes(entry)<minutes(lunchStart)&&minutes(lunchStart)<minutes(lunchEnd)&&minutes(lunchEnd)<minutes(exit))){issues.push('Aba "'+sheetName+'", '+dateBR(iso)+': os horários devem seguir Entrada < Início almoço < Fim almoço < Saída.');return;}}
-        if(day&&['Seg','Ter','Qua','Qui','Sex'].includes(day.dia)&&isWork)workdayPatterns.add([entry,lunchStart,lunchEnd,exit].join('|'));
-        byDate.set(iso,{data:iso,dia:day.dia,tipo:isOff?'folga':'trabalho',entrada:entry,inicioAlmoco:lunchStart,fimAlmoco:lunchEnd,saida:exit,observacao:String(row[idx.obs>=0?idx.obs:-1]??'').trim()});
+        const key=portalBatchWeekdayKey(row[idx.day]);if(!key){issues.push('Aba "'+sheetName+'", linha '+(headerIndex+rowOffset+2)+': dia da semana inválido.');return;}
+        if(!expectedWeekdays.has(key)){issues.push('Aba "'+sheetName+'": informe apenas Segunda, Terça, Quarta, Quinta, Sexta e Sábado.');return;}
+        if(patterns.has(key)){issues.push('Aba "'+sheetName+'": dia da semana repetido ('+key+').');return;}
+        const type=portalBatchNormalizeType(row[idx.type]);if(!type){issues.push('Aba "'+sheetName+'", '+key+': TIPO deve ser Trabalho ou Folga.');return;}
+        const times=type==='trabalho'?[portalBatchTime(row[idx.entry]),portalBatchTime(row[idx.lunchStart]),portalBatchTime(row[idx.lunchEnd]),portalBatchTime(row[idx.exit])]:['','','',''];
+        if(type==='trabalho'&&times.some(value=>!value)){issues.push('Aba "'+sheetName+'", '+key+': preencha os quatro horários ou marque Folga.');return;}
+        if(type==='trabalho'){const minutes=value=>{const [h,m]=value.split(':').map(Number);return h*60+m;};if(!(minutes(times[0])<minutes(times[1])&&minutes(times[1])<minutes(times[2])&&minutes(times[2])<minutes(times[3]))){issues.push('Aba "'+sheetName+'", '+key+': os horários devem seguir Entrada < Início almoço < Fim almoço < Saída.');return;}}
+        patterns.set(key,{tipo:type,entrada:times[0],inicioAlmoco:times[1],fimAlmoco:times[2],saida:times[3],observacao:String(row[idx.observation>=0?idx.observation:-1]??'').trim()});
       });
-      if(byDate.size!==expected.size){issues.push('Aba "'+sheetName+'": a escala precisa conter todos os '+expected.size+' dias do mês.');continue;}
-      if(workdayPatterns.size>1)issues.push('Aba "'+sheetName+'": os dias úteis devem compartilhar o mesmo horário padrão; use Folga para exceções.');
-      pending.push({user,dias:[...byDate.values()].sort((a,b)=>a.data.localeCompare(b.data))});
+      if(patterns.size!==expectedWeekdays.size){issues.push('Aba "'+sheetName+'": preencha uma linha para cada dia, de segunda a sábado.');continue;}
+      const current=existingByUser.get(id),currentDays=new Map((Array.isArray(current?.dias)?current.dias:[]).map(day=>[String(day.data),day]));
+      const expanded=days(month).map(defaultDay=>{
+        if(defaultDay.dia==='Dom'){const saved=currentDays.get(defaultDay.data);const day=saved?{...defaultDay,...saved}:defaultDay;return day.tipo==='folga'?clearFolgaHorario(day):day;}
+        const pattern=patterns.get(defaultDay.dia);return {...defaultDay,...pattern};
+      });
+      pending.push({user,dias:expanded});
     }
-    if(issues.length){throw new Error('Nada foi salvo. Corrija os itens: '+issues.slice(0,20).join(' | ')+(issues.length>20?' | e mais '+(issues.length-20)+' erro(s).':''));}
-    if(!pending.length)throw new Error('Não encontrei abas válidas com ID de usuário e escala. Baixe o modelo no Portal e preencha-o.');
-    const client=portalState().client,existingResult=await client.from('escalas_mensais').select('id,usuario_auth_id').eq('mes',month).limit(200);
-    if(existingResult.error)throw existingResult.error;
-    const existingByUser=new Map((existingResult.data||[]).map(row=>[String(row.usuario_auth_id),row])),overwriteCount=pending.filter(item=>existingByUser.has(String(item.user.auth_user_id||item.user.authUserId))).length;
-    const proceed=confirm('Importar '+pending.length+' escala(s) para '+month+'?'+(overwriteCount?'\n\n'+overwriteCount+' escala(s) existente(s) serão atualizadas.':'')+'\n\nO aceite anterior será removido para que os colaboradores confirmem a escala atualizada.');
+    if(issues.length)throw new Error('Nada foi salvo. Corrija: '+issues.slice(0,20).join(' | ')+(issues.length>20?' | e mais '+(issues.length-20)+' erro(s).':''));
+    if(!pending.length)throw new Error('Nenhuma aba com alterações foi encontrada. Preencha os padrões semanais e reenvie a planilha.');
+    const overwritten=pending.filter(item=>existingByUser.has(String(item.user.auth_user_id||item.user.authUserId))).length;
+    const proceed=confirm('Importar '+pending.length+' padrão(ões) semanal(is) para '+month+'?'+(overwritten?'\n\n'+overwritten+' escala(s) existente(s) serão atualizadas.':'')+'\n\nO padrão de segunda a sábado será repetido em todas as semanas; variações por data, inclusive sábados alternados, serão substituídas. Os domingos permanecem como estão. O aceite das escalas atualizadas será reiniciado.');
     if(!proceed){setStatus('Importação cancelada.');return;}
     const profile=portalState().profile||{},payload=pending.map(item=>({mes:month,usuario_auth_id:String(item.user.auth_user_id||item.user.authUserId),usuario_nome:item.user.nomeCompleto||item.user.username||item.user.email||'',usuario_email:item.user.email||item.user.username||'',dias:item.dias,criado_por_auth_id:uid(),criado_por_nome:profile.nomeCompleto||portalState().currentUser||'',updated_at:new Date().toISOString()}));
-    const saved=await client.from('escalas_mensais').upsert(payload,{onConflict:'mes,usuario_auth_id'}).select('id,usuario_auth_id');
-    if(saved.error)throw saved.error;
-    const ids=(saved.data||[]).map(row=>row.id).filter(Boolean);
-    if(ids.length){const invalidated=await client.from('escala_aceites').delete().in('escala_id',ids);if(invalidated.error){setStatus('Escalas salvas, mas não foi possível reiniciar todos os aceites: '+invalidated.error.message);return;}}
-    try{await aaLogChange('Importação em lote de escalas mensais',month,pending.length+' escala(s) importada(s) pelo Portal de escala.');}catch(error){console.warn('As escalas foram salvas, mas o histórico não foi registrado.',error);}
-    setStatus('Importação concluída: '+pending.length+' escala(s) salvas para '+month+'; '+skipped+' aba(s) em branco ignorada(s). Os aceites anteriores foram reiniciados.');
-    await aaPortalLoadEscala();
+    const saved=await client.from('escalas_mensais').upsert(payload,{onConflict:'mes,usuario_auth_id'}).select('id,usuario_auth_id');if(saved.error)throw saved.error;
+    const ids=(saved.data||[]).map(row=>row.id).filter(Boolean);if(ids.length){const invalidated=await client.from('escala_aceites').delete().in('escala_id',ids);if(invalidated.error){setStatus('Escalas salvas, mas não foi possível reiniciar todos os aceites: '+invalidated.error.message);return;}}
+    try{await aaLogChange('Importação em lote de escalas mensais',month,pending.length+' escala(s) importada(s) a partir de padrões semanais.');}catch(error){console.warn('As escalas foram salvas, mas o histórico não foi registrado.',error);}
+    setStatus('Importação concluída: '+pending.length+' escala(s) atualizada(s) para '+month+'; '+skipped+' aba(s) sem alterações ignorada(s). O padrão foi repetido de segunda a sábado.');await aaPortalLoadEscala();
   }catch(error){console.error('Falha ao importar escalas em lote.',error);setStatus('Não foi possível importar: '+(error?.message||'verifique o modelo e os dados.'));}
   finally{event.target.value='';}
 };
