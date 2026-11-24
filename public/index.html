@@ -664,14 +664,14 @@
             </div>
 
             <div class="aa-agenda-import-panel" id="aa-agenda-import-panel" hidden data-permission-any="agendas_ativas_exportar,agendas_ativas_status,agendas_ativas_importar">
-              <div class="aa-agenda-import-head"><div><h3>Importar agendas ativas</h3><p>Baixe um único modelo com uma aba por colaborador. Preencha no Excel e envie o arquivo para importar as agendas preenchidas; abas sem horários ou marcações serão ignoradas.</p></div></div>
+              <div class="aa-agenda-import-head"><div><h3>Importar agendas ativas</h3><p>Baixe um modelo por mês ou trimestre e importe a agenda vinculando-a a um profissional.</p></div></div>
               <div class="aa-agenda-import-actions">
                 <div class="aa-field"><label>Tipo de período do modelo</label><select id="aa-agenda-template-type" onchange="aaUpdateAgendaTemplatePeriodOptions()"><option value="mes">Mês</option><option value="trimestre">Trimestre</option></select></div>
                 <div class="aa-field"><label>Ano</label><input type="number" id="aa-agenda-template-year" min="2025" max="2035"></div>
                 <div class="aa-field"><label>Período</label><select id="aa-agenda-template-period"></select></div>
                 <button type="button" data-permission-action="agendas_ativas_exportar" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaDownloadAgendaTemplate()">Baixar modelo</button>
-                <div class="aa-field" style="min-width:260px;"><label>Profissional (somente modelos antigos)</label><select id="aa-agenda-import-profissional"><option value="">Selecione se a planilha antiga tiver uma única aba</option></select></div>
-                <button type="button" data-permission-action="agendas_ativas_importar" class="aa-btn aa-btn-primary aa-btn-sm" onclick="document.getElementById('aa-agenda-import-file').click()">Importar planilha preenchida</button>
+                <div class="aa-field" style="min-width:260px;"><label>Profissional da agenda importada</label><select id="aa-agenda-import-profissional"><option value="">Selecione o profissional</option></select></div>
+                <button type="button" data-permission-action="agendas_ativas_importar" class="aa-btn aa-btn-primary aa-btn-sm" onclick="document.getElementById('aa-agenda-import-file').click()">Importar agenda preenchida</button>
                 <input type="file" id="aa-agenda-import-file" accept=".xlsx,.xls" style="display:none;" onchange="aaImportAgendaSpreadsheet(event)">
               </div>
               <div id="aa-agenda-import-status" class="aa-agenda-import-status"></div>
@@ -825,6 +825,8 @@
               <div class="aa-field" data-escala-admin><label>Usuário</label><select id="aa-escala-usuario" onchange="aaPortalLoadEscala()"><option value="">Carregando usuários...</option></select></div>
               <div class="aa-actions-row" data-escala-admin style="margin:0;"><button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="aaPortalNovaEscala()">Nova escala</button></div>
             </div>
+            <div class="aa-portal-scale-toolbar" data-escala-admin><div><b>Importação em lote</b><div class="aa-scale-note">Baixe um modelo com uma aba por colaborador, preencha no Excel e envie as escalas do mês selecionado. Escalas existentes vêm preenchidas; abas sem escala ficam em branco.</div></div><div class="aa-actions-row" style="margin:0"><button type="button" class="aa-btn aa-btn-secondary aa-btn-sm" onclick="aaPortalDownloadBatchTemplate()">Baixar modelo Excel</button><button type="button" class="aa-btn aa-btn-primary aa-btn-sm" onclick="document.getElementById('aa-portal-scale-import-file').click()">Importar planilha preenchida</button><input type="file" id="aa-portal-scale-import-file" accept=".xlsx,.xls" hidden onchange="aaPortalImportBatch(event)"></div></div>
+            <div id="aa-portal-scale-import-status" class="aa-scale-note" aria-live="polite"></div>
             <div id="aa-portal-escala-content" style="margin-top:18px;"><div class="aa-scale-empty">Selecione o mês e o usuário para carregar a escala.</div></div>
             <div id="aa-escala-modal" class="aa-scale-modal" style="display:none;"><div class="aa-scale-modal-card"><div class="aa-scale-modal-head"><div><h3 id="aa-escala-modal-title">Nova escala</h3><p class="aa-hint" id="aa-escala-modal-help">Preencha os horários da escala mensal e salve o lançamento.</p></div><button type="button" class="aa-btn aa-btn-ghost aa-btn-sm" onclick="aaPortalFecharNovaEscala()">Fechar</button></div><div id="aa-escala-modal-content"></div></div></div>
             </div>
@@ -1892,19 +1894,11 @@ window.aaDownloadAgendaTemplate=function(){
   if(typeof XLSX==='undefined'){alert('A biblioteca de planilhas ainda está carregando.');return;}
   const type=document.getElementById('aa-agenda-template-type')?.value||'mes',year=Number(document.getElementById('aa-agenda-template-year')?.value)||new Date().getFullYear(),selected=document.getElementById('aa-agenda-template-period')?.value||'01';
   const months=type==='trimestre'?(TRIMESTRES.find(t=>t.id===selected)||TRIMESTRES[0]).months.map(m=>year+'-'+pad2(m)):[year+'-'+pad2(Number(selected))];
-  const periodLabel=type==='trimestre'?(TRIMESTRES.find(t=>t.id===selected)||TRIMESTRES[0]).label:monthLabel(months[0]);
-  const professionals=(allProfissionais||[]).filter(p=>p&&p.ativo!==false&&aaCanSeeOperation(p.operacao)).sort((a,b)=>String(a.nomeCompleto||'').localeCompare(String(b.nomeCompleto||''),'pt-BR',{sensitivity:'base'}));
-  if(!professionals.length){alert('Não há colaboradores ativos disponíveis para incluir no modelo.');return;}
-  const wb=XLSX.utils.book_new(),usedNames=new Set();
-  const sheetName=name=>{let base=String(name||'Colaborador').replace(/[\\/?*\[\]:]/g,' ').trim().replace(/^'+|'+$/g,'').slice(0,31)||'Colaborador',candidate=base,n=2;while(usedNames.has(candidate.toLocaleLowerCase('pt-BR'))){const suffix=' ('+n+++')';candidate=base.slice(0,31-suffix.length)+suffix;}usedNames.add(candidate.toLocaleLowerCase('pt-BR'));return candidate;};
-  professionals.forEach(professional=>{
-    const computedByMonth={};months.forEach(ym=>{const days=buildMonthDays(ym).map(day=>({...day,status:'folga',motivo:'',blocks:[],total:0}));computedByMonth[ym]={days,total:0};});
-    const model=buildWorkbookRows([{protocolo:'MODELO',profissionalId:professional.id||'',nome:professional.nomeCompleto||'',usuario:professional.usuarioMedicina||'',especialidade:professional.especialidade||'psicologo',operacao:professional.operacao||'',blocoAgenda:professional.blocoAgenda||'',cpf:professional.cpf||'',dataNascimento:professional.dataNascimento||'',whatsapp:professional.whatsapp||'',ano:String(year),trimestreLabel:periodLabel,periodoMeses:months,computedByMonth,status:'em_analise'}]);
-    model.rows.unshift(['ID DO CADASTRO',String(professional.id||'')]);model.merges=(model.merges||[]).map(m=>({s:{r:m.s.r+1,c:m.s.c},e:{r:m.e.r+1,c:m.e.c}}));
-    const ws=XLSX.utils.aoa_to_sheet(model.rows);ws['!merges']=model.merges;styleExportWorksheet(ws,model);ws['!cols']=Array.from({length:model.maxCols},(_,i)=>({wch:i===0?18:i===1?22:14}));
-    XLSX.utils.book_append_sheet(wb,ws,sheetName(professional.nomeCompleto||professional.usuarioMedicina||'Colaborador'));
-  });
-  XLSX.writeFile(wb,'modelo_agendas_colaboradores_'+year+'_'+selected+'.xlsx',{cellStyles:true});
+  const days={};months.forEach(ym=>{days[ym]={days:buildMonthDays(ym).map(day=>({...day,status:'folga',motivo:'',blocks:[],total:0})),total:0};});
+  const professionalId=document.getElementById('aa-agenda-import-profissional')?.value||'',professional=allProfissionais.find(p=>String(p.id)===String(professionalId))||{};
+  const model=buildWorkbookRows([{protocolo:'MODELO',profissionalId:professional.id||'',nome:professional.nomeCompleto||'Preencher profissional',usuario:professional.usuarioMedicina||'',especialidade:professional.especialidade||'psicologo',operacao:professional.operacao||'',blocoAgenda:professional.blocoAgenda||'',cpf:professional.cpf||'',dataNascimento:professional.dataNascimento||'',whatsapp:professional.whatsapp||'',ano:String(year),trimestreLabel:type==='trimestre'?(TRIMESTRES.find(t=>t.id===selected)||TRIMESTRES[0]).label:monthLabel(months[0]),periodoMeses:months,computedByMonth:days,status:'em_analise'}]);
+  const ws=XLSX.utils.aoa_to_sheet(model.rows);ws['!merges']=model.merges;styleExportWorksheet(ws,model);ws['!cols']=Array.from({length:model.maxCols},(_,i)=>({wch:i===0?18:i===1?16:14}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Agendas');XLSX.writeFile(wb,'modelo_agenda_ativa_'+year+'_'+selected+'.xlsx');
 };
 window.aaRefreshAgendaImportProfessionals=function(){
   const select=document.getElementById('aa-agenda-import-profissional');if(!select)return;
@@ -1931,60 +1925,24 @@ window.aaImportAgendaSpreadsheet=function(event){
   if(!file)return;
   const setStatus=msg=>{if(statusEl)statusEl.textContent=msg;};
   if(typeof XLSX==='undefined'){setStatus('A biblioteca de planilhas ainda está carregando.');event.target.value='';return;}
-  const legacyProfessionalId=select?.value||'';
+  const professionalId=select?.value||'';if(!professionalId){setStatus('Selecione o profissional antes de importar a agenda.');event.target.value='';return;}
   const reader=new FileReader();reader.onload=async function(e){
     try{
-      await Promise.all([loadAllSubmissions(),loadProfissionais()]);
-      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
-      const pending=[],issues=[];let datedSheets=0;
-      for(const sheetName of wb.SheetNames){
-        const rows=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:''});
-        if(!rows.some(row=>(row||[]).some(cell=>String(cell??'').trim()!=='')))continue;
-        const idRow=rows.find(row=>normText(row?.[0])==='id do cadastro'),id=idRow?String(idRow[1]??'').trim():'';
-        const headerRowIndex=rows.findIndex(row=>normText(row?.[0])==='data');
-        if(headerRowIndex<0){if(id||normText(sheetName)!=='resumo')issues.push('Aba "'+sheetName+'": não encontrei a linha DATA.');continue;}
-        datedSheets++;
-        let professional=id?allProfissionais.find(p=>String(p.id)===id):null;
-        if(!professional){const normalizedSheet=normText(sheetName);const matches=allProfissionais.filter(p=>normText(p.nomeCompleto)===normalizedSheet||normText(p.usuarioMedicina)===normalizedSheet);if(matches.length===1)professional=matches[0];}
-        if(!professional&&wb.SheetNames.length===1&&legacyProfessionalId)professional=allProfissionais.find(p=>String(p.id)===String(legacyProfessionalId));
-        if(!professional){issues.push('Aba "'+sheetName+'": colaborador não identificado; baixe o modelo atualizado ou selecione a pessoa no campo de planilha antiga.');continue;}
-        const headers=(rows[headerRowIndex]||[]).map(h=>normText(h)),find=names=>{for(const n of names){const i=headers.indexOf(normText(n));if(i>=0)return i;}return -1;};
-        const dateIdx=find(['data','dia','data do atendimento']),statusIdx=find(['status','situação','situacao']),start1=find(['início 1','inicio 1','início','inicio','entrada']),end1=find(['término','termino','fim 1','final 1','saída','saida','fim']),reasonIdx=find(['motivo','observação','observacao']);
-        if(dateIdx<0){issues.push('Aba "'+sheetName+'": não encontrei a coluna DATA.');continue;}
-        const byDate=new Map(),sheetIssues=[];let hasScheduleContent=false;
-        rows.slice(headerRowIndex+1).forEach((row,index)=>{
-          const iso=aaAgendaImportDate(row[dateIdx]);if(!iso)return;
-          const start=aaAgendaImportTime(row[start1>=0?start1:-1]),end=aaAgendaImportTime(row[end1>=0?end1:-1]),blocks=[],pauseIndexes=[];
-          headers.forEach((header,i)=>{if(/^pausa \d+$/.test(header))pauseIndexes.push({pause:i,back:Number(header.replace('pausa ',''))});});
-          if(start&&end&&!pauseIndexes.length)blocks.push([start,end]);else if(start&&end){let cursor=start;pauseIndexes.sort((a,b)=>a.back-b.back).forEach(item=>{const pause=aaAgendaImportTime(row[item.pause]),voltaIdx=headers.indexOf('volta '+item.back),volta=aaAgendaImportTime(row[voltaIdx]);if(pause&&timeToMinutes(pause)>timeToMinutes(cursor)){blocks.push([cursor,pause]);cursor=volta||'';}});if(cursor&&end&&timeToMinutes(end)>timeToMinutes(cursor))blocks.push([cursor,end]);}
-          const rawStart=normText(row[start1>=0?start1:-1]),rawStatus=normText(row[statusIdx>=0?statusIdx:-1]),dayStatus=blocks.length?'atende':(rawStatus.includes('feriado')||rawStart.includes('feriado')?'feriado':rawStatus.includes('fechado')||rawStart.includes('fechado')?'fechado':rawStatus.includes('domingo')||rawStart.includes('domingo')?'domingo':'folga');
-          if((start&&!end)||(!start&&end))sheetIssues.push('linha '+(index+headerRowIndex+2)+': horário incompleto.');
-          if((start&&end)||rawStart.includes('feriado')||rawStart.includes('fechado')||rawStart.includes('domingo')||rawStatus.includes('feriado')||rawStatus.includes('fechado')||rawStatus.includes('domingo')||String(row[reasonIdx>=0?reasonIdx:-1]||'').trim())hasScheduleContent=true;
-          byDate.set(iso,{iso,jsDow:new Date(iso+'T12:00:00').getDay(),status:dayStatus,motivo:String(row[reasonIdx>=0?reasonIdx:-1]||''),blocks,total:blocks.reduce((sum,b)=>sum+diffHours(b[0],b[1]),0)});
-        });
-        if(sheetIssues.length){issues.push('Aba "'+sheetName+'": '+sheetIssues.join(', '));continue;}
-        if(!hasScheduleContent)continue;
-        if(!byDate.size){issues.push('Aba "'+sheetName+'": nenhuma data válida foi encontrada.');continue;}
-        const months=[...new Set([...byDate.keys()].map(iso=>iso.slice(0,7)))].sort(),computedByMonth={};
-        months.forEach(ym=>{const imported=[...byDate.values()].filter(d=>d.iso.startsWith(ym)),map=new Map(imported.map(d=>[d.iso,d]));const days=buildMonthDays(ym).map(day=>map.get(day.iso)||{...day,status:'folga',motivo:'',blocks:[],total:0});computedByMonth[ym]={days,total:days.reduce((sum,d)=>sum+Number(d.total||0),0)};});
-        const trimestre=months.length===1?null:TRIMESTRES.find(t=>t.months.map(m=>String(m).padStart(2,'0')).join(',')===months.map(m=>m.slice(5)).join(',')),protocolo=generateUniqueProtocolo(),now=new Date().toISOString();
-        const submission={protocolo,profissionalId:professional.id,usuario:professional.usuarioMedicina,nome:professional.nomeCompleto,especialidade:normalizeEspecialidade(professional.especialidade),operacao:normalizeOperacao(professional.operacao),blocoAgenda:normalizeBlocoKey(professional.blocoAgenda),cpf:professional.cpf||'',dataNascimento:professional.dataNascimento||'',crpCrm:professional.crpCrm||'',whatsapp:formatWhatsApp(professional.whatsapp),ano:months[0].slice(0,4),trimestreId:trimestre?trimestre.id:'mensal',trimestreLabel:trimestre?trimestre.label:monthLabel(months[0]),mesSelecionado:months.length===1?months[0].slice(5):'',periodoMeses:months,pattern:{},exceptions:[],computedByMonth,periodTotal:months.reduce((sum,ym)=>sum+computedByMonth[ym].total,0),status:'em_analise',motivoStatus:'',lancadaNoMedicina:false,submittedAt:now,reviewedAt:null,importadoPor:rhCurrentUser||'RH'};
-        const duplicate=allSubmissions.find(item=>String(item.profissionalId)===String(professional.id)&&months.some(ym=>(item.periodoMeses||[]).includes(ym))&&item.status!=='desativada'&&item.status!=='desativado');
-        if(duplicate)sheetIssues.push('já existe uma agenda para '+professional.nomeCompleto+' em um dos períodos informados.');
-        pending.push({submission,professional,months,issues:sheetIssues});
-      }
-      if(!datedSheets)throw new Error('Não encontrei nenhuma aba de agenda preenchida. Baixe o modelo atualizado e preencha as datas.');
-      if(issues.length)throw new Error('Nada foi importado para evitar uma carga parcial. Corrija: '+issues.join(' | '));
-      if(!pending.length)throw new Error('Nenhuma aba preenchida foi encontrada. Preencha horários ou marcações (feriado, fechado ou domingo); abas sem alterações são ignoradas.');
-      const duplicateEntries=pending.filter(item=>item.issues.length);
-      if(duplicateEntries.length&&!await aaConfirm('Agendas já existentes','Já há agenda para '+duplicateEntries.map(item=>item.professional.nomeCompleto).join(', ')+' em algum dos períodos. Deseja importar as novas agendas mesmo assim?')){event.target.value='';return;}
-      const additions=pending.map(item=>item.submission);allSubmissions.unshift(...additions);await saveAllSubmissions();
-      for(const item of pending){try{await aaLogChange('Importação de agenda ativa',item.submission.protocolo,'Agenda importada pela aba do colaborador '+item.professional.nomeCompleto+' em '+item.months.join(', ')+'.');}catch(logError){console.warn(logError);}}
-      const summary='Importação concluída: '+pending.length+' agenda(s) importada(s); '+Math.max(0,datedSheets-pending.length)+' aba(s) vazia(s) ignorada(s). Protocolo(s): '+additions.map(item=>item.protocolo).join(', ');
-      setStatus(summary);aaRenderAdminList();aaToast(pending.length+' agenda(s) importada(s) com sucesso.','success');
+      await Promise.all([loadAllSubmissions(),loadProfissionais()]);const professional=allProfissionais.find(p=>String(p.id)===String(professionalId));if(!professional)throw new Error('Profissional não encontrado.');
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true}),sheet=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});if(rows.length<2)throw new Error('A planilha não possui linhas de agenda.');
+      const headerRowIndex=rows.findIndex(row=>normText(row?.[0])==='data');if(headerRowIndex<0)throw new Error('Não encontrei a linha DATA. Baixe o modelo atualizado e preencha-o.');const headers=(rows[headerRowIndex]||[]).map(h=>normText(h)),find=names=>{for(const n of names){const i=headers.indexOf(normText(n));if(i>=0)return i;}return -1;};
+      const dateIdx=find(['data','dia','data do atendimento']),statusIdx=find(['status','situação','situacao']),start1=find(['início 1','inicio 1','início','inicio','entrada']),end1=find(['término','termino','fim 1','final 1','saída','saida','fim']),reasonIdx=find(['motivo','observação','observacao']);
+      if(dateIdx<0)throw new Error('Não encontrei a coluna DATA. Baixe o modelo atualizado e preencha-o.');
+      const byDate=new Map(),issues=[];rows.slice(headerRowIndex+1).forEach((row,index)=>{const iso=aaAgendaImportDate(row[dateIdx]);if(!iso)return;const start=aaAgendaImportTime(row[start1>=0?start1:-1]),end=aaAgendaImportTime(row[end1>=0?end1:-1]),blocks=[],pauseIndexes=[];headers.forEach((header,i)=>{if(/^pausa \d+$/.test(header))pauseIndexes.push({pause:i,back:Number(header.replace('pausa ',''))});});if(start&&end&&!pauseIndexes.length)blocks.push([start,end]);else if(start&&end){let cursor=start;pauseIndexes.sort((a,b)=>a.back-b.back).forEach(item=>{const pause=aaAgendaImportTime(row[item.pause]),voltaIdx=headers.indexOf('volta '+item.back),volta=aaAgendaImportTime(row[voltaIdx]);if(pause&&timeToMinutes(pause)>timeToMinutes(cursor)){blocks.push([cursor,pause]);cursor=volta||'';}});if(cursor&&end&&timeToMinutes(end)>timeToMinutes(cursor))blocks.push([cursor,end]);}if((start&&!end)||(!start&&end))issues.push('Linha '+(index+2)+': horário incompleto.');const rawStart=normText(row[start1>=0?start1:-1]),rawStatus=normText(row[statusIdx>=0?statusIdx:-1]),status=blocks.length?'atende':(rawStatus.includes('feriado')||rawStart.includes('feriado')?'feriado':rawStatus.includes('fechado')||rawStart.includes('fechado')?'fechado':rawStatus.includes('domingo')||rawStart.includes('domingo')?'domingo':'folga');byDate.set(iso,{iso,jsDow:new Date(iso+'T12:00:00').getDay(),status,motivo:String(row[reasonIdx>=0?reasonIdx:-1]||''),blocks,total:blocks.reduce((sum,b)=>sum+diffHours(b[0],b[1]),0)});});
+      if(!byDate.size)throw new Error('Nenhuma data válida foi encontrada.');
+      const months=[...new Set([...byDate.keys()].map(iso=>iso.slice(0,7)))].sort(),computedByMonth={};months.forEach(ym=>{const imported=[...byDate.values()].filter(d=>d.iso.startsWith(ym)),map=new Map(imported.map(d=>[d.iso,d]));const days=buildMonthDays(ym).map(day=>map.get(day.iso)||{...day,status:'folga',motivo:'',blocks:[],total:0});computedByMonth[ym]={days,total:days.reduce((sum,d)=>sum+Number(d.total||0),0)};});
+      const trimestre=months.length===1?null:TRIMESTRES.find(t=>t.months.map(m=>String(m).padStart(2,'0')).join(',')===months.map(m=>m.slice(5)).join(','));const protocolo=generateUniqueProtocolo(),now=new Date().toISOString(),submission={protocolo,profissionalId:professional.id,usuario:professional.usuarioMedicina,nome:professional.nomeCompleto,especialidade:normalizeEspecialidade(professional.especialidade),operacao:normalizeOperacao(professional.operacao),blocoAgenda:normalizeBlocoKey(professional.blocoAgenda),cpf:professional.cpf||'',dataNascimento:professional.dataNascimento||'',crpCrm:professional.crpCrm||'',whatsapp:formatWhatsApp(professional.whatsapp),ano:months[0].slice(0,4),trimestreId:trimestre?trimestre.id:'mensal',trimestreLabel:trimestre?trimestre.label:monthLabel(months[0]),mesSelecionado:months.length===1?months[0].slice(5):'',periodoMeses:months,pattern:{},exceptions:[],computedByMonth,periodTotal:months.reduce((sum,ym)=>sum+computedByMonth[ym].total,0),status:'em_analise',motivoStatus:'',lancadaNoMedicina:false,submittedAt:now,reviewedAt:null,importadoPor:rhCurrentUser||'RH'};
+      const duplicate=allSubmissions.find(s=>String(s.profissionalId)===String(professional.id)&&months.some(ym=>(s.periodoMeses||[]).includes(ym))&&s.status!=='desativada'&&s.status!=='desativado');if(duplicate&&!await aaConfirm('Agenda já existente','Já existe uma agenda deste profissional para um dos meses importados. Deseja criar outra agenda mesmo assim?')){event.target.value='';return;}
+      allSubmissions.unshift(submission);await saveAllSubmissions();try{await aaLogChange('Importação de agenda ativa',protocolo,'Agenda importada para '+professional.nomeCompleto+' em '+months.join(', ')+'.');}catch(logError){console.warn(logError);}setStatus('Agenda importada com sucesso. Protocolo: '+protocolo+(issues.length?'\nAvisos: '+issues.join(' | '):''));aaRenderAdminList();aaToast('Agenda importada com sucesso.','success');
     }catch(err){setStatus('Não foi possível importar: '+(err.message||'verifique o modelo e os horários.'));console.error(err);}finally{event.target.value='';}
   };reader.readAsArrayBuffer(file);
 };
+
 window.aaToggleDatabaseImportPanel=function(){
   if(!aaRequire('banco_importar'))return;
   const panel=document.getElementById('aa-database-import-panel'),button=document.getElementById('aa-btn-toggle-database-import');
@@ -4995,16 +4953,16 @@ window.aaRenderProfissionaisList=function(){
 </script>
 <script>
 (function(){
-const E={scale:null,accepted:null,authUserId:'',dirty:false,modalOpen:false,loadId:0};
+const E={scale:null,accepted:null,authUserId:'',dirty:false,modalOpen:false,loadId:0,portalUsers:[]};
 window.addEventListener('beforeunload',e=>{if(E.dirty){e.preventDefault();e.returnValue='Existem alterações não salvas.';}});
 const mes=()=>document.getElementById('aa-escala-mes').value||new Date().toISOString().slice(0,7);
 const portalHtmlSafe=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));const isHiddenOperationalUser=user=>{const email=String(typeof user==='string'?user:(user&&(user.username||user.email||user.user))||'').trim().toLowerCase(),principal=String(window.__AA_ADMIN_EMAIL||'adm@adm.com').trim().toLowerCase();return !!email&&email===principal;};const portalState=()=>window.__aaPortalState||{};const uid=()=>String((portalState().profile&&portalState().profile.auth_user_id)||'');
 const manager=()=>!!portalState().canManage;const canPanorama=()=>manager()||!!portalState().canPanorama;
-const users=()=>((portalState().users||[]).filter(u=>u.ativo!==false&&!u.removido&&(u.auth_user_id||u.authUserId)));
+const users=()=>{const merged=new Map();[...(portalState().users||[]),...(E.portalUsers||[])].forEach(u=>{const id=String(u.auth_user_id||u.authUserId||'');if(id)merged.set(id,u);});return [...merged.values()].filter(u=>u.ativo!==false&&!u.removido&&(u.auth_user_id||u.authUserId));};
 const uname=id=>{const u=users().find(x=>String(x.auth_user_id||x.authUserId)===String(id));return isHiddenOperationalUser(u)?'Usuário reservado':(u?.nomeCompleto||u?.username||u?.email||id);};
 const dateBR=value=>{const m=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:String(value||'');};
 const days=m=>{const [y,mo]=m.split('-').map(Number),n=new Date(y,mo,0).getDate(),w=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];return Array.from({length:n},(_,i)=>{const d=new Date(y,mo-1,i+1);return {data:m+'-'+String(i+1).padStart(2,'0'),dia:w[d.getDay()],tipo:'trabalho',entrada:'08:00',inicioAlmoco:'12:00',fimAlmoco:'13:00',saida:'17:00',observacao:''};});};
-async function loadUsers(){const el=document.getElementById('aa-escala-usuario');if(!el)return;let cached=[],list=[];const renderUserOptions=items=>{const visible=manager()?items.filter(u=>!isHiddenOperationalUser(u)):items.filter(u=>String(u.auth_user_id||u.authUserId)===uid());if(!visible.length){el.innerHTML='<option value="">Nenhum usuário disponível para lançar escala</option>';return;}el.innerHTML=visible.map(u=>`<option value="${u.auth_user_id||u.authUserId}">${u.nomeCompleto||u.username||u.email}</option>`).join('');const current=String(el.value||'');const selected=visible.find(u=>String(u.auth_user_id||u.authUserId)===current)||visible.find(u=>String(u.auth_user_id||u.authUserId)===uid())||visible[0];if(selected)el.value=String(selected.auth_user_id||selected.authUserId);};try{cached=users();if(cached.length)renderUserOptions(cached);else el.innerHTML='<option value="">Carregando usuários...</option>';const client=portalState().client;if(!client||typeof client.from!=='function')throw new Error('Cliente de dados indisponível.');let timer;let result;try{result=await Promise.race([client.from('usuarios_rh').select('id,auth_user_id,username,nome_completo,perfil,operacao,ativo,removido').order('nome_completo',{ascending:true}).limit(200),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('A consulta de usuários demorou mais de 12 segundos.')),12000);})]);}finally{clearTimeout(timer);}if(result.error)throw result.error;list=(result.data||[]).map(row=>({id:String(row.id||''),auth_user_id:String(row.auth_user_id||''),username:String(row.username||'').trim().toLowerCase(),nomeCompleto:String(row.nome_completo||'').trim(),perfil:row.perfil||'colaborador',operacao:row.operacao||'',ativo:row.ativo!==false,removido:row.removido===true})).filter(u=>u.ativo!==false&&!u.removido&&(u.auth_user_id||u.authUserId));if(!list.length)list=cached;}catch(error){console.error('Não foi possível carregar os usuários da escala:',error);list=cached;}try{renderUserOptions(list);}catch(error){console.error('Não foi possível montar o seletor de usuários da escala:',error);const detail=String(error?.message||error||'erro desconhecido').slice(0,160).replace(/[&<>"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[char]));el.innerHTML='<option value="">Falha ao preparar usuários: '+detail+'</option>';}}function clearFolgaHorario(day){if(!day||day.tipo!=='folga')return day;day.entrada='';day.inicioAlmoco='';day.fimAlmoco='';day.saida='';return day;}
+async function loadUsers(){const el=document.getElementById('aa-escala-usuario');if(!el)return;let cached=[],list=[];const renderUserOptions=items=>{const visible=manager()?items.filter(u=>!isHiddenOperationalUser(u)):items.filter(u=>String(u.auth_user_id||u.authUserId)===uid());if(!visible.length){el.innerHTML='<option value="">Nenhum usuário disponível para lançar escala</option>';return;}el.innerHTML=visible.map(u=>`<option value="${u.auth_user_id||u.authUserId}">${u.nomeCompleto||u.username||u.email}</option>`).join('');const current=String(el.value||'');const selected=visible.find(u=>String(u.auth_user_id||u.authUserId)===current)||visible.find(u=>String(u.auth_user_id||u.authUserId)===uid())||visible[0];if(selected)el.value=String(selected.auth_user_id||selected.authUserId);};try{cached=users();if(cached.length)renderUserOptions(cached);else el.innerHTML='<option value="">Carregando usuários...</option>';const client=portalState().client;if(!client||typeof client.from!=='function')throw new Error('Cliente de dados indisponível.');let timer;let result;try{result=await Promise.race([client.from('usuarios_rh').select('id,auth_user_id,username,nome_completo,perfil,operacao,ativo,removido').order('nome_completo',{ascending:true}).limit(200),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('A consulta de usuários demorou mais de 12 segundos.')),12000);})]);}finally{clearTimeout(timer);}if(result.error)throw result.error;list=(result.data||[]).map(row=>({id:String(row.id||''),auth_user_id:String(row.auth_user_id||''),username:String(row.username||'').trim().toLowerCase(),nomeCompleto:String(row.nome_completo||'').trim(),perfil:row.perfil||'colaborador',operacao:row.operacao||'',ativo:row.ativo!==false,removido:row.removido===true})).filter(u=>u.ativo!==false&&!u.removido&&(u.auth_user_id||u.authUserId));if(!list.length)list=cached;}catch(error){console.error('Não foi possível carregar os usuários da escala:',error);list=cached;}E.portalUsers=list;try{renderUserOptions(list);}catch(error){console.error('Não foi possível montar o seletor de usuários da escala:',error);const detail=String(error?.message||error||'erro desconhecido').slice(0,160).replace(/[&<>"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[char]));el.innerHTML='<option value="">Falha ao preparar usuários: '+detail+'</option>';}}function clearFolgaHorario(day){if(!day||day.tipo!=='folga')return day;day.entrada='';day.inicioAlmoco='';day.fimAlmoco='';day.saida='';return day;}
   function normalizeFolgas(scale){if(scale&&Array.isArray(scale.dias))scale.dias.forEach(clearFolgaHorario);return scale;}
   function render(){
   const el=document.getElementById(E.modalOpen?'aa-escala-modal-content':'aa-portal-escala-content'),edit=manager()&&E.modalOpen;const modalTitle=document.getElementById('aa-escala-modal-title'),modalHelp=document.getElementById('aa-escala-modal-help');if(modalTitle)modalTitle.textContent=E.scale?.id?'Editar escala':'Nova escala';if(modalHelp)modalHelp.textContent=E.scale?.id?'Atualize os horários e salve. O aceite anterior ficará pendente novamente.':'Preencha os horários da escala mensal e salve o lançamento.';if(!E.scale&&!edit){el.innerHTML='<div class="aa-scale-empty aa-no-scale-message"><strong>ESCALA NÃO LANÇADA</strong><span>Não existe uma escala lançada para este mês.</span></div>';return;}if(!E.scale&&edit){el.innerHTML='<div class="aa-scale-empty aa-no-scale-message"><strong>ESCALA NÃO LANÇADA</strong><span>Nenhuma escala cadastrada para o mês e usuário selecionados.</span><small>Use o botão “Nova escala” para criar a escala mensal.</small></div>';return;}const rows=E.scale.dias;
@@ -5025,6 +4983,110 @@ const saturdayTable=`<section class="aa-scale-saturday"><div class="aa-scale-sec
 window.aaPortalAdicionarFolga=function(){if(!manager()||!E.scale)return;const date=document.getElementById('aa-escala-folga-data')?.value,r=E.scale.dias.find(x=>x.data===date);if(!r)return;r.tipo='folga';clearFolgaHorario(r);r.observacao=r.observacao||'Folga excepcional';render();};
 window.aaPortalRemoverFolga=function(date){if(!manager()||!E.scale)return;const r=E.scale.dias.find(x=>x.data===date);if(!r||r.tipo!=='folga')return;if(!confirm('Excluir a folga de '+dateBR(date)+'?'))return;r.tipo='trabalho';r.entrada='08:00';r.inicioAlmoco='12:00';r.fimAlmoco='13:00';r.saida='17:00';r.observacao='';render();};
 document.addEventListener('input',e=>{if(e.target.closest('#aa-portal-view-escala')&&manager()&&E.scale)E.dirty=true;});document.addEventListener('change',e=>{if(e.target.closest('#aa-portal-view-escala')&&manager()&&E.scale)E.dirty=true;});
+function portalBatchSheetName(name,used){
+  let base=String(name||'Colaborador').replace(/[\\/?*\[\]:]/g,' ').trim().replace(/^'+|'+$/g,'').slice(0,31)||'Colaborador';
+  let candidate=base,n=2;
+  while(used.has(candidate.toLocaleLowerCase('pt-BR'))){const suffix=' ('+n+++')';candidate=base.slice(0,31-suffix.length)+suffix;}
+  used.add(candidate.toLocaleLowerCase('pt-BR'));return candidate;
+}
+function portalBatchDate(value){
+  if(value instanceof Date&&!isNaN(value))return value.getFullYear()+'-'+String(value.getMonth()+1).padStart(2,'0')+'-'+String(value.getDate()).padStart(2,'0');
+  if(typeof value==='number'&&window.XLSX?.SSF){const d=XLSX.SSF.parse_date_code(value);if(d)return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');}
+  const raw=String(value??'').trim();if(/^\d{4}-\d{2}-\d{2}$/.test(raw))return raw;
+  const br=raw.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);return br?br[3]+'-'+String(br[2]).padStart(2,'0')+'-'+String(br[1]).padStart(2,'0'):'';
+}
+function portalBatchTime(value){
+  if(value instanceof Date&&!isNaN(value))return String(value.getHours()).padStart(2,'0')+':'+String(value.getMinutes()).padStart(2,'0');
+  if(typeof value==='number'&&value>=0&&value<1){const minutes=Math.round(value*1440)%1440;return String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0');}
+  const match=String(value??'').trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);if(!match)return '';
+  const h=Number(match[1]),m=Number(match[2]);return h<24&&m<60?String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'):'';
+}
+function portalBatchFindHeader(headers,names){for(const name of names){const index=headers.indexOf(normText(name));if(index>=0)return index;}return -1;}
+window.aaPortalDownloadBatchTemplate=async function(){
+  if(!manager())return alert('Apenas Administração e Gestão podem baixar o modelo.');
+  if(typeof XLSX==='undefined')return alert('A biblioteca de planilhas ainda está carregando.');
+  const month=String(document.getElementById('aa-escala-mes')?.value||mes());
+  try{
+    const client=portalState().client,visibleUsers=users().filter(user=>!isHiddenOperationalUser(user)).sort((a,b)=>String(a.nomeCompleto||a.username||'').localeCompare(String(b.nomeCompleto||b.username||''),'pt-BR',{sensitivity:'base'}));
+    if(!visibleUsers.length)throw new Error('Não há colaboradores ativos para incluir no modelo.');
+    const result=await client.from('escalas_mensais').select('id,mes,usuario_auth_id,usuario_nome,usuario_email,dias').eq('mes',month).limit(200);
+    if(result.error)throw result.error;
+    const existing=new Map((result.data||[]).map(scale=>[String(scale.usuario_auth_id),scale])),wb=XLSX.utils.book_new(),used=new Set();
+    visibleUsers.forEach(user=>{
+      const id=String(user.auth_user_id||user.authUserId),name=user.nomeCompleto||user.username||user.email||id,scale=existing.get(id),byDate=new Map((Array.isArray(scale?.dias)?scale.dias:[]).map(day=>[String(day.data),day]));
+      const schedule=scale?days(month).map(defaultDay=>{const saved=byDate.get(defaultDay.data);const day=saved?{...defaultDay,...saved}:defaultDay;if(day.tipo==='folga')clearFolgaHorario(day);return day;}):days(month).map(defaultDay=>({...defaultDay,tipo:'',entrada:'',inicioAlmoco:'',fimAlmoco:'',saida:'',observacao:''}));
+      const rows=[['ID DO USUARIO',id],['MES DE REFERENCIA',month],['COLABORADOR',name],[],['DATA','DIA','TIPO','ENTRADA','INICIO ALMOCO','FIM ALMOCO','SAIDA','OBSERVACAO'],...schedule.map(day=>[day.data,day.dia,day.tipo==='folga'?'Folga':'Trabalho',day.entrada||'',day.inicioAlmoco||'',day.fimAlmoco||'',day.saida||'',day.observacao||''])];
+      const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:14},{wch:10},{wch:13},{wch:12},{wch:16},{wch:16},{wch:12},{wch:34}];ws['!autofilter']={ref:'A5:H'+rows.length};
+      XLSX.utils.book_append_sheet(wb,ws,portalBatchSheetName(name,used));
+    });
+    XLSX.writeFile(wb,'modelo_escalas_portal_'+month+'.xlsx');
+    const status=document.getElementById('aa-portal-scale-import-status');if(status)status.textContent=visibleUsers.length+' aba(s) gerada(s) para '+month+'. As escalas já cadastradas foram carregadas no modelo para facilitar a edição.';
+  }catch(error){console.error('Falha ao gerar modelo em lote do Portal.',error);alert('Não foi possível gerar o modelo: '+(error?.message||'erro desconhecido'));}
+};
+window.aaPortalImportBatch=async function(event){
+  const file=event?.target?.files?.[0],status=document.getElementById('aa-portal-scale-import-status');
+  const setStatus=text=>{if(status)status.textContent=text;};
+  if(!file)return;
+  if(!manager()){setStatus('Apenas Administração e Gestão podem importar escalas.');event.target.value='';return;}
+  if(typeof XLSX==='undefined'){setStatus('A biblioteca de planilhas ainda está carregando.');event.target.value='';return;}
+  const month=String(document.getElementById('aa-escala-mes')?.value||mes());
+  try{
+    setStatus('Validando as abas da planilha...');
+    const buffer=await file.arrayBuffer(),wb=XLSX.read(buffer,{type:'array',cellDates:true}),allUsers=users().filter(user=>!isHiddenOperationalUser(user)),userById=new Map(allUsers.map(user=>[String(user.auth_user_id||user.authUserId),user])),pending=[],issues=[],seen=new Set();let skipped=0;
+    const headersExpected={data:['data'],tipo:['tipo','situacao','status'],entrada:['entrada'],inicio:['inicio almoco','inicio do almoco'],fim:['fim almoco','fim do almoco'],saida:['saida'],obs:['observacao','observacoes','motivo']};
+    for(const sheetName of wb.SheetNames){
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:''});
+      const idRow=rows.find(row=>normText(row?.[0])==='id do usuario'),id=String(idRow?.[1]??'').trim(),headerIndex=rows.findIndex(row=>normText(row?.[0])==='data');
+      if(!idRow&&headerIndex<0)continue;
+      if(!idRow){issues.push('Aba "'+sheetName+'": faltou o ID do usuário.');continue;}
+      if(headerIndex<0){issues.push('Aba "'+sheetName+'": não encontrei a linha de cabeçalho DATA.');continue;}
+      if(seen.has(id)){issues.push('O mesmo colaborador aparece em mais de uma aba: '+sheetName+'.');continue;}seen.add(id);
+      const user=userById.get(id);if(!user){issues.push('Aba "'+sheetName+'": usuário não encontrado ou inativo.');continue;}
+      const monthRow=rows.find(row=>normText(row?.[0])==='mes de referencia'),sheetMonth=String(monthRow?.[1]??'').trim();
+      if(sheetMonth&&sheetMonth!==month){issues.push('Aba "'+sheetName+'": o mês do modelo ('+sheetMonth+') difere do mês selecionado ('+month+').');continue;}
+      const headers=(rows[headerIndex]||[]).map(value=>normText(value)),idx={};Object.keys(headersExpected).forEach(key=>{idx[key]=portalBatchFindHeader(headers,headersExpected[key]);});
+      const missing=Object.entries({data:'DATA',tipo:'TIPO',entrada:'ENTRADA',inicio:'INÍCIO ALMOÇO',fim:'FIM ALMOÇO',saida:'SAÍDA'}).filter(([key])=>idx[key]<0).map(([,label])=>label);
+      if(missing.length){issues.push('Aba "'+sheetName+'": faltam colunas '+missing.join(', ')+'.');continue;}
+      const dataRows=rows.slice(headerIndex+1),datedRows=dataRows.filter(row=>portalBatchDate(row[idx.data]));
+      if(!datedRows.length){issues.push('Aba "'+sheetName+'": nenhuma data válida foi encontrada.');continue;}
+      const editableColumns=[idx.tipo,idx.entrada,idx.inicio,idx.fim,idx.saida,idx.obs].filter(index=>index>=0);
+      if(datedRows.every(row=>editableColumns.every(index=>String(row[index]??'').trim()===''))){skipped++;continue;}
+      const monthDays=days(month),expected=new Set(monthDays.map(day=>day.data)),byDate=new Map(),workdayPatterns=new Set();
+      dataRows.forEach((row,rowOffset)=>{
+        const iso=portalBatchDate(row[idx.data]);if(!iso&&!(row||[]).some(cell=>String(cell??'').trim()))return;
+        if(!iso){issues.push('Aba "'+sheetName+'", linha '+(headerIndex+rowOffset+2)+': data inválida.');return;}
+        if(!expected.has(iso)){issues.push('Aba "'+sheetName+'": '+dateBR(iso)+' não pertence ao mês '+month+'.');return;}
+        if(byDate.has(iso)){issues.push('Aba "'+sheetName+'": data repetida '+dateBR(iso)+'.');return;}
+        const type=normText(row[idx.tipo]),isOff=['folga','off'].includes(type),isWork=['trabalho','trabalhar','work'].includes(type);
+        if(!isOff&&!isWork){issues.push('Aba "'+sheetName+'", '+dateBR(iso)+': TIPO deve ser Trabalho ou Folga.');return;}
+        const day=monthDays.find(item=>item.data===iso),entry=isWork?portalBatchTime(row[idx.entrada]):'',lunchStart=isWork?portalBatchTime(row[idx.inicio]):'',lunchEnd=isWork?portalBatchTime(row[idx.fim]):'',exit=isWork?portalBatchTime(row[idx.saida]):'';
+        if(isWork&&(!entry||!lunchStart||!lunchEnd||!exit)){issues.push('Aba "'+sheetName+'", '+dateBR(iso)+': preencha os quatro horários ou marque Folga.');return;}
+        if(isWork){const minutes=value=>{const [h,m]=value.split(':').map(Number);return h*60+m;};if(!(minutes(entry)<minutes(lunchStart)&&minutes(lunchStart)<minutes(lunchEnd)&&minutes(lunchEnd)<minutes(exit))){issues.push('Aba "'+sheetName+'", '+dateBR(iso)+': os horários devem seguir Entrada < Início almoço < Fim almoço < Saída.');return;}}
+        if(day&&['Seg','Ter','Qua','Qui','Sex'].includes(day.dia)&&isWork)workdayPatterns.add([entry,lunchStart,lunchEnd,exit].join('|'));
+        byDate.set(iso,{data:iso,dia:day.dia,tipo:isOff?'folga':'trabalho',entrada:entry,inicioAlmoco:lunchStart,fimAlmoco:lunchEnd,saida:exit,observacao:String(row[idx.obs>=0?idx.obs:-1]??'').trim()});
+      });
+      if(byDate.size!==expected.size){issues.push('Aba "'+sheetName+'": a escala precisa conter todos os '+expected.size+' dias do mês.');continue;}
+      if(workdayPatterns.size>1)issues.push('Aba "'+sheetName+'": os dias úteis devem compartilhar o mesmo horário padrão; use Folga para exceções.');
+      pending.push({user,dias:[...byDate.values()].sort((a,b)=>a.data.localeCompare(b.data))});
+    }
+    if(issues.length){throw new Error('Nada foi salvo. Corrija os itens: '+issues.slice(0,20).join(' | ')+(issues.length>20?' | e mais '+(issues.length-20)+' erro(s).':''));}
+    if(!pending.length)throw new Error('Não encontrei abas válidas com ID de usuário e escala. Baixe o modelo no Portal e preencha-o.');
+    const client=portalState().client,existingResult=await client.from('escalas_mensais').select('id,usuario_auth_id').eq('mes',month).limit(200);
+    if(existingResult.error)throw existingResult.error;
+    const existingByUser=new Map((existingResult.data||[]).map(row=>[String(row.usuario_auth_id),row])),overwriteCount=pending.filter(item=>existingByUser.has(String(item.user.auth_user_id||item.user.authUserId))).length;
+    const proceed=confirm('Importar '+pending.length+' escala(s) para '+month+'?'+(overwriteCount?'\n\n'+overwriteCount+' escala(s) existente(s) serão atualizadas.':'')+'\n\nO aceite anterior será removido para que os colaboradores confirmem a escala atualizada.');
+    if(!proceed){setStatus('Importação cancelada.');return;}
+    const profile=portalState().profile||{},payload=pending.map(item=>({mes:month,usuario_auth_id:String(item.user.auth_user_id||item.user.authUserId),usuario_nome:item.user.nomeCompleto||item.user.username||item.user.email||'',usuario_email:item.user.email||item.user.username||'',dias:item.dias,criado_por_auth_id:uid(),criado_por_nome:profile.nomeCompleto||portalState().currentUser||'',updated_at:new Date().toISOString()}));
+    const saved=await client.from('escalas_mensais').upsert(payload,{onConflict:'mes,usuario_auth_id'}).select('id,usuario_auth_id');
+    if(saved.error)throw saved.error;
+    const ids=(saved.data||[]).map(row=>row.id).filter(Boolean);
+    if(ids.length){const invalidated=await client.from('escala_aceites').delete().in('escala_id',ids);if(invalidated.error){setStatus('Escalas salvas, mas não foi possível reiniciar todos os aceites: '+invalidated.error.message);return;}}
+    try{await aaLogChange('Importação em lote de escalas mensais',month,pending.length+' escala(s) importada(s) pelo Portal de escala.');}catch(error){console.warn('As escalas foram salvas, mas o histórico não foi registrado.',error);}
+    setStatus('Importação concluída: '+pending.length+' escala(s) salvas para '+month+'; '+skipped+' aba(s) em branco ignorada(s). Os aceites anteriores foram reiniciados.');
+    await aaPortalLoadEscala();
+  }catch(error){console.error('Falha ao importar escalas em lote.',error);setStatus('Não foi possível importar: '+(error?.message||'verifique o modelo e os dados.'));}
+  finally{event.target.value='';}
+};
 window.aaPortalTogglePanorama=async function(){if(!canPanorama())return alert('Você não possui permissão para visualizar o panorama da equipe.');const box=document.getElementById('aa-portal-panorama');if(!box)return;const opening=box.style.display==='none'||!box.style.display;box.style.display=opening?'block':'none';if(opening)await window.aaPortalLoadPanorama();};
 window.aaPortalFiltrarPanorama=function(){const q=String(document.getElementById('aa-panorama-busca')?.value||'').trim().toLowerCase();document.querySelectorAll('#aa-panorama-content tbody tr').forEach(tr=>tr.style.display=tr.textContent.toLowerCase().includes(q)?'':'none');};window.aaPortalExportarPanorama=function(){const table=document.querySelector('#aa-panorama-content table');if(!table)return alert('Não há dados do panorama para exportar.');const rows=[...table.querySelectorAll('tr')].map(tr=>[...tr.children].map(c=>'"'+String(c.innerText).replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+rows],{type:'text/csv;charset=utf-8;'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='panorama-'+(document.getElementById('aa-panorama-mes')?.value||mes())+'.csv';a.click();URL.revokeObjectURL(a.href);};
 window.aaPortalExportarPanoramaExcel=function(){const table=document.querySelector('#aa-panorama-content table');if(!table)return alert('Não há dados do panorama para exportar.');if(typeof XLSX==='undefined')return alert('Exportação Excel indisponível.');const wb=XLSX.utils.table_to_book(table,{sheet:'Panorama'});XLSX.writeFile(wb,'panorama-'+(document.getElementById('aa-panorama-mes')?.value||mes())+'.xlsx');};
